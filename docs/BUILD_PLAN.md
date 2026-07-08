@@ -12,6 +12,16 @@ py tools/build_route.py data/routes/demo-drive.json
 Loads a route → renders the trajectory → validates it → writes a cached GPX. This is the gate
 that must pass before anything is played on the device.
 
+## Environment
+
+- **Offline core** (model/renderer/validator/build_route) is stdlib-only — run with any Python.
+- **Device path** needs `pymobiledevice3` in a venv on **Python 3.12 or 3.13 — NOT 3.14** (two
+  native deps, `lzfse` + `pylzss`, have no 3.14 wheels and need MSVC to build):
+  `uv venv --python 3.12 && uv pip install -r requirements.txt`.
+- **Apple Mobile Device Service** (usbmuxd) must be installed on Windows — via the **Apple
+  Devices** app (Microsoft Store) or **iTunes** — or `usbmux list` fails with a socket error.
+- Play a built route on the phone: `.venv\Scripts\python.exe tools\play_route.py <gpx>`.
+
 ## Build order
 
 Each increment is independently verifiable **offline**. Phone-gated items are called out.
