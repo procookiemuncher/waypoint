@@ -7,6 +7,25 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-07 — Correction: Life360 auto-detects airports; route + activity vision
+
+**Correction (owner):** Life360 DOES auto-send an arrival notification when you land at a
+major airport — no manually saved Place required (owner saw this on a real Paris trip). So
+the notification MVP = believably arrive at CDG's area after a "flight gap".
+
+**Route vision (owner's target):**
+- "Airport route": realistic ~30–40 min drive CDG → 5-star Paris hotel.
+- "Full Ride": multi-hour airport → hotel → mixed walking / driving / stops.
+- Wants to trigger Life360's **activity emoji** (driving / walking).
+  ⚠ RISK/UNKNOWN: iOS activity type often comes from CoreMotion (real accelerometer), which
+  we cannot spoof (phone sits still). If Life360's emoji is GPS-speed-derived we can trigger
+  it; if motion-derived, we can't. **Test this early** before promising it.
+- Likely built as stored GPX routes replayed via `simulate-location play`, with speed profiles.
+
+**UI:** wanted eventually, deferred.
+
+---
+
 ## 2026-07-07 — Clarified end goal + Life360 strategy brainstorm
 
 **End goal locked:** make Life360 send "Juan has arrived at &lt;place&gt;" to the group.

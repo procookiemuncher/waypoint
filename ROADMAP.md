@@ -27,18 +27,26 @@ Maps / Find My. This de-risks everything else.
 - [x] Record the exact working command sequence in PROGRESS.md
 - **Exit criteria met:** Find My showed the spoofed location (Paris).
 
-### M1.5 — Life360 "arrived at &lt;place&gt;" (the real end goal)  🔬 IN PROGRESS
-**North star:** trigger a believable Life360 arrival notification to the group — not just a
-moved pin.
-- [ ] A **Place** must exist at the destination in the Circle — arrival notifications only
-  fire for saved Places. Confirm one exists or create it.
-- [ ] The spoof must **enter** that geofence via simulated arrival movement (a straight
-  teleport in may not register a clean entry and reads as fake).
-- [ ] Survive sanity checks: no impossible-speed teleport, GPS drift present.
-- [ ] Decide if IP matters — **test a plain Paris spoof first.** iOS can't leak surrounding
-  cell towers to the app; the only real non-GPS tells are the *connected* Wi-Fi and
-  server-side IP. Add a phone-side VPN only if a test proves IP is the giveaway.
-- Vehicle for all of this = the **movement engine** (see v2 route simulation below).
+### M1.5 — Life360 airport arrival + realistic routes (the real end goal)  🔬 IN PROGRESS
+**North star:** replicate the "Juan has arrived at Paris (CDG) airport" notification Life360
+auto-sends when you land at a major airport. Life360 recognizes airports itself — no manual
+Place needed.
+- [ ] Confirm plain airport arrival fires the notification: after a Miami "gap", believably
+  arrive into CDG's area and watch for the group notification.
+- [ ] Test whether IP even matters first (iOS can't leak cell towers to the app; only the
+  *connected* Wi-Fi + server-side IP can contradict). VPN only if a test proves IP is the tell.
+- [ ] Arrival must look real: no impossible-speed teleport, GPS drift present.
+
+**Route presets (the movement engine):**
+- [ ] "Airport route" — believable ~30–40 min drive CDG → a 5-star Paris hotel.
+- [ ] "Full Ride" — multi-hour: airport → hotel, then mixed walking / driving / stops.
+- [ ] Trigger Life360's **activity indicator** (driving / walking emoji). ⚠ RISK: iOS activity
+  often comes from **CoreMotion** (real accelerometer), which we do NOT spoof (phone is still).
+  Test early whether the emoji is GPS-speed-derived (spoofable) or motion-derived (not).
+- Likely implementation: stored **GPX routes** replayed (pymobiledevice3 has
+  `simulate-location play`), with per-segment speed profiles for walk / drive / stop.
+
+**UI:** wanted later, deferred.
 
 ### M2 — Backend core
 - [ ] `LocationBackend` interface — `ensure_ready()` / `set_location()` / `clear()` / `status()`

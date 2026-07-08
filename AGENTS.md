@@ -9,10 +9,21 @@
 from a Windows PC. v1 sets a fixed fake coordinate (e.g. Eiffel Tower, Dubai, Miami).
 v2 will simulate movement along routes. Personal use, single owned device.
 
-**End goal:** make Life360 fire a believable "Juan has arrived at &lt;place&gt;" notification
-to the group. That's a higher bar than Find My — the spoof must (a) survive Life360's sanity
-checks (no impossible-speed teleport, no frozen pin) and (b) trigger a genuine geofence
-**entry** at a saved Place, which needs simulated *arrival movement*, not a static coordinate.
+**End goal:** replicate the real "Juan has arrived at Paris (CDG) airport" notification that
+Life360 auto-sends the group when you land at a major airport — Life360 recognizes major
+airports itself, so **no manual Place is needed**. The spoof must (a) survive Life360's sanity
+checks (no impossible-speed teleport, GPS drift present) and (b) believably *arrive* at the
+airport area to trigger that built-in notification.
+
+**Stretch — pre-built routes** (the owner's real ambition):
+- "Airport route": a believable ~30–40 min drive from CDG to a 5-star Paris hotel.
+- "Full Ride": a multi-hour trip — airport → hotel, then mixed walking / driving / stops.
+- Trigger Life360's **activity indicator** (the driving / walking emoji it shows per member).
+  ⚠ RISK: iOS activity type often comes from **CoreMotion** (the real accelerometer), which we
+  do NOT spoof — the phone sits physically still. Must test whether Life360's emoji is
+  GPS-speed-derived (spoofable) or motion-derived (not).
+
+A **UI** is wanted eventually, but deferred.
 
 ## How it works (the mechanism)
 
