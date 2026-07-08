@@ -11,16 +11,16 @@ MVP = **M1–M4**.
 
 ## Milestones
 
-### M0 — Project setup  ▶ IN PROGRESS
+### M0 — Project setup  ✅ DONE
 - [x] Brainstorm architecture (2026-07-07)
 - [x] Connect git repo to GitHub `procookiemuncher/vida-360`
 - [x] AGENTS.md / ROADMAP.md / PROGRESS.md
-- [ ] Python project skeleton + virtualenv + pinned `pymobiledevice3`
+- [x] Python project skeleton + virtualenv + pinned `pymobiledevice3` (9.33.1)
 
-### M1 — Transport spike  ⚠ RISKIEST — DO FIRST
+### M1 — Transport spike  ⚠ RISKIEST — IN PROGRESS
 Goal: push **one hardcoded coordinate** onto the iOS 26.6 phone from Windows and see it in
 Maps / Find My. This de-risks everything else.
-- [ ] Verify prerequisites (Apple driver, Developer Mode, trust)
+- [ ] Verify prerequisites (Apple driver, Developer Mode, trust)  ← BLOCKED: usbmuxd not installed on Windows
 - [ ] Bring up `pymobiledevice3 remote tunneld` (elevated) on Windows
 - [ ] Auto-mount the personalized Developer Disk Image
 - [ ] Connect DVT, call `simulate-location set`, confirm on device

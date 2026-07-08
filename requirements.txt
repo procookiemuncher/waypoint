@@ -1,0 +1,5 @@
+# Core transport library.
+# 9.33.1 verified to cover iOS 26.6 (it already ships iOS 27+ commands) and to expose
+# `remote tunneld` + `developer dvt simulate-location set/clear/play`.
+# Also pulls in fastapi, uvicorn, and gpxpy as dependencies (reused later for the UI + routes).
+pymobiledevice3==9.33.1
