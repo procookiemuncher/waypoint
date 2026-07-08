@@ -1,3 +1,14 @@
+---
+title: OSS spoofer landscape — what others built, and did anyone do Find My + Life360?
+status: research                # research | device-verified | superseded
+last_verified: 2026-07-08
+device_verified: none           # survey of others' work; community claims rated LOW/MEDIUM (Reddit un-fetchable)
+open_gates: [isSimulatedBySoftware]
+depends_on: [spoof-methods-survey]
+source_tier: mixed              # primary (GitHub repos/issues + Apple/Life360/Arity) + anecdote (SEO/vendor)
+recheck_if: [pmd3 version bump, iOS point release, new OSS tool surfaces]
+---
+
 # OSS spoofer landscape — what others built, and did anyone do Find My + Life360?
 
 > Research brief (heavy open-source emphasis). Question: has anyone built an OSS spoofer that

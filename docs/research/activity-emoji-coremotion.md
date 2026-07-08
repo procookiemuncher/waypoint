@@ -1,3 +1,14 @@
+---
+title: Activity emoji vs. CoreMotion — is the walking/driving indicator spoofable?
+status: research                # research | device-verified | superseded
+last_verified: 2026-07-08
+device_verified: none           # the long-drive emoji test (Phase A #1) has NOT been run
+open_gates: [movement-emoji, isSimulatedBySoftware]
+depends_on: [life360-detection-and-realism]
+source_tier: mixed              # primary (Apple CoreMotion / pmd3 source) + Life360 vendor + one third-party
+recheck_if: [Life360 app update, iOS point release]
+---
+
 # Activity emoji vs. CoreMotion — is the walking/driving indicator spoofable?
 
 > Research brief. Question: is Life360's per-member walking/driving activity emoji derived from

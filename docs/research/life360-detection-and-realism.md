@@ -1,3 +1,14 @@
+---
+title: Life360 on iOS — location signals, spoof detection, and realism rules
+status: research                # research | device-verified | superseded
+last_verified: 2026-07-08
+device_verified: none           # nothing in this doc confirmed on our own phone yet
+open_gates: [isSimulatedBySoftware]   # conclusions gated on this untested Phase A gate
+depends_on: [spoof-methods-survey]
+source_tier: mixed              # primary (Apple/Life360/Arity docs) + some anecdote — see per-claim tags
+recheck_if: [Life360 app update, iOS point release]
+---
+
 # Life360 on iOS — location signals, spoof detection, and realism rules
 
 > Research brief. Scope: our owned iPhone (iOS 26.6), location driven by pymobiledevice3

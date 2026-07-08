@@ -1,3 +1,13 @@
+---
+title: Research index
+status: research
+last_verified: 2026-07-08
+device_verified: none           # the whole corpus is desk research pending the Phase A on-device gates
+open_gates: [isSimulatedBySoftware, movement-emoji, flight-gap]
+source_tier: mixed
+recheck_if: [Life360 app update, iOS point release, pmd3 version bump]
+---
+
 # Research index
 
 > External research feeding vida-360's design. Each file is a cited, confidence-marked brief.
@@ -109,3 +119,28 @@
 - **Airport arrival** note: aim for a geofence arrival; the auto-"landed" push is a stretch/unknown.
 - **New milestone: behavioral engine** (life-simulation layer above the movement engine).
 - **AGENTS.md** gains a "detection surface & landscape" note (the flag, go-ios fallback, iOS-hardening risk, no-untethered fact).
+
+---
+
+## Doc frontmatter schema (for humans and agents)
+
+Every brief here (and this index) opens with a YAML frontmatter block so a reader — human or
+agent — can judge a doc's trust and currency **without reading the body**. This matters because
+agents usually read *excerpts*, not whole files, and long-session context gets summarized (a
+prose hedge like "(untested for our path)" can be dropped in compaction; a structured field
+survives). Fields:
+
+| Field | Meaning |
+|---|---|
+| `status` | `research` (sourced, not device-checked) · `device-verified` (confirmed on our own phone) · `superseded` (kept for history; don't act on it) |
+| `last_verified` | Date the claims were last checked against sources. Treat as perishable. |
+| `device_verified` | **The key distinction:** what (if anything) was tested on *our* iOS 26.6 phone vs. only sourced. `none` = believe the sources, but nothing here is empirically confirmed for our stack. |
+| `open_gates` | Phase A device tests whose outcome could invalidate this doc's conclusions: `isSimulatedBySoftware` (#0), `movement-emoji` (#1), `flight-gap` (#2). |
+| `depends_on` | Other briefs (by filename slug) this one builds on. |
+| `source_tier` | `primary` (docs/source/specs) · `vendor` (marketing) · `anecdote` · `mixed`. Per-claim `(HIGH/MEDIUM/LOW)` tags inside the body still say how good each *individual* source is. |
+| `recheck_if` | Events that make this doc stale and warrant a re-verify. |
+
+**Convention when you touch a doc:** if you confirm something on-device, flip `status` /
+`device_verified` and bump `last_verified` in the *same* session (ground rule #3). Two confidence
+axes are in play — `source_tier` (how good the source) and `device_verified` (did we test it) —
+keep them distinct; a HIGH-sourced claim can still be `device_verified: none`.

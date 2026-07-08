@@ -1,3 +1,14 @@
+---
+title: Valhalla road-snapping & per-edge speed — API research (Increment 2)
+status: research                # research | device-verified | superseded
+last_verified: 2026-07-08
+device_verified: n/a            # build-time / offline; no device involved
+open_gates: []
+depends_on: [behavioral-engine-prior-art]
+source_tier: primary            # official Valhalla API docs + repo source
+recheck_if: [Valhalla API change, FOSSGIS endpoint/policy change]
+---
+
 # Valhalla road-snapping & per-edge speed — API research (Increment 2)
 
 > Research brief. Goal: unblock **Increment 2** of docs/BUILD_PLAN.md — snap a small set of
