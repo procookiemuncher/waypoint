@@ -26,3 +26,7 @@ lockdown/
 Thumbs.db
 .idea/
 .vscode/
+
+# Installed agent skills / tooling (personal, not project source)
+.agents/
+skills-lock.json

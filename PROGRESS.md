@@ -7,6 +7,28 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Installed the `research` skill; used it → Valhalla road-snapping brief
+
+Installed mattpocock's **`research`** skill (`npx skills add … --skill research`; installer scan:
+Safe / 0 alerts). It runs a background agent against primary sources and writes a cited MD into our
+notes. Used it on the SWE's current blocker — Increment 2, Valhalla road-snapping → wrote
+**docs/research/valhalla-road-snapping.md**.
+
+Gist for the SWE: two build-time calls per segment — `/route` (costing `auto`/`pedestrian`/
+`bicycle`) → road-following polyline (**polyline6 — decode with 1e6, not Google's 1e5**; or request
+`geojson` to skip decoding), then **`trace_attributes`** (`shape_match:"edge_walk"`, `filters`) →
+per-edge **`speed` (km/h ÷ 3.6 → m/s)** mapped onto shape vertices via `begin/end_shape_index`. Use
+`trace_attributes` (not `trace_route`) for timing. FOSSGIS `valhalla1.openstreetmap.de`, no key,
+1 call/user/s — cache the snapped result so it's hit ~once per route edit. Self-host
+(`ghcr.io/valhalla/valhalla` + `valhalla_build_tiles`) is a one-line `VALHALLA_BASE_URL` switch.
+
+Tooling note: the install dropped `.agents/` + `skills-lock.json` in the tree → gitignored them
+(personal tooling, not project source).
+
+**Next:** SWE can build `snapper.py` straight from the doc's call sequence.
+
+---
+
 ## 2026-07-08 — Movement engine: folded the research realism findings into the core
 
 Pulled the docs/research/ findings into the offline core (no phone needed). Validator

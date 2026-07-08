@@ -13,6 +13,7 @@
 | [activity-emoji-coremotion.md](activity-emoji-coremotion.md) | Is the walking/driving activity emoji GPS- or CoreMotion-derived? Can we trigger it with a stationary phone? |
 | [spoof-methods-survey.md](spoof-methods-survey.md) | Every way to set an iPhone's location, judged against our no-jailbreak / Windows / owned-device constraints. |
 | [behavioral-engine-prior-art.md](behavioral-engine-prior-art.md) | Prior art for generating realistic human GPS trajectories — models, OSS code, and a design for a "life-simulation" engine. |
+| [valhalla-road-snapping.md](valhalla-road-snapping.md) | How to snap waypoints to roads and get per-edge speed via Valhalla — unblocks the movement engine's Increment 2 (build-time road-snapping). |
 
 ---
 
