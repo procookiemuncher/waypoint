@@ -132,3 +132,38 @@ QUIC-vs-TCP tunnel quirks · phone locks → DVT session drops · location slow 
 - **Auto-commit and auto-push after every meaningful update — small or large.** Don't wait
   to be asked; the owner wants the GitHub repo to always mirror the latest working state.
   (Exception: never force-push or rewrite already-pushed history without asking first.)
+
+### Where & how to commit (concrete setup)
+
+**Remote:** `git@github.com:procookiemuncher/vida-360.git` — the repo lives under the
+**procookiemuncher** account and is pushed as that account.
+
+**⚠ This machine has two GitHub identities.** The default SSH key authenticates as a
+*different* account (`juanmendoza-dev`) that **cannot see this private repo** — an
+un-pinned push fails with `ERROR: Repository not found`. Pushes MUST be pinned to the
+procookiemuncher key (see `core.sshCommand` below).
+
+**One key does both jobs.** `~/.ssh/vida360_signing` is registered on the procookiemuncher
+account **twice**: once as an *Authentication Key* (lets this machine push) and once as a
+*Signing Key* (makes commits show "Verified").
+Fingerprint: `SHA256:aB2iV8fKwRIHqgN0ztNl7DOHN/sacv6VMbTcazbxDEg`.
+
+**Repo-local git config to set once (after `git init` or clone):**
+
+```
+git config user.name  "procookiemuncher"
+git config user.email "thegoatcodercookie@gmail.com"
+git config commit.gpgsign true
+git config gpg.format ssh
+git config user.signingkey ~/.ssh/vida360_signing.pub
+# Pin the SSH key so pushes auth as procookiemuncher, not the machine's other account:
+git config core.sshCommand "ssh -i ~/.ssh/vida360_signing -o IdentitiesOnly=yes"
+```
+
+**The "Verified" badge needs two things on the procookiemuncher account:** (1) the key above
+added as a *Signing Key*, and (2) `thegoatcodercookie@gmail.com` present as a **verified
+email**. Miss either and the commit shows "Unverified" even though it's signed.
+
+> Note: this working copy is a "Download ZIP" (no `.git`). To reconnect it, `git init` here,
+> `git remote add origin <remote>`, `git fetch`, then align the branch — or just clone fresh
+> and copy over any local changes.
