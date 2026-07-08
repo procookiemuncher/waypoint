@@ -1,138 +1,182 @@
-"""vida-360 quick spoof runner.
+"""vida-360 spoof launcher — double-click **spoof.cmd** (or run `python spoof.py`).
 
-Usage:
-  python spoof.py                 # pick from the preset menu
-  python spoof.py eiffel          # jump to a named preset
-  python spoof.py 48.8584 2.2945  # jump to explicit  lat lon
-  python spoof.py clear           # clear the spoof, back to real GPS
+Shows a "where do you want to go?" menu:
+  - **Routes** (realistic movement) — every data/routes/*.json, built by the movement engine
+    into a validated GPX and replayed on the phone (walk/drive/stop, ramps, jitter).
+  - **Static presets** — hold a fixed point (quick teleport).
+  - **Clear** — revert to the phone's real GPS.
 
-Static presets hold the location until you press ENTER (or Ctrl+C).
-The "miami" preset is a movement demo: from the start point it walks (~12s), then
-drives 100mph (~12s), then holds there. Handy for testing whether Life360 flips its
-walking/driving activity emoji.
+Also takes a direct argument, e.g.:
+  spoof.cmd miami         # play the route whose name matches "miami"
+  spoof.cmd eiffel        # hold a static preset
+  spoof.cmd 48.8584 2.2945  # hold explicit lat lon
+  spoof.cmd clear         # clear the spoof
 
-Requires: iPhone plugged in + UNLOCKED, Developer Mode on. Uses the pure-Python
-`--userspace` tunnel, so no admin is needed.
+Requires: the .venv with pymobiledevice3 (see docs/BUILD_PLAN.md -> Environment), the Apple
+Mobile Device Service installed, and the iPhone plugged in + UNLOCKED with Developer Mode on.
 """
-import math
+import glob
+import json
 import os
 import subprocess
 import sys
-import tempfile
-from datetime import datetime, timedelta, timezone
 
-# key -> (latitude, longitude, label)
+ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, ROOT)                       # make `backend` importable
+ROUTES_DIR = os.path.join(ROOT, "data", "routes")
+BUILD_DIR = os.path.join(ROOT, "build")
+
+# Static teleport presets: key -> (lat, lon, label). Just hold a fixed point.
 PRESETS = {
     "eiffel": (48.8584, 2.2945, "Eiffel Tower, Paris"),
     "dubai": (25.1972, 55.2744, "Burj Khalifa, Dubai"),
-    "miami": (25.7617, -80.1918, "Downtown Miami, FL"),
 }
-
-# Presets that play a walk-then-drive movement instead of a static hold.
-MOVEMENT_PRESETS = {"miami"}
-
-# Movement tuning. Bump the *_SECS if Life360 is too slow to register the change.
-WALK_MPS = 1.4       # ~3 mph
-DRIVE_MPS = 44.704   # 100 mph
-WALK_SECS = 12
-DRIVE_SECS = 12
-HOLD_SECS = 300      # keep the final spot for ~5 min (Ctrl+C to stop sooner)
-HEADING_DEG = 0      # travel due north (inland from downtown Miami)
 
 
 def pmd(*args):
-    """Run a pymobiledevice3 subcommand with the current venv's Python."""
+    """Run a pymobiledevice3 subcommand with the current (venv) Python."""
     return subprocess.run([sys.executable, "-m", "pymobiledevice3", *args])
-
-
-def _step(lat, lon, meters, heading_deg):
-    """Move `meters` along a compass heading from (lat, lon)."""
-    h = math.radians(heading_deg)
-    dlat = meters * math.cos(h) / 111111.0
-    dlon = meters * math.sin(h) / (111111.0 * math.cos(math.radians(lat)))
-    return lat + dlat, lon + dlon
-
-
-def build_walk_drive_gpx(start_lat, start_lon):
-    """Write a GPX (start -> walk -> drive -> hold) at 1s per point and return its path.
-
-    pymobiledevice3's `play` moves at distance/time-delta between points, so the
-    per-second spacing is what sets the speed.
-    """
-    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
-    lat, lon, t = start_lat, start_lon, 0
-    points = [(lat, lon, t)]
-    for speed, secs in ((WALK_MPS, WALK_SECS), (DRIVE_MPS, DRIVE_SECS)):
-        for _ in range(secs):
-            lat, lon = _step(lat, lon, speed, HEADING_DEG)
-            t += 1
-            points.append((lat, lon, t))
-    points.append((lat, lon, t + HOLD_SECS))  # dwell so the final spot holds
-
-    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
-             '<gpx version="1.1" creator="vida-360"><trk><trkseg>']
-    for lat, lon, t in points:
-        ts = (base + timedelta(seconds=t)).strftime("%Y-%m-%dT%H:%M:%SZ")
-        lines.append(f'  <trkpt lat="{lat:.6f}" lon="{lon:.6f}"><time>{ts}</time></trkpt>')
-    lines.append("</trkseg></trk></gpx>")
-
-    path = os.path.join(tempfile.gettempdir(), "vida360_route.gpx")
-    with open(path, "w") as f:
-        f.write("\n".join(lines))
-    return path
-
-
-def resolve_target(argv):
-    """Return (lat, lon, label, key). key is the preset name, or None for raw coords."""
-    if not argv:
-        print("Presets:")
-        for k, (_, _, label) in PRESETS.items():
-            print(f"  {k:8} {label}")
-        argv = input("\nPick a preset (or type 'lat lon'): ").strip().split()
-
-    if len(argv) == 1:
-        key = argv[0].lower()
-        if key not in PRESETS:
-            sys.exit(f"Unknown preset '{key}'. Options: {', '.join(PRESETS)}")
-        lat, lon, label = PRESETS[key]
-        return lat, lon, label, key
-
-    if len(argv) == 2:
-        return float(argv[0]), float(argv[1]), f"{argv[0]}, {argv[1]}", None
-
-    sys.exit("Usage: python spoof.py [preset | lat lon | clear]")
 
 
 def ensure_mounted():
     print("> Mounting Developer Disk Image (the phone must be UNLOCKED)...")
     if pmd("mounter", "auto-mount", "--userspace").returncode != 0:
-        print("  (mount returned an error — ignore if 'already mounted';")
-        print("   if 'DeviceLocked', unlock the phone and run again)")
+        print("  (ignore if already mounted; if 'DeviceLocked', unlock the phone and retry)")
+
+
+def load_routes():
+    """Return [(path, name, description)] for every readable route JSON, sorted by name."""
+    routes = []
+    for path in sorted(glob.glob(os.path.join(ROUTES_DIR, "*.json"))):
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            routes.append((path, data.get("name") or os.path.basename(path),
+                           data.get("description", "")))
+        except (OSError, json.JSONDecodeError):
+            pass
+    return routes
+
+
+def build_gpx(route_path):
+    """Render + validate a route into build/<name>.gpx. Returns the path, or None on failure."""
+    from backend.movement import load_route, RouteRenderer, validate
+    route = load_route(route_path)
+    fixes = RouteRenderer().render(route)
+    result = validate(fixes)
+    for w in result.warnings:
+        print(f"  ! {w}")
+    if not result.ok:
+        print("  route FAILED validation — not playing:")
+        for e in result.errors:
+            print(f"    - {e}")
+        return None
+    os.makedirs(BUILD_DIR, exist_ok=True)
+    out = os.path.join(BUILD_DIR, f"{route.name}.gpx")
+    with open(out, "w", encoding="utf-8") as f:
+        f.write(RouteRenderer.to_gpx(fixes))
+    mins = (fixes[-1].t - fixes[0].t) / 60 if fixes else 0
+    print(f"  built '{route.name}': {len(fixes)} points, ~{mins:.1f} min, "
+          f"top {result.max_smoothed_speed * 3.6:.0f} km/h")
+    return out
+
+
+def play_route(route_path):
+    gpx = build_gpx(route_path)
+    if not gpx:
+        return
+    ensure_mounted()
+    print("\n> Playing the route. Keep the phone unlocked; watch Find My / Life360.")
+    print("> Press Ctrl+C here to stop and revert.\n")
+    pmd("developer", "dvt", "simulate-location", "play", "--userspace", gpx)
+    print("\n> Stopped. Location reverts to real GPS shortly.")
+
+
+def hold_preset(lat, lon, label):
+    ensure_mounted()
+    print(f"\n> Holding at {label} ({lat}, {lon}). Keep the phone unlocked.")
+    print("> Press ENTER or Ctrl+C here to stop and revert.\n")
+    pmd("developer", "dvt", "simulate-location", "set", "--userspace", "--", str(lat), str(lon))
+    print("\n> Stopped. Location reverts to real GPS shortly.")
+
+
+def clear():
+    print("> Clearing spoofed location...")
+    pmd("developer", "dvt", "simulate-location", "clear", "--userspace")
+
+
+def choose_from_menu():
+    """Print the menu and return ('route', path) | ('preset', key) | ('clear', None) | None."""
+    routes = load_routes()
+    print("\n" + "=" * 52)
+    print("  vida-360 - where do you want to go?")
+    print("=" * 52)
+
+    items = []
+    if routes:
+        print("\n  Routes (realistic movement):")
+        for path, name, desc in routes:
+            items.append(("route", path))
+            short = (desc[:64] + "...") if len(desc) > 64 else desc
+            print(f"   {len(items):>2}. {name}")
+            if short:
+                print(f"       {short}")
+
+    print("\n  Static presets (hold a fixed point):")
+    for key, (_, _, label) in PRESETS.items():
+        items.append(("preset", key))
+        print(f"   {len(items):>2}. {label}")
+
+    items.append(("clear", None))
+    print(f"\n   {len(items):>2}. Clear the spoof (back to real GPS)")
+
+    raw = input("\n  Pick a number: ").strip()
+    if not raw.isdigit() or not (1 <= int(raw) <= len(items)):
+        print("  Not a valid choice.")
+        return None
+    return items[int(raw) - 1]
+
+
+def resolve_arg(argv):
+    """Map a direct CLI arg to an action. Returns the same tuple shape as the menu, or None."""
+    if len(argv) == 2:                                   # explicit "lat lon"
+        try:
+            return ("coord", (float(argv[0]), float(argv[1])))
+        except ValueError:
+            return None
+    key = argv[0].lower()
+    if key == "clear":
+        return ("clear", None)
+    if key in PRESETS:
+        return ("preset", key)
+    for path, name, _ in load_routes():                  # match a route by name/filename
+        stem = os.path.splitext(os.path.basename(path))[0].lower()
+        if key == name.lower() or key == stem or key in name.lower():
+            return ("route", path)
+    print(f"  Unknown target '{key}'. Try a route name, a preset ({', '.join(PRESETS)}), "
+          f"'lat lon', or 'clear'.")
+    return None
+
+
+def run(action):
+    kind, val = action
+    if kind == "route":
+        play_route(val)
+    elif kind == "preset":
+        lat, lon, label = PRESETS[val]
+        hold_preset(lat, lon, label)
+    elif kind == "coord":
+        lat, lon = val
+        hold_preset(lat, lon, f"{lat}, {lon}")
+    elif kind == "clear":
+        clear()
 
 
 def main():
     argv = sys.argv[1:]
-
-    if argv and argv[0].lower() == "clear":
-        print("> Clearing spoofed location...")
-        pmd("developer", "dvt", "simulate-location", "clear", "--userspace")
-        return
-
-    lat, lon, label, key = resolve_target(argv)
-    print(f"\n> Target: {label}  ({lat}, {lon})")
-    ensure_mounted()
-
-    if key in MOVEMENT_PRESETS:
-        gpx = build_walk_drive_gpx(lat, lon)
-        print(f"\n> {label}: walking ~{WALK_SECS}s, then driving 100mph ~{DRIVE_SECS}s,")
-        print(f"> then holding ~{HOLD_SECS // 60} min. Keep this window open; Ctrl+C to stop.\n")
-        pmd("developer", "dvt", "simulate-location", "play", "--userspace", gpx)
-    else:
-        print(f"\n> Spoofing to {label}. Keep this window open.")
-        print("> Press ENTER (or Ctrl+C) here to stop and revert.\n")
-        pmd("developer", "dvt", "simulate-location", "set", "--userspace", "--", str(lat), str(lon))
-
-    print("\n> Stopped. Location reverts to real GPS shortly.")
+    action = resolve_arg(argv) if argv else choose_from_menu()
+    if action:
+        run(action)
 
 
 if __name__ == "__main__":
