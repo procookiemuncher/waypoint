@@ -7,6 +7,35 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Movement engine: built the offline core (model + renderer + validator + tool)
+
+Implemented the device-independent core of Phase B — no phone needed to develop or verify it:
+
+- `backend/movement/model.py` — `route.json` schema → `Route`/`Segment`/`LocationFix`, loader
+  + input validation, per-mode default speeds / speed ceilings / accel.
+- `backend/movement/renderer.py` — `RouteRenderer`: straight-line interpolation (no-network
+  fallback for now), per-segment speed with accel/decel ramps into stops, bounded random-walk
+  GPS jitter, and GPX output.
+- `backend/movement/validator.py` — the offline gate: strictly-increasing time + per-mode /
+  global speed ceilings; rejects impossible speeds / teleports before anything hits the device.
+- `tools/build_route.py` — load → render → validate → write the cached GPX `play` eats.
+- `data/routes/demo-drive.json` — smoke-test route.
+
+**Verified offline:** `py tools/build_route.py data/routes/demo-drive.json` → 256 fixes, 5.0
+min, max 14.6 m/s (52 km/h), validation OK. Eyeballed the GPX: clean ramp-up → cruise → decel
+→ 60 s dwell. Caught + fixed a real bug in passing — IID per-point jitter was manufacturing
+26 m/s speed spikes; switched to a bounded, correlated random-walk offset so jitter can't fake
+speed. (This is exactly what the validator is for.)
+
+**Deliberately not done yet:** Valhalla road-snapping (straight lines for now), the
+`play_route` CLI wrapper, and the two phone-gated pieces (flight-gap branch, activity emoji) —
+those wait on the Phase A on-device tests. SWE build roadmap + live status in
+**docs/BUILD_PLAN.md**.
+
+**Next:** Valhalla build-time snapping → `play_route` wrapper; Phase A gates when the phone's around.
+
+---
+
 ## 2026-07-08 — Movement engine design locked; wrote docs/MOVEMENT_ENGINE.md
 
 Design session for the movement engine (the confirmed gap). Decisions:
