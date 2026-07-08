@@ -7,6 +7,29 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Device-test setup: venv on 3.12, Miami demo built, blocked on Apple driver
+
+Prepping the owner's first on-device movement test (a realistic Miami demo).
+
+- **Env:** recreated `.venv` on **Python 3.12** via `uv` + installed `pymobiledevice3==9.33.1`
+  (`... -m pymobiledevice3 version` → 9.33.1). ⚠ **Python 3.14 does NOT work** — `lzfse` and
+  `pylzss` have no 3.14 wheels and need MSVC to build. Use 3.12/3.13. Noted in BUILD_PLAN.md.
+- **Demo + runner:** added `data/routes/miami-demo.json` (grid-accurate downtown-Miami
+  walk→drive→light→drive→arrive) and `tools/play_route.py` — a thin pmd3-CLI wrapper (mount DDI +
+  `simulate-location play --userspace`), the interim device path before the formal
+  `LocationBackend.play_route` (Inc 3). Built + validated offline: 237 fixes, 6.7 min, max
+  11.7 m/s (42 km/h), max accel 1.82, OK.
+- **⛔ Blocker (AGENTS.md failure mode #1):** phone is plugged in and Windows sees it ("Apple
+  Mobile Device USB Composite Device" + "Apple iPhone"), but the **Apple Mobile Device Service
+  (usbmuxd) is NOT installed** → `usbmux list` = "Failed to connect to usbmuxd socket". Need the
+  **Apple Devices app (Store) or iTunes** to restore it. (It was present during the original M1.)
+
+**Next:** owner installs Apple Mobile Device Support → `usbmux list` shows the device → play the
+demo: `.venv\Scripts\python.exe tools\play_route.py build\miami-demo.gpx` (phone unlocked,
+Developer Mode on, Auto-Lock = Never).
+
+---
+
 ## 2026-07-08 — Installed the `research` skill; used it → Valhalla road-snapping brief
 
 Installed mattpocock's **`research`** skill (`npx skills add … --skill research`; installer scan:

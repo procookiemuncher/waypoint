@@ -1,0 +1,37 @@
+{
+  "name": "miami-demo",
+  "description": "Realistic downtown-Miami demo along the street grid (straight-line segments ~ real roads, no Valhalla needed here). Walk to the car -> drive N up the avenue -> stop at a light -> drive W -> arrive and dwell 3 min. Exercises mixed modes, jerk-limited ramps, stops, and jitter.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [25.76170, -80.19180],
+        [25.76240, -80.19180]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 11.5,
+      "waypoints": [
+        [25.76240, -80.19180],
+        [25.76950, -80.19180]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 30
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 11.5,
+      "waypoints": [
+        [25.76950, -80.19180],
+        [25.76950, -80.19800]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 180
+    }
+  ]
+}
