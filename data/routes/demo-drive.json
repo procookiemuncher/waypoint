@@ -1,0 +1,21 @@
+{
+  "name": "demo-drive",
+  "description": "Offline smoke test: short CDG-area drive, then a 1-min stop. Straight-line (no Valhalla yet) — exercises ramp-up, cruise, decel-into-stop, and dwell.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 13.9,
+      "jitter_m": 3.0,
+      "waypoints": [
+        [49.0097, 2.5479],
+        [49.0000, 2.5300],
+        [48.9950, 2.5100]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 60,
+      "jitter_m": 2.0
+    }
+  ]
+}

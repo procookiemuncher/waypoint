@@ -1,0 +1,60 @@
+# Movement Engine — build plan & status (SWE)
+
+> Implementation companion to **docs/MOVEMENT_ENGINE.md** (the design). That doc decides
+> *what/why*; this one tracks *what's built* and in what order. The researcher owns the design
+> doc; the SWE owns this one. Update the checkboxes as things land.
+
+## Verify offline (no phone)
+
+```
+py tools/build_route.py data/routes/demo-drive.json
+```
+Loads a route → renders the trajectory → validates it → writes a cached GPX. This is the gate
+that must pass before anything is played on the device.
+
+## Build order
+
+Each increment is independently verifiable **offline**. Phone-gated items are called out.
+
+### Increment 1 — offline core  ✅ DONE (2026-07-08)
+- [x] `backend/movement/model.py` — `route.json` schema → `Route`/`Segment`/`LocationFix`,
+  loader + input validation, per-mode default speeds / speed ceilings / accel.
+- [x] `backend/movement/renderer.py` — `RouteRenderer`: straight-line interpolation
+  (no-network fallback), per-segment speed with accel/decel ramps into stops, bounded
+  random-walk GPS jitter, GPX output.
+- [x] `backend/movement/validator.py` — strictly-increasing time + per-mode / global speed
+  ceilings (rejects impossible speeds & teleports before they reach the device).
+- [x] `tools/build_route.py` — CLI: load → render → validate → write GPX.
+- [x] `data/routes/demo-drive.json` — smoke-test route. Verified: 256 fixes, 5.0 min,
+  max 14.6 m/s, validation OK.
+
+### Increment 2 — Valhalla road-snapping (build time)
+- [ ] Snap each segment's waypoints to a road-following polyline via the FOSSGIS public
+  Valhalla (`pedestrian`/`auto` costing per mode) *before* the renderer runs.
+- [ ] Keep the straight-line path as the offline/no-network fallback.
+- [ ] Cache the snapped result so a build needs the network at most once per route edit.
+
+### Increment 3 — `play_route` (device)
+- [ ] `LocationBackend.play_route(gpx_path, timing_noise_ms=0)` wrapping
+  `simulate-location play --userspace <gpx> [noise_ms]` (shell out, like `spoof.py`; the
+  full pmd3 Python-API adapter is M2, not needed for `play`).
+- [ ] pmd3 types/errors stay quarantined below the interface (AGENTS.md ground rule #5).
+
+### Increment 4 — the CDG arrival deliverable (phone-gated)
+- [ ] Author the CDG final-approach route; play it after a (Phase-A-informed) gap; confirm
+  Life360 fires the airport-arrival notification.
+- [ ] Route presets: "Airport route" (CDG → hotel), "Full Ride".
+
+## Blocked on Phase A on-device tests (need the phone + owner)
+
+These can't be built until the two gates in MOVEMENT_ENGINE.md run:
+- [ ] **Flight-gap branch** (A "hold, go silent, resume" vs. B "hold, then jump") — depends on
+  whether iOS reverts to real GPS when we stop calling `set()`.
+- [ ] **Activity-emoji features** — depend on whether Life360's walking/driving emoji is
+  GPS-speed-derived (spoofable) or CoreMotion-derived (not).
+
+## Coordination
+
+Two agents (researcher + SWE) push to `main`. SWE **fetches + rebases before every push**.
+To reduce collisions: SWE edits code + this file; researcher edits AGENTS/ROADMAP/design docs.
+Both append to PROGRESS.md (newest on top) — resolve at rebase if we land together.
