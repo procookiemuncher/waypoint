@@ -36,9 +36,15 @@ Place needed.
   location (not just Find My). The earlier "Life360 ignores the spoof" finding was wrong.
   So there's no home-Wi-Fi / IP / teleport blocker on a plain static set — **the gap is
   movement.**
-- [ ] **Build the movement engine** (the missing piece — see M2). Believable movement:
-  road-snapped interpolation, per-segment speed profiles (walk / drive / stop), GPS jitter,
-  and the flight "gap".
+- [x] **Movement engine designed** — see **docs/MOVEMENT_ENGINE.md** (2026-07-08). Chosen:
+  JSON route defs → Valhalla road-snapping (build time) → cached GPX → `simulate-location
+  play`; live-`set()` session deferred to a later phase.
+- [ ] **Phase A on-device gates (do first):** CoreMotion test (is the activity emoji
+  GPS-derived or accelerometer-derived?) and flight-gap test (does iOS revert to real GPS when
+  we stop calling `set()`?).
+- [ ] **Build the movement engine** (Phase B — the missing piece; see M2 and the design doc).
+  Believable movement: road-snapped interpolation, per-segment speed profiles (walk / drive /
+  stop), GPS jitter, and the flight "gap".
 - [ ] Confirm plain airport arrival fires the notification: after a Miami "gap", believably
   arrive into CDG's area (via the movement engine) and watch for the group notification.
 - [ ] Arrival must look real: no impossible-speed teleport, GPS drift present.

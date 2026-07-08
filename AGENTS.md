@@ -41,6 +41,13 @@ On iOS 17+ that service lives behind Apple's RemoteXPC **tunnel** (RSD), reached
 [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3) library. This device is on
 **iOS 26.6**, so the tunnel path is the *only* option — there is no legacy pre-17 USB flow.
 
+**Confirmed API constraint (2026-07-08, verified against pmd3 upstream):** `simulate-location
+set` accepts **only latitude + longitude** — no accuracy, altitude, speed, or heading (see
+upstream issue #340). ⟹ **iOS derives speed and heading from successive positions**, so the
+spacing/timing of the points we emit *is* the speed signal Life360 sees — which is why the
+movement engine is all about the point stream. `simulate-location play <gpx> [noise_ms]`
+derives speed from the GPX time deltas and takes an optional ± timing-noise argument.
+
 ## Environment (fixed facts)
 
 - **Host:** Windows (primary). macOS is a future nice-to-have, not MVP.

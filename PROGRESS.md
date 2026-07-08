@@ -7,6 +7,35 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Movement engine design locked; wrote docs/MOVEMENT_ENGINE.md
+
+Design session for the movement engine (the confirmed gap). Decisions:
+
+- **Approach:** author routes as **JSON** (waypoints + mode + speed + dwell) → snap to roads
+  with **Valhalla at build time** → cache a dense **GPX** → replay with `simulate-location
+  play`. Valhalla is build-time only, so the run path needs no network / no key. Ship the CDG
+  arrival on this. The long-lived live-`set()` session is **deferred to a later phase** (Phase
+  C) — build it only once an arrival is proven, to avoid taking on in-process tunnel ownership
+  early.
+- **Scope:** fixed cached presets for now; data model designed so arbitrary/drawable routes
+  drop in later.
+- **Verified against pmd3 upstream:** `simulate-location set` takes **only lat/lon** (no
+  accuracy/altitude/speed/heading — see issue #340). ⟹ **iOS derives speed/heading from our
+  position deltas**, so point spacing *is* the speed signal Life360 sees (spoofable). `play`
+  derives speed from GPX time deltas and accepts an optional ± timing-noise arg. Recorded in
+  AGENTS.md.
+- **Two on-device gates come FIRST (Phase A), before engine code:** (1) CoreMotion test — a
+  long constant "drive" to see if Life360's activity emoji is GPS-derived (spoofable) or
+  CoreMotion-derived (not); (2) flight-gap test — does iOS revert to real GPS when we stop
+  calling `set()`? That decides how we model the Miami→CDG gap without leaking the real (home)
+  location. The doc writes both gap branches and marks the choice TODO-pending-test.
+
+Full design (data model, interface, phases, risks, roadmap mapping): **docs/MOVEMENT_ENGINE.md**.
+
+**Next:** run the Phase A on-device gates, then build Phase B (JSON→Valhalla→GPX→play).
+
+---
+
 ## 2026-07-08 — Correction: Life360 DOES reflect the spoof; movement engine is the gap
 
 **Owner correction to the M1 finding.** The earlier entry ("Life360 did NOT reflect the
