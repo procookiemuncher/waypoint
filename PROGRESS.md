@@ -7,6 +7,41 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Research: crash/landing/notification feasibility + OSS spoofer landscape
+
+Owner asked whether we can trigger Life360's **crash** and **"landed at airport"** pushes, to
+enumerate **all** Life360 notifications, and (heavy emphasis) what others have built. Read the
+updated offline core (model/renderer/validator + build_route/play_route + routes) and ran a
+4-front deep sweep. Two new docs: **docs/research/life360-notification-triggers.md** and
+**docs/research/oss-spoofer-landscape.md**.
+
+**Decisive correction:** dev mode does NOT let us "manipulate almost any var" — the DVT service
+injects **lat/lon only**. Verified 4 ways (pmd3 #340; source read; **GPX playback discards
+`<ele>`/altitude**; DVT `condition_inducer` only fakes network/thermal, not motion).
+
+**Answers:**
+- **#1 crash → NO.** Needs a real accelerometer G-spike (Arity/CoreMotion); no injection path (two
+  independent walls). Also a safety no-go — it auto-escalates to the circle + 24/7 dispatch.
+- **#2 "landed at airport" → NO** as the flight push (altitude + airplane-mode toggle + post-land
+  network reconnect, none injectable). **Substitute: geofence "arrived at CDG"** via a
+  **manually-saved Place** (airports are NOT auto-Places).
+- **#3 catalog:** reachable = geofence arrive/leave + movement emoji + (indirect) severe weather;
+  everything sensor/battery/manual/hardware/server is out of reach. Full matrix in the doc.
+
+**OSS landscape:** everyone rides the same pmd3/DVT rails; **`iphonespoofer` names Find My +
+Life360 explicitly** (corroborates our dual-app result). Nobody's published a believable-*movement*
+Life360 arrival with triggered notifications — we're at the frontier. Borrowable: `locwarp` move
+modes, `lvalen91`'s persistent-DVT daemon (Phase C), `iphonespoofer`'s IP/GPS mismatch warnings.
+
+**Docs corrected (ground rule #3):** the "Life360 auto-recognizes airports, no manual Place
+needed" claim in AGENTS.md + ROADMAP.md was wrong → reframed the end goal to a geofence "arrived at
+CDG"; upgraded the arrival caveat from "likely not" to confirmed-not with primary sources.
+
+**Next:** unchanged — Phase A #0 (`isSimulatedBySoftware`) still gates everything; SWE on
+Increment 2 (Valhalla).
+
+---
+
 ## 2026-07-08 — spoof.cmd is now a "where do you want to go?" launcher
 
 Rewrote `spoof.py` (the thing `spoof.cmd` runs) into a single menu launcher, per owner request:
