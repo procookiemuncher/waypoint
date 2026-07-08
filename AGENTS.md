@@ -9,11 +9,17 @@
 from a Windows PC. v1 sets a fixed fake coordinate (e.g. Eiffel Tower, Dubai, Miami).
 v2 will simulate movement along routes. Personal use, single owned device.
 
+**Status (confirmed):** a static spoof **does** reflect on Life360 — the member's pin moves
+to the fake location, not just in Find My. So Life360 is *not* ignoring CoreLocation, and a
+plain "set location" already works. **The missing piece is the movement engine** — believable
+*movement* (routes, per-segment speed profiles, GPS jitter, a flight "gap"), which is what a
+realistic arrival and the activity indicator still need.
+
 **End goal:** replicate the real "Juan has arrived at Paris (CDG) airport" notification that
 Life360 auto-sends the group when you land at a major airport — Life360 recognizes major
 airports itself, so **no manual Place is needed**. The spoof must (a) survive Life360's sanity
 checks (no impossible-speed teleport, GPS drift present) and (b) believably *arrive* at the
-airport area to trigger that built-in notification.
+airport area to trigger that built-in notification. Both are movement-engine work.
 
 **Stretch — pre-built routes** (the owner's real ambition):
 - "Airport route": a believable ~30–40 min drive from CDG to a 5-star Paris hotel.
@@ -115,10 +121,16 @@ QUIC-vs-TCP tunnel quirks · phone locks → DVT session drops · location slow 
 
 1. **Read PROGRESS.md first** — it's the running state after any memory/context reset.
 2. **After doing work, append a dated PROGRESS.md entry** (changed / decided / broke / next).
-3. Follow ROADMAP.md order — **de-risk the transport (M1) before building UI.**
-4. Never leak `pymobiledevice3` types or errors above the adapter layer.
-5. This is a personal-use tool on an owned device. Keep it that way.
-6. Follow the **Git commit & push conventions** below.
+3. **Keep the docs true to reality.** The moment you *confirm* something (it works, or it
+   fails), update AGENTS.md / ROADMAP.md / PROGRESS.md in the same session to match. A
+   confirmed result that only lives in your head or a chat is a bug in the docs. This is not
+   optional — stale claims actively mislead the next agent (e.g. the docs long said "Life360
+   didn't reflect the spoof" when the static spoof actually *does* work on Life360, which
+   caused real confusion).
+4. Follow ROADMAP.md order — **de-risk the transport (M1) before building UI.**
+5. Never leak `pymobiledevice3` types or errors above the adapter layer.
+6. This is a personal-use tool on an owned device. Keep it that way.
+7. Follow the **Git commit & push conventions** below.
 
 ## Git commit & push conventions
 
