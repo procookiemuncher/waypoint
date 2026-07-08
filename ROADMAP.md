@@ -39,26 +39,59 @@ Place needed.
 - [x] **Movement engine designed** — see **docs/MOVEMENT_ENGINE.md** (2026-07-08). Chosen:
   JSON route defs → Valhalla road-snapping (build time) → cached GPX → `simulate-location
   play`; live-`set()` session deferred to a later phase.
-- [ ] **Phase A on-device gates (do first):** CoreMotion test (is the activity emoji
-  GPS-derived or accelerometer-derived?) and flight-gap test (does iOS revert to real GPS when
-  we stop calling `set()`?).
+- [ ] **Phase A on-device gates (do first, in order):**
+  - **#0 `isSimulatedBySoftware` (DECISIVE):** does our pmd3 / `DVTSimulateLocation` tunnel path
+    set `CLLocation.sourceInformation.isSimulatedBySoftware`? Xcode's GPX sim sets it `true`;
+    consumer "external provider" spoofers read `false`; our path uses Apple's *own* DVT service,
+    so it may read `true` — in which case any app (Life360 included) can detect the sim in one
+    line and realism is moot. Test with a ~20-line app. → docs/research/life360-detection-and-realism.md.
+  - **#1 CoreMotion / movement emoji:** a long constant-speed drive → does Life360's *movement
+    emoji* flip? (The icon is speed-derived and likely spoofable; drive *reports* are Arity
+    CoreMotion and are NOT — see docs/research/activity-emoji-coremotion.md.)
+  - **#2 flight-gap:** does iOS revert to real GPS when we stop calling `set()`?
 - [ ] **Build the movement engine** (Phase B — the missing piece; see M2 and the design doc).
   Believable movement: road-snapped interpolation, per-segment speed profiles (walk / drive /
   stop), GPS jitter, and the flight "gap".
 - [ ] Confirm plain airport arrival fires the notification: after a Miami "gap", believably
   arrive into CDG's area (via the movement engine) and watch for the group notification.
+  ⚠ Research note (docs/research/life360-detection-and-realism.md): the auto-**"landed"** flight
+  push keys off altitude + airborne speed + a post-landing network reconnect — likely **not**
+  reproducible by a lat/lon-only ground sim. Aim for a normal **geofence arrival** near the
+  airport instead, and treat the exact "landed" notification as a stretch/unknown.
 - [ ] Arrival must look real: no impossible-speed teleport, GPS drift present.
 
 **Route presets (the movement engine):**
 - [ ] "Airport route" — believable ~30–40 min drive CDG → a 5-star Paris hotel.
 - [ ] "Full Ride" — multi-hour: airport → hotel, then mixed walking / driving / stops.
-- [ ] Trigger Life360's **activity indicator** (driving / walking emoji). ⚠ RISK: iOS activity
-  often comes from **CoreMotion** (real accelerometer), which we do NOT spoof (phone is still).
-  Test early whether the emoji is GPS-speed-derived (spoofable) or motion-derived (not).
+- [ ] Trigger Life360's **movement emoji** (walk / drive icon). Research
+  (docs/research/activity-emoji-coremotion.md) finds this icon is **speed-derived → likely
+  spoofable** (Life360 defines it by speed thresholds, and its icon set includes flying/boating
+  which can't be accelerometer-based); confirm in Phase A #1.
+  - ⚠ **Out of scope:** Life360 **driver reports / hard-braking / crash detection** are Arity
+    **CoreMotion** (real accelerometer + gyro) and are **not** reproducible on a physically still
+    phone. Don't promise them.
 - Likely implementation: stored **GPX routes** replayed (pymobiledevice3 has
   `simulate-location play`), with per-segment speed profiles for walk / drive / stop.
 
 **UI:** wanted later, deferred.
+
+### M1.6 — Behavioral / life-simulation engine  💡 NEW (stretch, builds on M1.5)
+A layer **above** the movement engine that makes location *history* look like a real person's
+life over hours/days (home → work → errand → home, believable dwell + circadian rhythm), instead
+of one-off routes. The movement engine renders legs; this engine decides *where & when*. Full
+prior-art survey + design + data model in **docs/research/behavioral-engine-prior-art.md**.
+- [ ] Vendor a per-point **jitter/step model** (Pokémon-Go `step_walker`, MIT) into the renderer.
+- [ ] **Speed/timing profiler**: encode per-mode speed via point spacing; jerk-limited ramps
+  (≤~2 m/s², jerk ≤~2 m/s³); zero-speed dwell between mode changes.
+- [ ] Wire **Valhalla `trace_attributes`** for real per-edge speeds at build time.
+- [ ] **Template day planner** (17-motif sampler + Zipf-weighted anchors + power-law dwell) →
+  `(place, arrive, depart)` day-script → full-day GPX. Optional **scikit-mobility** (EPR/DITRAS)
+  backend later.
+- [ ] **Record-and-replay**: import a real self-recorded GPX / OSM `identifiable` trace as a
+  realism baseline + regression corpus. (Not Strava — its 2026 API policy forbids it.)
+- [ ] Offline **realism acceptance tests** (heavy-tailed jumps, no speed cliffs, overnight = home
+  + jitter) extending the existing validator.
+- Reference tool on our exact stack: **`locwarp`** (Windows + pymobiledevice3) — study, don't fork.
 
 ### M2 — Backend core
 - [ ] `LocationBackend` interface — `ensure_ready()` / `set_location()` / `clear()` / `status()`

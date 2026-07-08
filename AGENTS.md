@@ -24,10 +24,11 @@ airport area to trigger that built-in notification. Both are movement-engine wor
 **Stretch — pre-built routes** (the owner's real ambition):
 - "Airport route": a believable ~30–40 min drive from CDG to a 5-star Paris hotel.
 - "Full Ride": a multi-hour trip — airport → hotel, then mixed walking / driving / stops.
-- Trigger Life360's **activity indicator** (the driving / walking emoji it shows per member).
-  ⚠ RISK: iOS activity type often comes from **CoreMotion** (the real accelerometer), which we
-  do NOT spoof — the phone sits physically still. Must test whether Life360's emoji is
-  GPS-speed-derived (spoofable) or motion-derived (not).
+- Trigger Life360's **movement emoji** (the walk / drive icon it shows per member). Research
+  (docs/research/activity-emoji-coremotion.md) finds this icon is likely **speed-derived**
+  (spoofable); confirm in Phase A. But Life360's **driver reports / hard-braking / crash
+  detection** are Arity **CoreMotion** (real accelerometer + gyro), which we do NOT spoof — the
+  phone sits physically still — so those are out of scope. Target the emoji, not the reports.
 
 A **UI** is wanted eventually, but deferred.
 
@@ -47,6 +48,29 @@ upstream issue #340). ⟹ **iOS derives speed and heading from successive positi
 spacing/timing of the points we emit *is* the speed signal Life360 sees — which is why the
 movement engine is all about the point stream. `simulate-location play <gpx> [noise_ms]`
 derives speed from the GPX time deltas and takes an optional ± timing-noise argument.
+
+## Detection surface & landscape (research 2026-07-08 — details in `docs/research/`)
+
+- **⚠ `isSimulatedBySoftware` is an unresolved, decisive risk.** iOS 15+ apps can read
+  `CLLocation.sourceInformation.isSimulatedBySoftware`. Xcode's GPX sim sets it `true`; consumer
+  "external provider" spoofer apps read `false`. Our path uses Apple's *own* `DVTSimulateLocation`
+  service, so it **may** read `true` — untested. This is **Phase A gate #0**: if `true`, any app
+  (Life360 included) can detect the sim in one line and realism work is moot.
+- **Activity is two systems.** Life360's on-map *movement emoji* is speed-derived (likely
+  spoofable); its *driver reports / crash / hard-braking* are Arity **CoreMotion** and are **not**
+  spoofable on a still phone.
+- **Airport "landed" push** needs altitude + airborne speed + a post-landing network reconnect —
+  not reproducible by a lat/lon ground sim. A plain geofence arrival near the airport is.
+- **Transport is validated.** pmd3 is the reference impl of the only no-jailbreak iOS 17+
+  mechanism; every serious tool (commercial included) rides the same DDI/DVT/RemoteXPC rails.
+  **Fallback:** `go-ios` is the sole real peer — WATCH only (it needs `wintun`/elevation, lacking
+  our `--userspace` no-admin edge). **Standing risk:** iOS 18/26 detection hardening threatens the
+  whole DDI class, not just us.
+- **No untethered spoof without a jailbreak** — the "location stays after you disconnect" that
+  commercial tools sell is a frozen *stale dot* (`cantfix` API artifact), cleared by iOS 18+.
+  Live control is the Phase C long-lived session.
+- **IP geolocation** is the one silent server-side tell (Life360 infers coarse city from IP);
+  test off home Wi-Fi.
 
 ## Environment (fixed facts)
 

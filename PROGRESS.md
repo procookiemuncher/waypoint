@@ -7,6 +7,47 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Research sweep: 4 cited briefs, 1 decisive finding, new docs/research/
+
+Ran four parallel deep-research dives (Life360 detection/realism · activity-emoji vs CoreMotion ·
+alternative spoof methods · behavioral-simulation prior art). All cited + adversarially verified;
+written up under **docs/research/** — start at docs/research/README.md (index + TL;DR + a
+"candidate engines / methods" menu).
+
+**⚠ Decisive finding — new Phase A gate #0:** iOS 15+ exposes
+`CLLocation.sourceInformation.isSimulatedBySoftware`. Xcode's GPX sim sets it `true`; consumer
+"external provider" spoofer apps read `false`. Our pmd3 / `DVTSimulateLocation` path uses Apple's
+*own* DVT service, so it may read `true` — **untested**. If it does, any app (Life360 included)
+can detect the sim in one line and realism is moot. **Test this first, before anything else
+on-device.**
+
+**Other findings that changed the docs:**
+- **Activity = two systems.** Life360's on-map *movement emoji* is speed-derived (likely
+  spoofable); its *driver reports / crash / hard-braking* are Arity **CoreMotion** (not spoofable
+  on a still phone). Re-scoped the goal in ROADMAP/AGENTS — target the emoji, not the reports.
+- **Airport "landed" push** needs altitude + airborne speed + a post-landing network reconnect →
+  likely **not** reproducible by a lat/lon ground sim. Aim for a plain **geofence arrival** near
+  the airport; noted as a caveat.
+- **Transport validated.** pmd3 is the reference impl of the only no-JB iOS 17+ mechanism; every
+  serious tool (commercial incl.) rides the same DDI/DVT/RemoteXPC rails. `go-ios` is the sole
+  peer → WATCH fallback. No untethered spoof without a jailbreak. iOS 18/26 detection hardening =
+  standing risk.
+- **New milestone M1.6 — behavioral / life-simulation engine** (EPR/TimeGeo "day planner" above
+  the movement engine). Rich prior art incl. **`locwarp`** (a Windows + pymobiledevice3 analog), a
+  portable Pokémon-Go jitter model, and concrete realism constants (accel ≤~2 m/s², walk N(1.34,
+  0.30), teleport hard-fail >55 m/s, geofence dwell ≥2–5 min, Valhalla `trace_attributes` for
+  per-edge speed).
+
+**Docs touched (researcher lane):** added docs/research/{README, life360-detection-and-realism,
+activity-emoji-coremotion, spoof-methods-survey, behavioral-engine-prior-art}.md; updated
+ROADMAP.md (Phase A gates + #0, emoji scope, airport caveat, M1.6) and AGENTS.md (new "detection
+surface & landscape" section). No code touched — SWE's offline core (`a85ff4f`) untouched.
+
+**Next:** Phase A gates when the phone's around — start with **#0 `isSimulatedBySoftware`**. SWE
+continues Increment 2 (Valhalla snapping) per docs/BUILD_PLAN.md.
+
+---
+
 ## 2026-07-08 — Movement engine: built the offline core (model + renderer + validator + tool)
 
 Implemented the device-independent core of Phase B — no phone needed to develop or verify it:
