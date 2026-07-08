@@ -69,8 +69,13 @@ API** for the frequent set/clear/route calls against the RSD that tunneld expose
 
 ## Running it
 
-**Not built yet.** Intended launcher flow: (1) check prerequisites, (2) start the elevated
-tunnel helper, (3) start FastAPI, (4) open the browser UI. See ROADMAP.md for status.
+**Quick spoof (current):** `spoof.cmd` (double-click for the preset menu), or
+`spoof.cmd eiffel` / `spoof.cmd 48.8584 2.2945` / `spoof.cmd clear`. It mounts the DDI
+(phone must be **unlocked**), sets the location over the `--userspace` tunnel (no admin),
+and holds it until you press ENTER. Presets live in the `PRESETS` dict at the top of
+`spoof.py` — add more there. This script is the seed of the eventual backend.
+
+**Full app (planned):** launcher → prerequisite checks → FastAPI + browser UI. See ROADMAP.md.
 
 ## Prerequisites (these bite first)
 
