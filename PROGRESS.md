@@ -7,6 +7,29 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — spoof.cmd is now a "where do you want to go?" launcher
+
+Rewrote `spoof.py` (the thing `spoof.cmd` runs) into a single menu launcher, per owner request:
+double-click `spoof.cmd` → pick a **route**, a **static preset**, or **clear**.
+
+- **Data-driven menu:** routes are read from `data/routes/*.json` — drop a new route JSON in and
+  it shows up automatically (no code change). Routes run through the movement engine (render →
+  validate → GPX → `simulate-location play`); presets/coords hold a fixed point via `set`.
+- **Direct args still work:** `spoof.cmd miami` (matches a route by name), `spoof.cmd eiffel`
+  (preset), `spoof.cmd 48.8584 2.2945` (coord), `spoof.cmd clear`.
+- Replaces the old crude inline walk/drive GPX generator — that logic now lives properly in
+  `backend/movement`. Kept eiffel/dubai as static presets; `miami` now maps to the miami-demo
+  route.
+- `spoof.cmd` gained a friendly "set up the venv first" message if `.venv` is missing.
+- Verified offline (`py`): route discovery, arg resolution, menu render/selection, and the
+  miami-demo build (237 pts, 6.7 min, 42 km/h) all work. On-device play still needs the Apple
+  Mobile Device Service (owner will test at home — see prior entry).
+
+**Next:** owner runs the Miami demo at home once the Apple service is installed; then Increment 2
+(Valhalla road-snapping).
+
+---
+
 ## 2026-07-08 — Device-test setup: venv on 3.12, Miami demo built, blocked on Apple driver
 
 Prepping the owner's first on-device movement test (a realistic Miami demo).

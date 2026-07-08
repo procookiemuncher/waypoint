@@ -122,11 +122,14 @@ API** for the frequent set/clear/route calls against the RSD that tunneld expose
 
 ## Running it
 
-**Quick spoof (current):** `spoof.cmd` (double-click for the preset menu), or
-`spoof.cmd eiffel` / `spoof.cmd 48.8584 2.2945` / `spoof.cmd clear`. It mounts the DDI
-(phone must be **unlocked**), sets the location over the `--userspace` tunnel (no admin),
-and holds it until you press ENTER. Presets live in the `PRESETS` dict at the top of
-`spoof.py` — add more there. This script is the seed of the eventual backend.
+**Spoof launcher:** `spoof.cmd` (double-click) opens a **"where do you want to go?"** menu —
+pick a **route** (realistic movement, built by the movement engine from `data/routes/*.json`),
+a **static preset** (hold a fixed point), or **clear**. Direct args also work:
+`spoof.cmd miami` / `spoof.cmd eiffel` / `spoof.cmd 48.8584 2.2945` / `spoof.cmd clear`. Routes
+are rendered + validated into a GPX and replayed over the `--userspace` tunnel (no admin);
+presets/coords hold a point until you press ENTER. **Drop a new JSON in `data/routes/` and it
+appears in the menu automatically.** Needs the `.venv` (Python 3.12/3.13, see BUILD_PLAN.md),
+the Apple Mobile Device Service, and the phone **unlocked** with Developer Mode on.
 
 **Full app (planned):** launcher → prerequisite checks → FastAPI + browser UI. See ROADMAP.md.
 
