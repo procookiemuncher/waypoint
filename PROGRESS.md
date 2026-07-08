@@ -7,6 +7,20 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-07 — First movement: miami preset walks then drives 100mph
+
+`spoof.cmd miami` now does a movement demo instead of a static hold: from downtown Miami it
+walks ~12s (3 mph), then drives ~12s at 100 mph, then holds ~5 min. Built as a generated GPX
+replayed via `simulate-location play --userspace` (one tunnel; `play` moves at
+distance/time-delta between points, so per-second spacing sets the speed). Verified offline
+with gpxpy: walk 1.40 m/s, drive 44.74 m/s. Static presets (eiffel/dubai) unchanged.
+
+**Purpose:** first real test of whether Life360's activity emoji (walking/driving) is
+GPS-speed-derived (spoofable) or CoreMotion-derived (not). 10–15s phases may be too short for
+Life360 to register — the `*_SECS` constants at the top of spoof.py are easy to bump.
+
+---
+
 ## 2026-07-07 — Correction: Life360 auto-detects airports; route + activity vision
 
 **Correction (owner):** Life360 DOES auto-send an arrival notification when you land at a
