@@ -7,6 +7,22 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Roadmap: added cable-free (wireless) operation to the v2 backlog
+
+Owner asked about "cloud" spoofing (no phone connection). Clarified: **true cloud/untethered does
+not exist** on non-jailbroken iOS 26.6 — the DVT session always needs a live host. But **cable-free
+over local Wi-Fi is real**: pmd3 models a `"Network"` usbmux connection type (verified in
+`usbmux.py` — `is_network`), so after a one-time USB pair + Wi-Fi sync the host can reach the phone
+wirelessly (PC still on + same LAN). Added it to ROADMAP v2 backlog with the key caveats and an
+**untested unknown** — whether the full iOS-17 tunnel + DDI + `simulate-location` runs over Wi-Fi
+on our stack (verify: pair via USB → Wi-Fi sync → unplug → `usbmux list` shows `Network` + can we
+hold a location). Pairs with the long-lived session (Phase C); ref `lvalen91/location_daemon.py`.
+
+**Next:** unchanged — owner tests the driving engine at home, then the flight-noti experiment; SWE
+on Increment 2 (Valhalla). Wireless is a backlog item to verify opportunistically.
+
+---
+
 ## 2026-07-08 — Research: crash/landing/notification feasibility + OSS spoofer landscape
 
 Owner asked whether we can trigger Life360's **crash** and **"landed at airport"** pushes, to
