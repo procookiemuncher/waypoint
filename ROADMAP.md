@@ -28,9 +28,12 @@ Maps / Find My. This de-risks everything else.
 - **Exit criteria met:** Find My showed the spoofed location (Paris).
 
 ### M1.5 — Life360 airport arrival + realistic routes (the real end goal)  🔬 IN PROGRESS
-**North star:** replicate the "Juan has arrived at Paris (CDG) airport" notification Life360
-auto-sends when you land at a major airport. Life360 recognizes airports itself — no manual
-Place needed.
+**North star (corrected 2026-07-08):** get Life360 to push **"Juan arrived at CDG"** to the group.
+The *literal* flight-detection "landed" push is **confirmed NOT reproducible** on a lat/lon-only
+stack (needs real altitude + an airplane-mode toggle + a post-landing network reconnect), and
+**airports are NOT auto-Places** — so the achievable, equivalent goal is a **geofence arrival at a
+manually-saved CDG Place**. Full analysis, the complete notification catalog, and the trigger
+method: **docs/research/life360-notification-triggers.md**.
 
 - [x] **CONFIRMED: a static spoof reflects on Life360.** The member's pin moves to the fake
   location (not just Find My). The earlier "Life360 ignores the spoof" finding was wrong.
@@ -52,12 +55,12 @@ Place needed.
 - [ ] **Build the movement engine** (Phase B — the missing piece; see M2 and the design doc).
   Believable movement: road-snapped interpolation, per-segment speed profiles (walk / drive /
   stop), GPS jitter, and the flight "gap".
-- [ ] Confirm plain airport arrival fires the notification: after a Miami "gap", believably
-  arrive into CDG's area (via the movement engine) and watch for the group notification.
-  ⚠ Research note (docs/research/life360-detection-and-realism.md): the auto-**"landed"** flight
-  push keys off altitude + airborne speed + a post-landing network reconnect — likely **not**
-  reproducible by a lat/lon-only ground sim. Aim for a normal **geofence arrival** near the
-  airport instead, and treat the exact "landed" notification as a stretch/unknown.
+- [ ] Confirm airport arrival fires: **save CDG as a Life360 Place**, then after a Miami "gap"
+  believably drive the pin into that Place and dwell (≥5–10 min) → watch for "arrived at CDG".
+  ✅ **Confirmed (primary sources, docs/research/life360-notification-triggers.md):** the auto
+  **"landed"** flight push is NOT reproducible (needs altitude + airplane-mode toggle + network
+  reconnect), and airports are NOT auto-Places. Target the **geofence arrival** — same family
+  alert to the circle, no plane icon. (Upgraded from last week's "likely not" to confirmed.)
 - [ ] Arrival must look real: no impossible-speed teleport, GPS drift present.
 
 **Route presets (the movement engine):**

@@ -15,11 +15,16 @@ plain "set location" already works. **The missing piece is the movement engine**
 *movement* (routes, per-segment speed profiles, GPS jitter, a flight "gap"), which is what a
 realistic arrival and the activity indicator still need.
 
-**End goal:** replicate the real "Juan has arrived at Paris (CDG) airport" notification that
-Life360 auto-sends the group when you land at a major airport — Life360 recognizes major
-airports itself, so **no manual Place is needed**. The spoof must (a) survive Life360's sanity
-checks (no impossible-speed teleport, GPS drift present) and (b) believably *arrive* at the
-airport area to trigger that built-in notification. Both are movement-engine work.
+**End goal (corrected 2026-07-08 — see docs/research/life360-notification-triggers.md):** get
+Life360 to push **"Juan arrived at Paris (CDG)"** to the group. ⚠ The *literal* flight-detection
+**"landed at CDG"** push is **NOT reproducible** on our stack — it's gated on real altitude + an
+airplane-mode ON→OFF toggle + a post-landing network reconnect, none of which a lat/lon-only spoof
+can inject. And **airports are NOT auto-recognized Places** (the earlier "no manual Place needed"
+claim was wrong — what the owner saw on a real trip was the genuine flight-detection push from
+real sensors). The achievable, functionally-equivalent goal is a **geofence arrival**: save CDG as
+a Life360 **Place**, then have the spoof (a) survive sanity checks (no impossible-speed teleport,
+GPS drift present) and (b) believably drive into that Place and dwell → "arrived at CDG".
+Movement-engine work.
 
 **Stretch — pre-built routes** (the owner's real ambition):
 - "Airport route": a believable ~30–40 min drive from CDG to a 5-star Paris hotel.

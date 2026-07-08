@@ -14,6 +14,8 @@
 | [spoof-methods-survey.md](spoof-methods-survey.md) | Every way to set an iPhone's location, judged against our no-jailbreak / Windows / owned-device constraints. |
 | [behavioral-engine-prior-art.md](behavioral-engine-prior-art.md) | Prior art for generating realistic human GPS trajectories — models, OSS code, and a design for a "life-simulation" engine. |
 | [valhalla-road-snapping.md](valhalla-road-snapping.md) | How to snap waypoints to roads and get per-edge speed via Valhalla — unblocks the movement engine's Increment 2 (build-time road-snapping). |
+| [life360-notification-triggers.md](life360-notification-triggers.md) | Can we trigger crash / "landed at airport" / *every* Life360 notification? The injection surface (location only), a full catalog + spoofability matrix, and the method for the reachable ones. |
+| [oss-spoofer-landscape.md](oss-spoofer-landscape.md) | Who's built OSS spoofers, has anyone done Find My + Life360, what notifications people actually trigger, and the anti-spoof arms race. |
 
 ---
 
@@ -67,6 +69,15 @@
    is; Valhalla `trace_attributes` for per-edge speed; a Pokémon-Go bot's step model for
    per-point jitter). There's even a near-exact open-source analog on our stack
    (`locwarp` — Windows + pymobiledevice3). See the behavioral doc; added to the roadmap.
+
+8. **Dev mode injects LOCATION ONLY — not "almost any variable."** Verified four ways (pmd3
+   #340, source read, GPX playback discards altitude, DVT instrument list). ⟹ **crash detection
+   is unreachable** (real accelerometer G-spike; don't fake it — it escalates to 911 dispatch),
+   and the **literal "landed at airport" flight push is unreachable** (altitude + airplane-mode +
+   network reconnect). The reachable notification family is **geofence arrivals/leaves + the
+   movement emoji**; the honest "landed" substitute is a **geofence "arrived at CDG"** (airports
+   are **not** auto-Places — save one manually). Full catalog + method:
+   life360-notification-triggers.md. OSS state of the art: oss-spoofer-landscape.md.
 
 ---
 
