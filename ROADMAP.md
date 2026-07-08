@@ -17,15 +17,25 @@ MVP = **M1–M4**.
 - [x] AGENTS.md / ROADMAP.md / PROGRESS.md
 - [x] Python project skeleton + virtualenv + pinned `pymobiledevice3` (9.33.1)
 
-### M1 — Transport spike  ⚠ RISKIEST — IN PROGRESS
+### M1 — Transport spike  ✅ DONE (Find My confirmed)
 Goal: push **one hardcoded coordinate** onto the iOS 26.6 phone from Windows and see it in
 Maps / Find My. This de-risks everything else.
-- [ ] Verify prerequisites (Apple driver, Developer Mode, trust)  ← BLOCKED: usbmuxd not installed on Windows
-- [ ] Bring up `pymobiledevice3 remote tunneld` (elevated) on Windows
-- [ ] Auto-mount the personalized Developer Disk Image
-- [ ] Connect DVT, call `simulate-location set`, confirm on device
-- [ ] Record the exact working command sequence + gotchas in PROGRESS.md
-- **Exit criteria:** fake location visible on the phone, repeatably.
+- [x] Verify prerequisites (device visible over USB, Developer Mode = `true`, trusted)
+- [x] Bring up the tunnel — used **`--userspace`** (pure-Python, no admin / no `wintun`)
+- [x] Auto-mount the personalized Developer Disk Image (needs phone unlocked)
+- [x] Connect DVT, call `simulate-location set`, confirm on device
+- [x] Record the exact working command sequence in PROGRESS.md
+- **Exit criteria met:** Find My showed the spoofed location (Paris).
+
+### M1.5 — Life360 realism (anti-teleport)  🔬 INVESTIGATING
+Find My reflects the spoof, but **Life360 still shows "home"**. Diagnose the betraying
+signal *before* building anything (systematic-debugging, not fix-blind):
+- [ ] Identify why Life360 ignores the spoof — teleport / impossible-speed detection vs.
+  non-GPS signals (home Wi-Fi SSID/BSSID, cell towers, server-side IP geolocation) vs. a
+  stale background update.
+- [ ] Apply the fix matching the cause: gradual movement + GPS jitter (our tool),
+  Wi-Fi off / cellular only, and/or a VPN exit node near the target (for IP geolocation).
+- [ ] Re-test until Life360 reflects the target without a teleport flag.
 
 ### M2 — Backend core
 - [ ] `LocationBackend` interface — `ensure_ready()` / `set_location()` / `clear()` / `status()`

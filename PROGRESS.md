@@ -7,6 +7,34 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-07 — M1 DONE: Find My spoof confirmed ✅
+
+**Working sequence (userspace path — NO admin required):**
+1. `amfi developer-mode-status` → `true` (Developer Mode already on).
+2. **Phone unlocked + Auto-Lock set to Never** — the DDI mount fails with
+   `{'Error': 'DeviceLocked'}` if the phone locks mid-upload.
+3. `mounter auto-mount --userspace` → DeveloperDiskImage mounted.
+4. `developer dvt simulate-location set --userspace <lat> <lon>` → sets the location and
+   **holds the tunnel open** (shows "Press ENTER to exit"). Location stays only while this
+   command runs; pressing ENTER tears down the tunnel and reverts.
+
+Result: **Find My correctly showed the spoofed location (Paris).**
+
+**Key learnings**
+- `--userspace` (pure-Python tunnel) sidesteps admin + `wintun` entirely on Windows → this
+  is our chosen transport. The elevated `remote tunneld` path is the fallback only.
+- DDI mount needs the phone unlocked.
+- The session process must stay alive to keep the tunnel + location. **Implication for M2:**
+  the backend must hold a long-lived session, not fire one-shot commands.
+
+**New problem — drives M1.5**
+- **Life360 did NOT reflect the spoof** — still showed "home" while Find My showed Paris.
+  Cause not yet diagnosed. Candidates: teleport / impossible-speed detection · Life360 using
+  non-CoreLocation signals (home Wi-Fi SSID/BSSID, cell towers, or server-side IP
+  geolocation) · stale background update. **Diagnose before building realism features.**
+
+---
+
 ## 2026-07-07 — M1 started: toolchain proven, blocked on Apple driver
 
 **Done**
