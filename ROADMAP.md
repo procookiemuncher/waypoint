@@ -83,7 +83,8 @@ prior-art survey + design + data model in **docs/research/behavioral-engine-prio
 - [ ] Vendor a per-point **jitter/step model** (Pokémon-Go `step_walker`, MIT) into the renderer.
 - [ ] **Speed/timing profiler**: encode per-mode speed via point spacing; jerk-limited ramps
   (≤~2 m/s², jerk ≤~2 m/s³); zero-speed dwell between mode changes.
-- [ ] Wire **Valhalla `trace_attributes`** for real per-edge speeds at build time.
+- [ ] Wire **Valhalla `trace_attributes`** for real per-edge speeds at build time — API details,
+  call sequence, and the polyline6 decode pitfall in docs/research/valhalla-road-snapping.md.
 - [ ] **Template day planner** (17-motif sampler + Zipf-weighted anchors + power-law dwell) →
   `(place, arrive, depart)` day-script → full-day GPX. Optional **scikit-mobility** (EPR/DITRAS)
   backend later.
