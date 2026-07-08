@@ -27,15 +27,18 @@ Maps / Find My. This de-risks everything else.
 - [x] Record the exact working command sequence in PROGRESS.md
 - **Exit criteria met:** Find My showed the spoofed location (Paris).
 
-### M1.5 — Life360 realism (anti-teleport)  🔬 INVESTIGATING
-Find My reflects the spoof, but **Life360 still shows "home"**. Diagnose the betraying
-signal *before* building anything (systematic-debugging, not fix-blind):
-- [ ] Identify why Life360 ignores the spoof — teleport / impossible-speed detection vs.
-  non-GPS signals (home Wi-Fi SSID/BSSID, cell towers, server-side IP geolocation) vs. a
-  stale background update.
-- [ ] Apply the fix matching the cause: gradual movement + GPS jitter (our tool),
-  Wi-Fi off / cellular only, and/or a VPN exit node near the target (for IP geolocation).
-- [ ] Re-test until Life360 reflects the target without a teleport flag.
+### M1.5 — Life360 "arrived at &lt;place&gt;" (the real end goal)  🔬 IN PROGRESS
+**North star:** trigger a believable Life360 arrival notification to the group — not just a
+moved pin.
+- [ ] A **Place** must exist at the destination in the Circle — arrival notifications only
+  fire for saved Places. Confirm one exists or create it.
+- [ ] The spoof must **enter** that geofence via simulated arrival movement (a straight
+  teleport in may not register a clean entry and reads as fake).
+- [ ] Survive sanity checks: no impossible-speed teleport, GPS drift present.
+- [ ] Decide if IP matters — **test a plain Paris spoof first.** iOS can't leak surrounding
+  cell towers to the app; the only real non-GPS tells are the *connected* Wi-Fi and
+  server-side IP. Add a phone-side VPN only if a test proves IP is the giveaway.
+- Vehicle for all of this = the **movement engine** (see v2 route simulation below).
 
 ### M2 — Backend core
 - [ ] `LocationBackend` interface — `ensure_ready()` / `set_location()` / `clear()` / `status()`
