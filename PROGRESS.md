@@ -7,6 +7,18 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-07 — Enabled signed commits (SSH)
+
+Commits + tags are now **SSH-signed** for the GitHub "Verified" badge — no GPG/Kleopatra.
+- Signing key: `~/.ssh/vida360_signing` (ed25519, repo-local config only).
+- `commit.gpgsign=true`, `gpg.format=ssh`. Public key registered on the procookiemuncher
+  account as a **Signing Key**.
+- Committer email `thegoatcodercookie@gmail.com` must stay a verified email on the account
+  for the badge to show. Commits made before this date remain unverified (not worth
+  rewriting pushed history).
+
+---
+
 ## 2026-07-07 — M1 DONE: Find My spoof confirmed ✅
 
 **Working sequence (userspace path — NO admin required):**
