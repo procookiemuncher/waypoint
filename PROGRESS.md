@@ -7,6 +7,33 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-07 — Clarified end goal + Life360 strategy brainstorm
+
+**End goal locked:** make Life360 send "Juan has arrived at &lt;place&gt;" to the group.
+Higher bar than Find My — needs a real geofence **entry** at a saved Place, not a static pin.
+
+**IP / VPN thinking**
+- On iOS, Life360 CANNOT scan surrounding cell towers or nearby networks (Apple restricts
+  it) → the "Miami cell tower" worry is moot. At most it can read the *currently connected*
+  Wi-Fi, so being off home Wi-Fi / on cellular removes that tell.
+- The only real server-side tell is **IP geolocation**. Uncertain if Life360 enforces it.
+  **Plan: test a plain Paris spoof first**, kept running several minutes so Life360 polls.
+  Add VPN only if that test shows IP is the giveaway.
+- Free VPN reality: it runs on the **phone** (not the PC), can't be automated by our tool;
+  France exists on some free tiers, **UAE essentially never** → Dubai-with-matching-IP is
+  impractical for free; Paris is doable if needed.
+
+**Realistic routes / arrival**
+- Miami→Paris can't be "driven". Model it like real life: last real update in Miami → an
+  update **gap** (like a flight) → reappear near CDG → simulate the short final approach so
+  Life360 logs a clean "arrived at CDG" entry.
+- Movement engine parts: road-snapped interpolation (free routing API), speed profiles
+  (walk/drive), GPS jitter, and a cooldown/offline gap for the ocean leg.
+
+**Next:** run the plain-Paris test; design the movement engine.
+
+---
+
 ## 2026-07-07 — Added quick-run spoof script
 
 `spoof.py` (+ `spoof.cmd` double-click wrapper) so we stop hand-typing commands. Takes a

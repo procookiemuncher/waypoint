@@ -9,6 +9,11 @@
 from a Windows PC. v1 sets a fixed fake coordinate (e.g. Eiffel Tower, Dubai, Miami).
 v2 will simulate movement along routes. Personal use, single owned device.
 
+**End goal:** make Life360 fire a believable "Juan has arrived at &lt;place&gt;" notification
+to the group. That's a higher bar than Find My — the spoof must (a) survive Life360's sanity
+checks (no impossible-speed teleport, no frozen pin) and (b) trigger a genuine geofence
+**entry** at a saved Place, which needs simulated *arrival movement*, not a static coordinate.
+
 ## How it works (the mechanism)
 
 iOS ships a developer location-simulation service — the same one Xcode's "Simulate
