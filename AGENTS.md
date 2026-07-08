@@ -108,4 +108,6 @@ QUIC-vs-TCP tunnel quirks · phone locks → DVT session drops · location slow 
   "Generated with …" trailer. Commits are authored solely by the repo owner, as if they
   wrote them by hand.
 - Commit identity stays `procookiemuncher <thegoatcodercookie@gmail.com>` (set per-repo).
-- Always confirm with the owner before pushing to the remote.
+- **Auto-commit and auto-push after every meaningful update — small or large.** Don't wait
+  to be asked; the owner wants the GitHub repo to always mirror the latest working state.
+  (Exception: never force-push or rewrite already-pushed history without asking first.)
