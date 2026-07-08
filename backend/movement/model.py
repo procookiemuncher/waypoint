@@ -3,7 +3,10 @@
 Pure data + parsing. Knows nothing about pymobiledevice3, GPX, or rendering — those live in
 renderer.py / validator.py. This is the authoring format: JSON separates *intent* (walk this
 bit, then drive at 50 km/h, then dwell 3 min) from the geometry a GPX carries.
-See docs/MOVEMENT_ENGINE.md for the design.
+
+Constants are tuned to the research briefs in docs/research/ (life360-detection-and-realism.md
+and behavioral-engine-prior-art.md) — walk speed N(1.34, 0.30), accel ≲2 m/s² / jerk ≲2 m/s³,
+GPS σ≈5 m, and Life360's plausible-speed bands. See docs/MOVEMENT_ENGINE.md for the design.
 """
 from __future__ import annotations
 
@@ -16,15 +19,33 @@ DRIVE = "drive"
 STOP = "stop"
 MODES = (WALK, DRIVE, STOP)
 
-# Plausible default cruise speed per mode (m/s) when a segment omits speed_mps.
-DEFAULT_SPEED_MPS = {WALK: 1.4, DRIVE: 13.9}          # ~3 mph walk, ~50 km/h drive
+# --- Speed model -----------------------------------------------------------------
+# Default cruise speed per mode (m/s) when a segment omits speed_mps. Walk is sampled from a
+# distribution by the renderer (below); drive default is an urban median (Valhalla per-edge
+# speeds will replace this at Increment 2).
+DEFAULT_SPEED_MPS = {WALK: 1.34, DRIVE: 13.0}
+WALK_SPEED_MEAN_MPS = 1.34            # measured pedestrian mean (research §3)
+WALK_SPEED_STD_MPS = 0.30
+WALK_SPEED_CLAMP = (0.75, 2.4)        # clamp the sampled walk speed to a sane range
 
-# Hard "impossible speed" ceiling per mode (m/s) — the validator rejects anything above.
-SPEED_CEILING_MPS = {WALK: 3.0, DRIVE: 40.0, STOP: 1.0}   # jog / 144 km/h / jitter-only
-GLOBAL_SPEED_CEILING_MPS = 70.0                            # ~252 km/h; catches teleports
+# --- Motion smoothness (biggest synthetic tell is a velocity step) ---------------
+DEFAULT_ACCEL_MPS2 = {WALK: 0.7, DRIVE: 1.8}   # peak accel; kept well under the ~2.85 wall
+DEFAULT_JERK_MPS3 = {WALK: 1.0, DRIVE: 2.0}    # rate-of-change of accel (ISO 15622 ≲2 m/s³)
 
-# Comfortable acceleration used to ramp in/out of stops (m/s^2), per mode.
-DEFAULT_ACCEL_MPS2 = {WALK: 0.6, DRIVE: 1.5}
+# --- GPS noise -------------------------------------------------------------------
+# Default 1σ jitter (meters) when a segment omits jitter_m. Open-sky iPhone σ≈5 m; a "still"
+# phone still wanders a couple meters (never emit a pixel-frozen point).
+DEFAULT_JITTER_M = {WALK: 4.0, DRIVE: 5.0, STOP: 2.0}
+
+# --- Validator thresholds --------------------------------------------------------
+# Per-mode plausible cruise ceiling (m/s) — smoothed speed above this is a *review* warning.
+SPEED_REVIEW_MPS = {WALK: 2.5, DRIVE: 33.0, STOP: 1.5}
+# Global two-tier gates on raw inter-point speed.
+SPEED_REVIEW_GLOBAL_MPS = 35.8        # ~80 mph  — warn (Life360 "speeding" territory)
+SPEED_HARDFAIL_MPS = 53.6             # ~120 mph — reject (teleport / impossible)
+# Acceleration gates (checked on a jitter-smoothed speed signal).
+ACCEL_REVIEW_MPS2 = 2.0               # warn
+ACCEL_HARDFAIL_MPS2 = 2.85            # reject (instantaneous velocity step)
 
 Coord = tuple[float, float]   # (lat, lon)
 
@@ -44,14 +65,9 @@ class Segment:
     mode: str
     waypoints: list[Coord] = field(default_factory=list)  # walk/drive path
     speed_mps: float | None = None                        # target cruise speed (intent)
-    jitter_m: float = 0.0                                 # per-segment GPS jitter magnitude
+    jitter_m: float = 0.0                                 # per-segment GPS jitter (0 = mode default)
     at: Coord | None = None                              # stop location (default: prev pos)
     dwell_s: float = 0.0                                 # stop hold time
-
-    def cruise_speed(self) -> float:
-        if self.speed_mps is not None:
-            return self.speed_mps
-        return DEFAULT_SPEED_MPS.get(self.mode, DEFAULT_SPEED_MPS[DRIVE])
 
 
 @dataclass

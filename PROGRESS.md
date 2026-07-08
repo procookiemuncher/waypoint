@@ -7,6 +7,38 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Movement engine: folded the research realism findings into the core
+
+Pulled the docs/research/ findings into the offline core (no phone needed). Validator
+(`backend/movement/validator.py`) is now two-tier (errors reject / warnings review):
+- **Acceleration gate** on a jitter-smoothed speed signal — rejects instantaneous velocity
+  steps (>2.85 m/s²), the #1 synthetic tell the speed-only check was missing (warn >2.0).
+- **Speed retuned to Life360's bands:** teleport hard-fail >53.6 m/s (120 mph, was 70), review
+  >35.8 (80 mph), per-mode review caps. Raw step speed for the teleport check; smoothed speed
+  for mode/accel (jitter makes instantaneous speed noisy — a real detector smooths too).
+- Returns `ValidationResult(errors, warnings, max_step_speed, max_smoothed_speed, max_accel)`.
+
+Renderer (`backend/movement/renderer.py`):
+- **Jerk-limited S-curve ramps** (peak accel ≤~1.8, jerk ≤2 m/s³) instead of bang-bang accel.
+- **Zero-speed dwell at every mode change** (decel to 0 into stops *and* mode switches) — kills
+  the ~13 m/s velocity cliff a drive→walk boundary used to create.
+- **Walk speed sampled ~N(1.34, 0.30)** clamped [0.75, 2.4] when unspecified.
+- **Perpendicular-biased jitter** (σ≈5 m open-sky default): lateral wander dominant, along-track
+  reduced — still a bounded walk that can't manufacture speed.
+
+Constants centralized + tuned in `model.py` per the briefs. Verified on the demo
+(drive→walk→stop): 418 fixes, 9.3 min, max 14 m/s, **max accel 1.83 m/s²**, validation OK.
+Added negative tests — teleport (5559 m/s) and a mid-track velocity step (6.25 m/s²) are both
+rejected; a clean ramp passes. Details/status in **docs/BUILD_PLAN.md** (Increment 1.5).
+
+**Deferred (still queued):** Valhalla `trace_attributes` (Inc 2), `play_route` wrapper (Inc 3),
+and the bigger research ideas (behavioral engine, `isSimulatedBySoftware` gate #0,
+record-and-replay) as their own milestones.
+
+**Next:** Increment 2 — Valhalla build-time road-snapping.
+
+---
+
 ## 2026-07-08 — Research sweep: 4 cited briefs, 1 decisive finding, new docs/research/
 
 Ran four parallel deep-research dives (Life360 detection/realism · activity-emoji vs CoreMotion ·

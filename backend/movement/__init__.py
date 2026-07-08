@@ -6,9 +6,9 @@ the LocationBackend interface. See docs/MOVEMENT_ENGINE.md.
 """
 from .model import Route, Segment, LocationFix, load_route, parse_route
 from .renderer import RouteRenderer
-from .validator import validate, validate_or_raise
+from .validator import validate, validate_or_raise, ValidationResult
 
 __all__ = [
     "Route", "Segment", "LocationFix", "load_route", "parse_route",
-    "RouteRenderer", "validate", "validate_or_raise",
+    "RouteRenderer", "validate", "validate_or_raise", "ValidationResult",
 ]
