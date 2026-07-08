@@ -1,3 +1,14 @@
+---
+title: Spoof-methods survey — the adoptable menu (and where we sit)
+status: research                # research | device-verified | superseded
+last_verified: 2026-07-08
+device_verified: transport      # pmd3 set/play confirmed working on our iOS 26.6 phone (M1); peer tools not tested here
+open_gates: []
+depends_on: []
+source_tier: mixed              # primary (pmd3/go-ios/libimobiledevice source + FCC/CFR) + vendor marketing (labeled)
+recheck_if: [pmd3 version bump, go-ios release, iOS point release]
+---
+
 # Spoof-methods survey — the adoptable menu (and where we sit)
 
 > Research brief. Every realistic way to set/simulate an iPhone's location, judged against

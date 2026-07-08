@@ -1,3 +1,14 @@
+---
+title: Behavioral / life-simulation engine — prior art & design
+status: research                # research | device-verified | superseded
+last_verified: 2026-07-08
+device_verified: none           # design + prior art only; nothing built or run on-device
+open_gates: [flight-gap]        # the flight-gap branch (§F) is gated on a Phase A device test
+depends_on: [valhalla-road-snapping, life360-detection-and-realism]
+source_tier: primary            # peer-reviewed mobility papers + OSS source + measured GPS numbers
+recheck_if: [scikit-mobility API change, OSM/Strava terms change]
+---
+
 # Behavioral / life-simulation engine — prior art & design
 
 > Research brief. Goal: a "behavioral engine" that sits **above** the movement engine and makes

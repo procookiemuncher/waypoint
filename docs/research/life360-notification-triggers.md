@@ -1,3 +1,14 @@
+---
+title: Life360 notification triggers — what we can and can't fire (and the method)
+status: research                # research | device-verified | superseded
+last_verified: 2026-07-08
+device_verified: none           # the spoofability matrix is sourced/reasoned, not yet tested on our phone
+open_gates: [isSimulatedBySoftware, flight-gap]
+depends_on: [life360-detection-and-realism, activity-emoji-coremotion]
+source_tier: mixed              # primary (Life360/Arity/pmd3 source + Apple docs) + press releases
+recheck_if: [Life360 app update, iOS point release]
+---
+
 # Life360 notification triggers — what we can and can't fire (and the method)
 
 > Research brief answering three questions: can we trigger (1) a **crash** alert, (2) a

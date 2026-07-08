@@ -171,6 +171,18 @@ QUIC-vs-TCP tunnel quirks · phone locks → DVT session drops · location slow 
 6. This is a personal-use tool on an owned device. Keep it that way.
 7. Follow the **Git commit & push conventions** below.
 
+## Research doc conventions (docs/research/)
+
+Each research brief opens with **YAML frontmatter** (`status`, `last_verified`, `device_verified`,
+`open_gates`, `depends_on`, `source_tier`, `recheck_if`) so an agent can judge a doc's trust and
+currency from a partial read — full schema in **docs/research/README.md**. Two confidence axes,
+kept separate: `source_tier` / per-claim `(HIGH/MEDIUM/LOW)` = *how good the source*;
+`device_verified` = *did we test it on our own phone*. A well-sourced claim can still be
+`device_verified: none` — most of the corpus is, pending the Phase A gates. **When you confirm
+(or refute) something on-device, flip `status`/`device_verified` and bump `last_verified` in the
+same session** (this is ground rule #3 applied to the frontmatter). Structure the metadata; leave
+the prose reasoning intact — don't shred briefs into key-value dumps.
+
 ## Git commit & push conventions
 
 - **Write commit messages like a human wrote them** — realistic and descriptive, not

@@ -7,6 +7,29 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Research docs: added machine-readable frontmatter (agent-legibility)
+
+Owner asked how to format the research briefs so coding agents (Claude/Codex) parse them more
+reliably. Diagnosed that prose *comprehension* isn't the bottleneck — the failure modes are
+(1) an agent trusting a well-sourced but **untested** claim as fact, (2) reconciling the same
+fact restated across AGENTS/ROADMAP/index/brief, (3) nuance getting dropped in context
+compaction. Fix = structure the **metadata**, not the prose.
+
+**Changed:** added YAML frontmatter to all 7 briefs + the index — `status`, `last_verified`,
+`device_verified`, `open_gates`, `depends_on`, `source_tier`, `recheck_if`. The load-bearing
+new field is **`device_verified`**: it separates "well-sourced" from "confirmed on our phone"
+(everything except the transport survey is `device_verified: none` — the exact distinction that
+caused the old "Life360 ignores the spoof" bug). Documented the schema in
+docs/research/README.md and added a "Research doc conventions" section to AGENTS.md.
+
+**Deliberately NOT done** (judged over-engineering for this corpus): claim IDs, and shredding
+prose into key-value blocks — kept the "Bottom line → evidence → implications" shape intact.
+
+**Next:** unchanged — Phase A #0 (`isSimulatedBySoftware`) still gates everything; SWE on
+Increment 2 (Valhalla). When a gate is run, flip the relevant doc's `status`/`device_verified`.
+
+---
+
 ## 2026-07-08 — Roadmap: added cable-free (wireless) operation to the v2 backlog
 
 Owner asked about "cloud" spoofing (no phone connection). Clarified: **true cloud/untethered does
