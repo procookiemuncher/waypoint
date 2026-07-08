@@ -7,6 +7,15 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-07 — Added quick-run spoof script
+
+`spoof.py` (+ `spoof.cmd` double-click wrapper) so we stop hand-typing commands. Takes a
+preset (Eiffel / Dubai / Miami) or `lat lon`; mounts the DDI via the userspace tunnel, sets
+the location, and holds until ENTER. `spoof.cmd clear` reverts. Presets are an inline dict
+for now (→ JSON when we build M2). This is the seed of the eventual `LocationBackend`.
+
+---
+
 ## 2026-07-07 — Enabled signed commits (SSH)
 
 Commits + tags are now **SSH-signed** for the GitHub "Verified" badge — no GPG/Kleopatra.
