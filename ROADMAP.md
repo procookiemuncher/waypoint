@@ -31,10 +31,16 @@ Maps / Find My. This de-risks everything else.
 **North star:** replicate the "Juan has arrived at Paris (CDG) airport" notification Life360
 auto-sends when you land at a major airport. Life360 recognizes airports itself — no manual
 Place needed.
+
+- [x] **CONFIRMED: a static spoof reflects on Life360.** The member's pin moves to the fake
+  location (not just Find My). The earlier "Life360 ignores the spoof" finding was wrong.
+  So there's no home-Wi-Fi / IP / teleport blocker on a plain static set — **the gap is
+  movement.**
+- [ ] **Build the movement engine** (the missing piece — see M2). Believable movement:
+  road-snapped interpolation, per-segment speed profiles (walk / drive / stop), GPS jitter,
+  and the flight "gap".
 - [ ] Confirm plain airport arrival fires the notification: after a Miami "gap", believably
-  arrive into CDG's area and watch for the group notification.
-- [ ] Test whether IP even matters first (iOS can't leak cell towers to the app; only the
-  *connected* Wi-Fi + server-side IP can contradict). VPN only if a test proves IP is the tell.
+  arrive into CDG's area (via the movement engine) and watch for the group notification.
 - [ ] Arrival must look real: no impossible-speed teleport, GPS drift present.
 
 **Route presets (the movement engine):**

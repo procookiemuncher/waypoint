@@ -7,6 +7,30 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Correction: Life360 DOES reflect the spoof; movement engine is the gap
+
+**Owner correction to the M1 finding.** The earlier entry ("Life360 did NOT reflect the
+spoof") was wrong. A static spoof *does* show up on Life360 — the member's pin moves to the
+fake location, not just Find My. So Life360 is **not** ignoring CoreLocation, and there's no
+home-Wi-Fi / IP / impossible-teleport blocker on a plain static set. The IP/VPN and
+"non-CoreLocation signal" worries from the earlier entries are moot for a static set.
+
+**What's actually missing: the movement engine.** Static "teleport to X" works everywhere.
+What we don't have yet is believable *movement* — road-snapped routes, per-segment speed
+profiles (walk / drive / stop), GPS jitter, and the flight "gap" — which is what a realistic
+CDG arrival (and the driving/walking activity emoji) still needs. That's the next build.
+
+**Process note:** stale docs caused this confusion. Added AGENTS.md ground rule #3 — the
+moment a result is confirmed (works or fails), update the docs in the same session.
+
+**Also (infra):** reconnected this working copy to `procookiemuncher/vida-360` (it was a ZIP
+download with no `.git`) and set up SSH-signed commits + a pinned push key — commits now show
+"Verified". Details in AGENTS.md → "Where & how to commit".
+
+**Next:** design + build the movement engine (M1.5 / M2).
+
+---
+
 ## 2026-07-07 — First movement: miami preset walks then drives 100mph
 
 `spoof.cmd miami` now does a movement demo instead of a static hold: from downtown Miami it
