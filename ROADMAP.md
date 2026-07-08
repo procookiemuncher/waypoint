@@ -121,6 +121,18 @@ prior-art survey + design + data model in **docs/research/behavioral-engine-prio
 
 - **Route simulation:** hold the DVT session open, interpolate along a drawn polyline,
   `set()` on a ~1s timer, with speed control (smoother than one-shot GPX play).
+- **Cable-free (wireless) operation:** drive the phone over **local Wi-Fi** instead of USB —
+  pmd3 already models a `"Network"` connection type, so once the phone is **paired over USB once
+  (Trust)** and **Wi-Fi sync** is on, the host can reach it wirelessly (phone untethered, anywhere
+  on the LAN). Ideal for holding a **static "one place"** indefinitely; works for routes too.
+  ⚠ **This is NOT "cloud":** the host PC must still be **on and on the same network** — there is
+  **no untethered/remote spoof** on non-jailbroken iOS 26.6 (kill the host → it reverts; the
+  commercial "stays after disconnect" is a stale dot iOS 18+ wipes). **Untested unknown:** whether
+  the full iOS-17 RemoteXPC tunnel + DDI mount + `simulate-location` runs over Wi-Fi on our
+  Windows / iOS-26.6 stack (the initial handshake sometimes wants USB) → **verify first** (pair via
+  USB → enable Wi-Fi sync → unplug → does `usbmux list` still show it as `Network`, and can we
+  hold/replay a location?). Pairs with the long-lived session (Route simulation, above);
+  reference impl: `lvalen91/location_daemon.py` (docs/research/oss-spoofer-landscape.md).
 - GPX import / export.
 - Small positional **jitter** for realism.
 - **macOS support** — mostly free once the adapter is isolated; the tunnel is easier there.
