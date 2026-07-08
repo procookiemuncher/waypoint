@@ -1,11 +1,10 @@
 {
-  "name": "demo-drive",
-  "description": "Offline smoke test: short CDG-area drive, then a 1-min stop. Straight-line (no Valhalla yet) — exercises ramp-up, cruise, decel-into-stop, and dwell.",
+  "name": "demo-mixed",
+  "description": "Offline smoke test: short CDG-area drive, then a walk (mode change, no explicit stop between), then a 3-min dwell. Straight-line (no Valhalla yet). Exercises jerk-limited ramps, the zero-speed dwell at the drive->walk change, sampled walk speed, and stop jitter. Jitter omitted so per-mode defaults apply.",
   "segments": [
     {
       "mode": "drive",
       "speed_mps": 13.9,
-      "jitter_m": 3.0,
       "waypoints": [
         [49.0097, 2.5479],
         [49.0000, 2.5300],
@@ -13,9 +12,16 @@
       ]
     },
     {
+      "mode": "walk",
+      "waypoints": [
+        [48.9950, 2.5100],
+        [48.9945, 2.5090],
+        [48.9940, 2.5082]
+      ]
+    },
+    {
       "mode": "stop",
-      "dwell_s": 60,
-      "jitter_m": 2.0
+      "dwell_s": 180
     }
   ]
 }

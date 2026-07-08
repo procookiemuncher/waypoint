@@ -28,6 +28,17 @@ Each increment is independently verifiable **offline**. Phone-gated items are ca
 - [x] `data/routes/demo-drive.json` — smoke-test route. Verified: 256 fixes, 5.0 min,
   max 14.6 m/s, validation OK.
 
+### Increment 1.5 — research-backed realism  ✅ DONE (2026-07-08)
+Folded docs/research/ findings into the core:
+- [x] **Validator: two-tier** (errors reject / warnings review) + **acceleration gate** on a
+  jitter-smoothed speed signal (reject >2.85 m/s², the #1 tell the speed-only check missed).
+- [x] **Speed bands** retuned to Life360's numbers: teleport hard-fail >53.6 m/s (was 70),
+  review >35.8, per-mode review caps.
+- [x] **Renderer: jerk-limited S-curve ramps** (accel ≤~1.8, jerk ≤2 m/s³).
+- [x] **Zero-speed dwell at every mode change** (no drive→walk velocity cliff).
+- [x] **Walk speed** sampled ~N(1.34, 0.30); **perpendicular-biased jitter** (σ≈5 m default).
+- [x] Negative tests: teleport + mid-track velocity step both rejected; clean ramp passes.
+
 ### Increment 2 — Valhalla road-snapping (build time)
 - [ ] Snap each segment's waypoints to a road-following polyline via the FOSSGIS public
   Valhalla (`pedestrian`/`auto` costing per mode) *before* the renderer runs.
