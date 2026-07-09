@@ -66,6 +66,7 @@ class Segment:
     waypoints: list[Coord] = field(default_factory=list)  # walk/drive path
     speed_mps: float | None = None                        # target cruise speed (intent)
     jitter_m: float = 0.0                                 # per-segment GPS jitter (0 = mode default)
+    snap: bool = False                                    # snap waypoints to real roads (build time)
     at: Coord | None = None                              # stop location (default: prev pos)
     dwell_s: float = 0.0                                 # stop hold time
 
@@ -119,6 +120,7 @@ def parse_route(data: dict) -> Route:
                 waypoints=wps,
                 speed_mps=float(speed) if speed is not None else None,
                 jitter_m=jitter,
+                snap=bool(s.get("snap", False)),
             ))
 
     return Route(name=name, description=data.get("description", ""), segments=segments)

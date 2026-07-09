@@ -7,6 +7,48 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — First on-device movement result + road-snapping (Increment 2 geometry) + miami-drift
+
+**Owner ran the miami-demo on the phone. Two firsts, one bug.** ✅ It teleported to Miami and
+Life360 showed the **driving (car) emoji** — so **Life360's movement emoji IS speed-derived and
+spoofable** (Phase A #1, effectively confirmed on-device). ❌ But then the pin sat at **0 mph and
+didn't visibly move**.
+
+**Root cause (debugged, not guessed).** The play pipeline is fine — read pmd3's `play_gpx_file`:
+it walks every GPX point, sleeps the Δt, and calls `set()` per point (genuine continuous motion),
+and the built GPX is real 1 Hz movement, not a teleport. The problem is **route design vs how
+Life360 samples a physically-still phone**: miami-demo was short + slow (~26 mph, ~1.5 km moving,
+~3 min) with a **3-min dead stop at the end**. Life360 derives speed/emoji from displacement
+between its own **sparse** uploads (the phone's accelerometer says "still," so its background
+location manager gets no motion wakeups and uploads on a slow timer). So the one big displacement
+it caught was the **teleport** (→ car emoji), then its next sample landed in the final stop → 0 mph.
+Fix = a **long, fast, continuous** route with no trailing stop.
+
+**Built `data/routes/miami-drift.json`** — downtown Miami → MIA on the Dolphin Expressway (SR-836),
+**Valhalla-snapped to real roads**, driven at **~80 mph** for **6.7 min** (~14 km). Validates OK
+(2 warnings: the intended 80 mph "speeding" flag + one launch-ramp accel blip). Run it:
+`spoof.cmd miami-drift` (or the menu).
+
+**Increment 2 (road-snapping) — geometry half done.** New `backend/movement/snapper.py`: Valhalla
+`/route` + polyline6 decode (**1e6**, not 1e5), opt-in per segment via `"snap": true`, on-disk
+cache (`build/snap-cache/`), straight-line fallback on `SnapError`. Added `snap` to the `Segment`
+model; wired `snap_route()` into `tools/build_route.py` + `spoof.py`. FOSSGIS reachable from here
+(tested). **Deferred:** `trace_attributes` per-edge *speed* (timing still from `speed_mps`), and
+**corner-aware slowing** — found that at 80 mph a 1 s step cuts sharp snapped turns and trips the
+accel gate; worked around by routing the fast preset on expressway (few sharp turns). Both logged
+in BUILD_PLAN.md Increment 2. Also fixed a latent Windows cp1252 crash (`⚠`/`✗` in `build_route.py`
+prints → ASCII).
+
+**Unverified (owner tests on-device):** whether sustained 80 mph now makes Life360 show a moving
+pin + high mph. The Life360-sampling root cause is reasoned, not instrumented — this route is the
+test. If it still reads 0, the next lever is an even longer run and/or checking whether iOS reports
+`CLLocation.speed` at all for a DVT set (vs Life360 computing it from its own samples).
+
+**Next:** owner plays `miami-drift` and reports what Life360 shows (moving pin? mph? emoji held?).
+Then Phase A #0 (`isSimulatedBySoftware`) still gates the realism work.
+
+---
+
 ## 2026-07-08 — Research docs: added machine-readable frontmatter (agent-legibility)
 
 Owner asked how to format the research briefs so coding agents (Claude/Codex) parse them more

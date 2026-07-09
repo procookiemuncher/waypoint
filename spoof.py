@@ -60,8 +60,11 @@ def load_routes():
 
 def build_gpx(route_path):
     """Render + validate a route into build/<name>.gpx. Returns the path, or None on failure."""
-    from backend.movement import load_route, RouteRenderer, validate
+    from backend.movement import load_route, RouteRenderer, validate, snap_route
     route = load_route(route_path)
+    route, snap_warnings = snap_route(route)
+    for w in snap_warnings:
+        print(f"  ! {w}")
     fixes = RouteRenderer().render(route)
     result = validate(fixes)
     for w in result.warnings:

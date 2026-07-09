@@ -7,8 +7,10 @@ the LocationBackend interface. See docs/MOVEMENT_ENGINE.md.
 from .model import Route, Segment, LocationFix, load_route, parse_route
 from .renderer import RouteRenderer
 from .validator import validate, validate_or_raise, ValidationResult
+from .snapper import snap_route, snap_waypoints, SnapError
 
 __all__ = [
     "Route", "Segment", "LocationFix", "load_route", "parse_route",
     "RouteRenderer", "validate", "validate_or_raise", "ValidationResult",
+    "snap_route", "snap_waypoints", "SnapError",
 ]

@@ -15,7 +15,7 @@ import sys
 # make `backend` importable when run from the repo root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.movement import load_route, RouteRenderer, validate  # noqa: E402
+from backend.movement import load_route, RouteRenderer, validate, snap_route  # noqa: E402
 
 
 def main():
@@ -23,9 +23,14 @@ def main():
     ap.add_argument("route", help="path to a route .json")
     ap.add_argument("--out", help="output .gpx path (default: alongside the route)")
     ap.add_argument("--seed", type=int, default=0, help="jitter seed (reproducible builds)")
+    ap.add_argument("--no-snap", action="store_true", help="skip Valhalla road-snapping")
     args = ap.parse_args()
 
     route = load_route(args.route)
+    if not args.no_snap:
+        route, snap_warnings = snap_route(route)
+        for w in snap_warnings:
+            print(f"  ! {w}")
     fixes = RouteRenderer(seed=args.seed).render(route)
     result = validate(fixes)
 
@@ -40,12 +45,12 @@ def main():
     print(f"max accel:  {result.max_accel:.2f} m/s^2")
 
     for w in result.warnings:
-        print(f"  ⚠ {w}")
+        print(f"  ! {w}")
 
     if not result.ok:
         print("\nVALIDATION FAILED:")
         for e in result.errors:
-            print(f"  ✗ {e}")
+            print(f"  x {e}")
         sys.exit(1)
     print("validation: OK" + (f" ({len(result.warnings)} warning(s))" if result.warnings else ""))
 

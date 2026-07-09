@@ -1,0 +1,15 @@
+{
+  "name": "miami-drift",
+  "description": "Fast run out of downtown Miami to the airport on the Dolphin Expressway (SR-836), Valhalla-snapped to real roads and driven at ~80 mph so Life360 catches sustained high speed instead of just the teleport. Mostly limited-access expressway (few sharp turns) so 80 mph stays believable and validates. Sets up the future 'arrive at the airport' story.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 35.7,
+      "snap": true,
+      "waypoints": [
+        [25.78100, -80.19400],
+        [25.79300, -80.27800]
+      ]
+    }
+  ]
+}
