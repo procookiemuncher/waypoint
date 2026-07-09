@@ -13,6 +13,7 @@ env/
 
 # Env / secrets
 .env
+data/life360.creds.json
 *.local
 
 # iOS device pairing records / secrets — NEVER commit

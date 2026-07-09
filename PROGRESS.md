@@ -7,6 +7,34 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Built Life360 Observer Increment 1 (auth + one-shot read)
+
+Built the read-path core per docs/LIFE360_OBSERVER.md. **Nothing on-device yet — code is done and
+verified offline; needs a live run with the owner's real Life360 login.**
+
+**What landed:**
+- `backend/life360/` — `client.py` (the ONLY place that speaks Life360's API: `authenticate()` →
+  bearer token, `circles()`, `members()`; all urllib/HTTP/JSON quarantined; own `Life360Error`),
+  `model.py` (`MemberState` + a compact `oneline()`), `__init__.py`. **stdlib urllib, no new deps.**
+- `tools/observe.py` — one-shot CLI: loads `.env` (tiny stdlib parser), authenticates, lists circles,
+  prints each member's current server state; `--member` filter.
+- Creds via **`.env`** (owner's choice): `LIFE360_USER` / `LIFE360_PASS`. `.env` was already
+  gitignored; added `data/life360.creds.json` too. Committed `.env.example` as the template.
+- **API specifics cribbed from pnbruckner/life360** (WebFetched the source): host
+  `api-cloudfront.life360.com`, `POST /v3/oauth2/token` (Basic client token), `GET /v4/circles`,
+  `GET /v3/circles/{id}/members`. Android user-agent set.
+
+**Verified offline:** imports clean, `oneline()` formats, `--help` works, and the no-credentials path
+prints a helpful message + exits 2. Fixed an em-dash→cp1252 mojibake in one print (repo precedent:
+keep console output ASCII on Windows). Could NOT test auth/reads — no creds here, by design.
+
+**Next (owner):** copy `.env.example` → `.env`, fill in your Life360 login, run
+`.venv\Scripts\python.exe tools\observe.py`. Confirm it prints your real location, and check whether
+`speed` reads in **mph** (the one live unknown). Then Increment 2 (watch loop + JSONL logging) so we
+can run the emoji A/B instrumented.
+
+---
+
 ## 2026-07-09 — Designed the Life360 Observer (server-side telemetry read path)
 
 **Why:** every on-device experiment currently ends with "owner eyeballs the app" — slow, subjective,
