@@ -61,11 +61,11 @@ Folded docs/research/ findings into the core:
 - [ ] **Per-edge speed via `trace_attributes`** (the *timing* half) — NOT done. Geometry is
   snapped but timing still comes from the segment's `speed_mps` / renderer. Needed for
   auto-realistic per-road speeds.
-- [ ] **Corner-aware slowing** — known gap surfaced building `miami-drift`: at ~80 mph a 1 s
+- [x] **Corner-aware slowing** — known gap surfaced building `miami-drift`: at ~80 mph a 1 s
   step (~36 m) *cuts* sharp snapped-road turns, so measured speed dips→recovers and the accel
   gate flags it (real cars slow for turns; the renderer doesn't). Worked around for now by
   routing the fast preset on limited-access expressway (few sharp turns). Add a curvature/
-  lateral-accel speed cap to the renderer so surface-street fast routes validate + look real.
+  lateral-accel speed cap to the renderer so surface-street fast routes validate + look real. — DONE 2026-07-08: `plan_speeds()` in renderer.py (curvature limit + backward/forward pass); `miami-cruise` drives real streets at ~18 mph slowing for corners.
 
 ### Increment 3 — `play_route` (device)
 - [ ] `LocationBackend.play_route(gpx_path, timing_noise_ms=0)` wrapping

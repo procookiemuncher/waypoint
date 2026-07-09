@@ -1,0 +1,21 @@
+{
+  "name": "miami-cruise",
+  "description": "Relaxed ~18 mph cruise through the downtown-Miami street grid (Valhalla-snapped to real roads), slowing for each corner like a real car, then arriving and parking for a few minutes. Built to read as natural driving in Life360 - believable speed, smooth gliding pin, clean arrival.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 8.0,
+      "snap": true,
+      "waypoints": [
+        [25.76490, -80.19180],
+        [25.77400, -80.19000],
+        [25.78050, -80.19600],
+        [25.78300, -80.20600]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 150
+    }
+  ]
+}
