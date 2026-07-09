@@ -7,6 +7,20 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Added the Waypoint Map Visualizer (first UI artifact), committed + pushed
+
+Owner added **`Waypoint Map Visualizer/export/Waypoint.html`** — a single self-contained ~530 KB
+bundled HTML single-page app (its own loader/splash; no external assets). Committed + pushed as-is at
+the owner's request. Not yet wired into anything — it's a standalone visualizer, separate from the
+planned FastAPI+Leaflet UI in AGENTS.md (M3). Left the folder name with spaces as given.
+
+**Note:** this is a prebuilt/exported bundle, not source — if we want to iterate on it, we'll want the
+source project, not just the export. Flagging for later; no action taken now beyond committing it.
+
+**Next:** unchanged — owner on the token → emoji A/B path; flight-gap research brief still to re-run.
+
+---
+
 ## 2026-07-09 — Committed 2 of 3 mega-prompt research briefs (geofence arrival + account safety)
 
 The research agent produced two of the three briefs from the mega prompt and I committed/pushed them:
