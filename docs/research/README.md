@@ -3,7 +3,7 @@ title: Research index
 status: research
 last_verified: 2026-07-08
 device_verified: none           # the whole corpus is desk research pending the Phase A on-device gates
-open_gates: [isSimulatedBySoftware, movement-emoji, flight-gap]
+open_gates: [isSimulatedBySoftware, movement-emoji, motion-and-fitness-off, flight-gap]
 source_tier: mixed
 recheck_if: [Life360 app update, iOS point release, pmd3 version bump]
 ---
@@ -26,6 +26,7 @@ recheck_if: [Life360 app update, iOS point release, pmd3 version bump]
 | [valhalla-road-snapping.md](valhalla-road-snapping.md) | How to snap waypoints to roads and get per-edge speed via Valhalla — unblocks the movement engine's Increment 2 (build-time road-snapping). |
 | [life360-notification-triggers.md](life360-notification-triggers.md) | Can we trigger crash / "landed at airport" / *every* Life360 notification? The injection surface (location only), a full catalog + spoofability matrix, and the method for the reachable ones. |
 | [oss-spoofer-landscape.md](oss-spoofer-landscape.md) | Who's built OSS spoofers, has anyone done Find My + Life360, what notifications people actually trigger, and the anti-spoof arms race. |
+| [coremotion-injection-feasibility.md](coremotion-injection-feasibility.md) | Can we inject/override/**suppress** CoreMotion so Life360 shows "driving" on a still phone? Exhaustive pmd3/DVT/DTX enumeration, XCTest/Simulator + jailbreak/TrollStore reality on iOS 26.6, and the one no-JB lever: the Motion&Fitness-OFF suppress test. |
 
 ---
 
@@ -88,6 +89,17 @@ recheck_if: [Life360 app update, iOS point release, pmd3 version bump]
    movement emoji**; the honest "landed" substitute is a **geofence "arrived at CDG"** (airports
    are **not** auto-Places — save one manually). Full catalog + method:
    life360-notification-triggers.md. OSS state of the art: oss-spoofer-landscape.md.
+
+9. **Motion injection is a HARD WALL — but there's one no-jailbreak lever left: *suppression*.**
+   Exhaustively confirmed (pmd3 9.33.1 source read locally + go-ios/libimobiledevice + Apple docs +
+   the maintainer's own words): **nothing on this stack injects CoreMotion** — the only sensor
+   channel is GPS lat/lon, CoreMotion is read-only per-process from the motion coprocessor, XCTest/
+   Simulator can't touch a real device, and iOS 26.6 has no jailbreak/TrollStore (caps at 17.0) — and
+   even a JB would need a system-wide motion-faking tweak that exists only on Android. So we can't make
+   Life360 *see* "automotive." **But** we may remove the *contradiction* by turning Life360's
+   **Motion & Fitness permission OFF**, letting its speed-derived emoji fall back to GPS — a Settings
+   toggle, testable now with `emoji-test.json`. Might work, might hit an `isDriving`-flag wall.
+   Full proof + the A/B test: coremotion-injection-feasibility.md.
 
 ---
 

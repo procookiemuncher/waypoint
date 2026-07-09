@@ -84,6 +84,13 @@ pmd3/DVT exposes location simulation only (DeepWiki: "location simulation is the
 environmental simulation capability"). Xcode/Instruments/XCTest simulate **location**, not
 motion, on real devices. Confirmed dead end for the accelerometer.
 
+> **Exhaustive backing (2026-07-09):** this claim is now proven from primary sources —
+> `coremotion-injection-feasibility.md` enumerates the *entire* pmd3 9.33.1 DVT/DTX surface (read
+> locally), the XCTest/Simulator boundary, and the jailbreak/TrollStore reality on iOS 26.6. It also
+> reframes the goal: injection is impossible, but **suppressing** Life360's Motion & Fitness input
+> (a Settings toggle) is the one no-jailbreak lever that could let the speed-derived emoji show —
+> the decisive open gate, with the A/B test spelled out there.
+
 ## Cheapest on-device experiment (Phase A)
 
 Run **one long, believable constant-speed drive** and watch the member's icon in Life360:

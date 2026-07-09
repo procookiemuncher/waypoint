@@ -7,6 +7,47 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Research: motion injection is a hard wall; the one no-JB lever is Motion&Fitness-OFF *suppression* (new brief)
+
+Owner asked, exhaustively: is there ANY software way to inject/override/**suppress** CoreMotion on our
+stack (owned non-JB iPhone, iOS 26.6, pmd3 userspace tunnel, Windows) so Life360 reads "driving" on a
+physically still phone? Ran it as a 5-front dive — I read the **installed pmd3 9.33.1 source firsthand**
+for the primary evidence and fanned out four web-research agents (DVT/DTX + condition_inducer; XCTest/
+CoreMotion/Simulator; TrollStore/jailbreak on 26.6; Life360 Motion&Fitness behavior). All cited +
+adversarially verified. New doc: **docs/research/coremotion-injection-feasibility.md**.
+
+**Verdict — INJECTION: no, HIGH confidence, primary-sourced.** The complete DVT/DTX surface reachable
+via the mounted DDI is 13 Instruments services + the XCTest interfaces, and **not one carries a motion
+selector** — the only sensor channel is `LocationSimulation` (lat/lon; maintainer doronz88 confirms in
+#340/#1405 that Apple exposes nothing more). `condition_inducer` is Network-Link + Thermal only. The
+`AccelerometerCapability`/etc. strings in pmd3 are read-only MobileGestalt *capability booleans*, not a
+write path. CoreMotion is read-only, per-process, vended from the motion coprocessor (a still phone =
+`stationary`, GPS-independent). XCTest/XCUIDevice have no real-device motion API; the Simulator can fake
+motion but is a Mac process that never touches a handset (and none of it reaches Windows). And there's no
+jailbreak/TrollStore for 26.6 (caps at iOS 17.0) — even one would need a system-wide CoreMotion-faking
+tweak that has **only ever been built on Android**, never iOS. So the still-phone contradiction is a hard
+architectural wall, not an engine bug — this closes the "can we fake it" question.
+
+**The one thing that's NOT dead — SUPPRESSION.** We can't make Life360 *see* fake motion, but we can
+**deny it the real one**: turn Life360's **Motion & Fitness permission OFF** (Settings toggle, no code,
+no JB) and bet its speed-derived emoji falls back to GPS-only, removing the contradiction. MEDIUM
+confidence, **untested** — the wrinkle is Life360's API also has an `isDriving` flag separate from speed
+that *might* still gate the display emoji. This is now the highest-value on-device action for the emoji
+goal, and `data/routes/emoji-test.json` was already built for it.
+
+**Docs touched:** new coremotion-injection-feasibility.md; added it to the research README index +
+TL;DR #9 + a new `motion-and-fitness-off` open gate; cross-linked activity-emoji-coremotion.md §4 to the
+exhaustive backing. Bonus finding logged: pmd3 Discussion #1747 says the DVT `simulate-location` path
+does **not** set `isSimulatedBySoftware` — consistent with the spoof already showing on Life360 (gate #0
+looks clear). No code touched.
+
+**Next (owner, on-device):** run `spoof.cmd emoji-test` **twice** — Motion & Fitness ON then OFF — and
+report whether the car emoji + mph appear. Emoji with it OFF ⟹ GPS-only fallback works ⟹ flip the emoji
+doc to YES. No emoji either way ⟹ accept the wall, keep the geofence "arrived at CDG" north star (which
+this permission doesn't affect). Same test the prior entry queued — now with the full theory behind it.
+
+---
+
 ## 2026-07-09 — On-device: driving emoji won't hold on a still phone (CoreMotion contradiction) + emoji-test route
 
 **Owner ran `miami-cruise` at home overnight. It plays fine, but the driving (car) emoji + mph
