@@ -7,6 +7,39 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Designed the Life360 Observer (server-side telemetry read path)
+
+**Why:** every on-device experiment currently ends with "owner eyeballs the app" — slow, subjective,
+and limited to what the app draws. The CoreMotion feasibility brief
+(docs/research/coremotion-injection-feasibility.md §7 + sources) surfaced that Life360's own server
+data model exposes each member's **speed** and an **`isDriving`** flag via the same unofficial API the
+Home Assistant integration uses. So we can *read what Life360 actually sees* instead of guessing.
+
+**Wrote docs/LIFE360_OBSERVER.md** — full design + incremental build plan for a read-only telemetry
+tool (the mirror of the spoof write path):
+- **Architecture:** `backend/life360/` (client + `MemberState` model — the ONLY place that speaks the
+  Life360 HTTP API, quarantined like the pmd3 adapter) + `tools/observe.py` (one-shot | watch | log).
+  Strictly read-only; no coupling to `backend/movement/`. **No new deps** — stdlib `urllib` like
+  snapper.py.
+- **Payoff:** (1) settles the driving-emoji question by *watching `isDriving` flip* (or not) during a
+  spoof; (2) quantifies the "stutter" (real server update cadence); (3) confirms the CDG geofence
+  arrival server-side; (4) turns route tuning into emitted-vs-observed measurement.
+- **Build plan:** Inc 1 auth + one-shot read (also pins the unknown speed unit / field names on first
+  live call) → Inc 2 watch loop + JSONL logging → Inc 3 the emoji A/B *instrumented* (ON vs OFF, by
+  data) → Inc 4 offline `correlate.py` (align JSONL against the played GPX).
+- **Risks flagged:** auth/captcha is the #1 fragility (isolated in `authenticate()`); speed unit
+  resolved empirically in Inc 1; `isDriving` semantics are exactly what Inc 3 measures. Creds via env
+  var / gitignored file, never in the repo.
+
+**Nothing built yet — this is the design.** Pairs with the motion-injection brief below: since true
+injection is a hard wall, this observability path is how we squeeze the most out of the levers we *do*
+have (the Motion & Fitness A/B, route tuning, arrival confirmation).
+
+**Next:** build Observer Increment 1 (auth + one-shot), then run the emoji A/B with it watching so the
+result is `isDriving` data, not a flickering icon.
+
+---
+
 ## 2026-07-09 — Research: motion injection is a hard wall; the one no-JB lever is Motion&Fitness-OFF *suppression* (new brief)
 
 Owner asked, exhaustively: is there ANY software way to inject/override/**suppress** CoreMotion on our
