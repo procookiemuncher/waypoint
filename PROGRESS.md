@@ -7,6 +7,20 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Wrote the Observer at-home setup runbook
+
+Owner is at work; will do the token capture at home. Wrote **docs/OBSERVER_SETUP_AT_HOME.md** — a
+step-by-step runbook to get `observe.py` printing live data: an optional 30-sec email+password test,
+then two token-capture methods (Method A: web login + browser DevTools; Method B: mitmproxy capture
+off the iPhone, with cert-trust + proxy-cleanup steps), then how to confirm it works and what to
+report back (does it print location? what does `speed` read → mph?). Troubleshooting section included.
+No code change — documentation only.
+
+**Next (owner, at home):** follow the runbook, set `LIFE360_TOKEN` in `.env`, run `observe.py`, report
+location + speed. Then Increment 2 (watch loop + JSONL) and the instrumented emoji A/B.
+
+---
+
 ## 2026-07-09 — Observer auth: owner's account is passwordless → added token-based login
 
 **On-device result:** running `observe.py` returned **403 "Invalid login and password."** The client
