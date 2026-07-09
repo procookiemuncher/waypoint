@@ -65,14 +65,17 @@ class TestRenderWithPlan(unittest.TestCase):
         return RouteRenderer(seed=1).render(Route(name="t", segments=[seg]))
 
     def test_corner_route_validates_and_slows(self):
-        fixes = self._render(_l_shape())
+        fixes = self._render(_l_shape(arm=40))
         res = validate(fixes)
         self.assertTrue(res.ok, res.errors)                 # no accel/teleport hard-fails
         self.assertLessEqual(res.max_accel, 2.85)
         self.assertLess(res.max_smoothed_speed, 8.0 + 0.5)  # never exceeds cruise
-        # it actually slowed somewhere in the middle (the corner), below the straight cruise
+        # the slowdown must happen AT the corner region, not just anywhere (e.g. end decel)
         speeds = _smoothed_speeds(fixes)
-        self.assertLess(min(speeds), 7.0)
+        corner = min(speeds[30:70])          # region around the 90-degree elbow
+        cruising = max(speeds[5:25])         # first straight, away from start ramp
+        self.assertLess(corner, 6.0)         # genuinely slowed FOR THE CORNER
+        self.assertGreater(cruising, 7.0)    # and was cruising on the straight before it
 
     def test_straight_route_reaches_cruise(self):
         fixes = self._render(_east(60))
