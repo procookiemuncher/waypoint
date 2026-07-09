@@ -7,7 +7,13 @@
 >
 > Origin: `docs/research/coremotion-injection-feasibility.md` §7 + its sources surfaced that
 > Life360's own server data model exposes each member's **speed** and an **`isDriving`** flag via the
-> same unofficial API the Home Assistant integration uses. This doc turns that into a tool.
+> same unofficial API the community integrations use. This doc turns that into a tool.
+>
+> **Durable reference (corrected per SWE-2 review, 2026-07-09):** Home Assistant's *built-in* `life360`
+> integration is now a **removal stub** — do not cite it. The living references are **`pnbruckner/ha-life360`**
+> (the custom integration) and its standalone **`pnbruckner/life360`** Python package, whose `api.py` /
+> `const.py` document the exact endpoints, the client token, and the fields we need. We crib the flow from
+> there (see §3, §9) rather than reverse-engineer it. Full URLs in §14.
 
 ## 1. Why this exists (the payoff)
 
@@ -22,8 +28,11 @@ server-side numbers** Life360 holds about our member, giving us a real feedback 
 2. **Measure the "stutter."** See exactly how often Life360's server receives a new position — if it's
    every ~3 s, that confirms the earlier "Life360's refresh cadence, not our engine" diagnosis with
    data, not a guess.
-3. **Confirm the CDG arrival fired — server-side.** Watch the member cross the geofence and the
-   arrival reflect, instead of hoping a push lands on someone else's phone.
+3. **Confirm the CDG arrival's *cause* — server-side.** Watch the member cross the geofence and dwell,
+   with the Place/location fields Life360 holds — instead of only hoping. ⚠ **Scoped (SWE-2 review):**
+   this proves *"we entered and dwelled in the Place"* (the trigger condition), **not** that a push was
+   actually *delivered* — unless we find a notification-history endpoint that exposes deliveries, which
+   is unconfirmed. Treat it as strong evidence the arrival *should* fire, not proof it did.
 4. **Turn route tuning into a measurable loop.** If the engine emits 18 mph but Life360 reports 9 mph
    (sparse sampling), we can finally *see* the gap and tune duration/spacing to close it.
 
@@ -51,8 +60,10 @@ stay just as cleanly quarantined (AGENTS.md ground rule #5, applied by analogy):
 
 ## 3. The Life360 API (and its fragility)
 
-Unofficial, reverse-engineered — the same endpoints the Home Assistant `life360` integration and the
-`pylife360`-class libraries use. Base host historically `https://api-cloudfront.life360.com`.
+Unofficial, reverse-engineered — the same endpoints the **`pnbruckner/life360`** package (and its
+`ha-life360` custom integration) use; crib the exact host, paths, client token, and field names from
+that package's `api.py` / `const.py` (§14) rather than guess. Base host historically
+`https://api-cloudfront.life360.com`.
 
 **Auth flow (the fragile part — design for it to change):**
 1. `POST /v3/oauth2/token.json` with a **hardcoded Basic client credential** (the well-known public
@@ -70,9 +81,9 @@ Unofficial, reverse-engineered — the same endpoints the Home Assistant `life36
 
 ## 4. Data model
 
-One clean dataclass, populated from a member's `location` block. **Field names/units must be confirmed
-on first real connect** (see build Increment 1) — the API is undocumented and speed units in
-particular are reported inconsistently by third parties:
+One clean dataclass, populated from a member's `location` block. The field set below is **confirmed
+present** by the `pnbruckner/life360` source (lat, lon, GPS accuracy, speed, driving, battery, Wi-Fi
+state — SWE-2 review); the one thing still to confirm live is the **speed unit** (see Increment 1):
 
 ```python
 @dataclass
@@ -80,7 +91,7 @@ class MemberState:
     name: str
     lat: float
     lon: float
-    speed_raw: float | None      # as Life360 returns it — UNIT UNCONFIRMED (convert after verifying)
+    speed_raw: float | None      # life360 pkg documents this as MPH — VERIFY live in Inc 1 before trusting
     is_driving: bool | None      # the isDriving flag — the key emoji signal to watch
     battery: float | None
     wifi_state: bool | None
@@ -90,8 +101,9 @@ class MemberState:
     fetched_ts: int              # when WE polled (for cadence measurement)
 ```
 
-`speed_raw` stays raw until a device test pins the unit; a `speed_mps` conversion is added once
-confirmed (compare against a known-speed emoji-test run — we know exactly what mph we emitted).
+`speed_raw` is documented as **MPH** by the `life360` package, but we still confirm it on first run
+against a known-speed emoji-test leg (we know exactly what mph we emitted); a `speed_mps` conversion is
+added once confirmed.
 
 ## 5. Modes of operation
 
@@ -146,6 +158,14 @@ not belong in the client. Keeps the read path clean.
 already does for Valhalla. No `requests`, no added wheels. Keeps the read path as light and
 portable as the offline core.
 
+> **Why not just use the `life360` package? (SWE-2 review)** It's **async / `aiohttp`-based**, which
+> would drag a new runtime dependency and an event loop into an otherwise stdlib, synchronous tool —
+> conflicting with the repo's no-new-deps rule. Since we only hit **three simple JSON endpoints**, we
+> reimplement them over `urllib`, but **crib the auth flow, client token, endpoint paths, and field
+> names verbatim from that package's source** (§14) so we inherit its hard-won API knowledge without
+> the dependency. If Life360's auth ever gets too hairy to maintain by hand (e.g. captcha), revisit
+> vendoring the package as the fallback.
+
 ## 10. Module layout
 
 ```
@@ -165,8 +185,8 @@ tools/
 - [ ] `client.py`: `authenticate()` → bearer token; `circles()`; `members(circle_id)`.
 - [ ] `model.py`: `MemberState`; map the members JSON into it.
 - [ ] `tools/observe.py` one-shot: print the target member's current state.
-- [ ] **Verify on-device:** run it, confirm it prints your real location — and **pin down the
-      `speed` unit and the exact field names** here (the one thing only a live call can settle).
+- [ ] **Verify on-device:** run it, confirm it prints your real location — and **confirm the speed
+      unit is MPH** (as the `life360` package documents) against a known-speed leg here.
 - **Exit criteria:** one command prints a correct, current `MemberState` for you.
 
 ### Increment 2 — watch loop + logging
@@ -191,7 +211,8 @@ tools/
 
 - **Auth breakage / captcha** (most likely) — isolated in `authenticate()`; document the client-token
   refresh if it rotates. If captcha appears on the account, this path may need a one-time manual token.
-- **Speed unit unknown** — resolved empirically in Increment 1 against a known emoji-test speed.
+- **Speed unit** — documented as MPH by the `life360` package; still confirmed empirically in
+  Increment 1 against a known emoji-test speed before we trust it.
 - **`isDriving` semantics** — whether it's the Arity/CoreMotion signal or something else is exactly
   what Increment 3 measures; don't assume.
 - **Rate limiting** — mitigated by the 4 s default + backoff; if it bites, widen the interval.
@@ -204,4 +225,11 @@ tools/
 - A UI — this is CLI telemetry; a UI could consume the JSONL later if ever wanted.
 - Replacing the on-device check entirely — the observer is server-side truth; Find My / the app UI
   remain useful cross-checks (§ the research's Find-My isolation idea).
-```
+
+## 14. References (crib the API from these — verified by SWE-2, 2026-07-09)
+
+- **`pnbruckner/life360` — endpoints:** https://raw.githubusercontent.com/pnbruckner/life360/master/life360/api.py
+- **`pnbruckner/life360` — constants (host, client token, field keys):** https://raw.githubusercontent.com/pnbruckner/life360/master/life360/const.py
+- **`ha-life360` — device-tracker field mapping (speed=MPH, driving, battery, wifi, gps accuracy):** https://raw.githubusercontent.com/pnbruckner/ha-life360/master/custom_components/life360/device_tracker.py
+- **`ha-life360` — manifest (the maintained custom integration):** https://raw.githubusercontent.com/pnbruckner/ha-life360/master/custom_components/life360/manifest.json
+- **HA core `life360` = removal stub (do NOT cite as a live reference):** https://raw.githubusercontent.com/home-assistant/core/dev/homeassistant/components/life360/__init__.py
