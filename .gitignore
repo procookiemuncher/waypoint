@@ -30,3 +30,4 @@ Thumbs.db
 # Installed agent skills / tooling (personal, not project source)
 .agents/
 skills-lock.json
+.superpowers/
