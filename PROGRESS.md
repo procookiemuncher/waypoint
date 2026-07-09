@@ -7,6 +7,26 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Committed 2 of 3 mega-prompt research briefs (geofence arrival + account safety)
+
+The research agent produced two of the three briefs from the mega prompt and I committed/pushed them:
+- **docs/research/life360-geofence-arrival-mechanics.md** — the exact parameters that fire "arrived
+  at <Place>" (radius, outside→inside crossing, dwell/latency, Place-create API). Directly unblocks
+  the CDG arrival route (M1.5 / SWE-2 #4). Open gates: geofence-crossing-required,
+  geofence-dwell-latency.
+- **docs/research/life360-account-safety-detection.md** — server-side spoof/impossible-travel
+  consequences + API-access risk (poll cadence, ban risk) so we don't flag the owner's real account.
+  Open gates: account-flagging-risk, api-poll-cadence-safe.
+
+**Still missing:** the third brief (flight-gap / stop-spoof behavior) was NOT produced — re-run that
+part of the mega prompt. **Also:** owner mentioned adding a UI, but there is **no UI anywhere in this
+working copy** (no web/ui/frontend, no html/css/js — searched tracked/untracked/ignored). It wasn't
+committed because it isn't here; owner to confirm where it was saved.
+
+**Next:** re-run the flight-gap research; locate/re-add the UI; owner still on the token → emoji A/B path.
+
+---
+
 ## 2026-07-09 — Built Observer Increment 4 (tools/correlate.py) — the offline analysis loop is done
 
 SWE-2 concurred on the ranking: #1 (live-verify + emoji A/B) is token/phone-gated, so the highest
