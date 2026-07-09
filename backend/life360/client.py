@@ -73,6 +73,13 @@ class Life360Client:
 
     # -- auth -----------------------------------------------------------------
 
+    def use_token(self, access_token: str, token_type: str = "Bearer") -> None:
+        """Skip login and use a pre-obtained bearer token directly. This is the path for
+        passwordless (phone + SMS) accounts, where username/password login can't work — obtain a
+        token out-of-band and hand it here. See docs/LIFE360_OBSERVER.md §3."""
+        self._access_token = access_token
+        self._token_type = token_type or "Bearer"
+
     def authenticate(self, username: str, password: str) -> None:
         """Exchange username/password for a bearer token. Raises Life360Error on failure."""
         body = urllib.parse.urlencode({
