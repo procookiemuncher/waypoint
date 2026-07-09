@@ -7,6 +7,46 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — On-device: driving emoji won't hold on a still phone (CoreMotion contradiction) + emoji-test route
+
+**Owner ran `miami-cruise` at home overnight. It plays fine, but the driving (car) emoji + mph
+would NOT reliably show.** Same day, driving to work for real, the car emoji appears with no
+problem — **even when going slow.** This is the cleanest confirmation yet of the two-subsystem
+split in docs/research/activity-emoji-coremotion.md:
+
+- **Real drive:** the motion coprocessor reports `CMMotionActivity = automotive` (accelerometer +
+  gyro feel the car). Once classified "in a car," the emoji **holds through slow patches** because
+  it's motion-derived, not instantaneous-speed-derived.
+- **Spoof on a still phone:** CoreMotion reports `stationary` no matter what the (spoofed) GPS
+  says → Life360 gets a **contradiction** (GPS "moving 18 mph" vs accelerometer "not moving") and
+  suppresses the car emoji. We inject lat/lon only; the accelerometer isn't on the DVT bus and
+  can't be faked without a jailbreak. **This is a hard wall, not an engine bug.** (Note the very
+  first `miami-demo` run *did* flash the car emoji on the teleport — the speed-derived path can
+  fire briefly before the "stationary" vote reasserts.)
+
+**Not flipping the doc verdict to NO yet** — the decisive test is still pending: does turning
+**Life360's Motion & Fitness permission OFF** make it fall back to GPS-only activity (removing the
+contradicting "stationary" signal)? That's the LOW-confidence hypothesis in the research brief and
+the single most promising lever.
+
+**Built `data/routes/emoji-test.json` for that test** — a single steady **~35 mph (15.6 m/s)** run
+west on the Dolphin Expressway (SR-836), Valhalla-snapped, **no trailing stop**, tuned to Life360's
+activity gates (above the ~15 mph walk/drive split, below the 80 mph speeding flag, >1.5 mi,
+~10 min sustained). Built + validated offline: 606 fixes, 10.1 min, 15.7 m/s smoothed (57 km/h),
+1 warning (the on-ramp launch accel, harmless). Run: `spoof.cmd emoji-test`.
+
+**Confirmed Motion & Fitness is orthogonal to the airport goal:** the geofence "arrived at CDG" is
+pure location (unaffected by the permission); only the *literal* flight "landed" push wants the
+barometer/altitude behind Motion & Fitness — and that's unfakeable on a still phone anyway. So
+toggling it OFF for the emoji test costs the airport project nothing.
+
+**Next (owner, on-device):** run `spoof.cmd emoji-test` **twice** — once with Life360's Motion &
+Fitness ON, once OFF — and report whether the car emoji + mph appear. Emoji with it OFF ⟹
+GPS-only fallback works ⟹ Phase A #1 = YES (flip the doc). Still no emoji either way ⟹ the emoji is
+motion-gated on a still phone ⟹ Phase A #1 = NO (accept the wall, keep the geofence arrival goal).
+
+---
+
 ## 2026-07-08 — On-device: Paris/no-VPN confirmed · stutter is downstream, not the engine · flight-push manual-toggle idea
 
 **Three findings from the owner's testing.**
