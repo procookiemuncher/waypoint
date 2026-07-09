@@ -7,6 +7,47 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — Corner-aware speed realism (slow for turns) + miami-cruise street route
+
+**Why:** the 80 mph `miami-drift` run moved the pin but Life360 showed **no mph** (an earlier slow
+spoof showed ~10 mph). Diagnosis: Life360 derives speed from displacement between its own sparse
+samples and **rejects implausible values** — a fast, corner-cutting track yields garbage speed. So
+the realism lever is a *slow, smooth* drive that **slows for corners** like a real car. Owner wants
+a believable 10-20 mph city drive that reads as natural driving. Full design + plan in
+`docs/superpowers/specs/2026-07-08-corner-aware-speed-realism-design.md` and
+`docs/superpowers/plans/2026-07-08-corner-aware-speed-realism.md`.
+
+**Built (Increment 2 corner-aware slowing — DONE):**
+- `plan_speeds()` in `backend/movement/renderer.py` — per-vertex speed plan from road curvature
+  (Menger-radius cornering limit `v=sqrt(3.5·R)`), then a **backward pass** (brake *before* the
+  corner) and **forward pass** (accelerate out, cap at cruise). Two new constants in `model.py`
+  (`CORNER_LAT_ACCEL_MPS2=3.5`, `CORNER_MIN_SPEED_MPS=2.0`).
+- The renderer's 1 Hz integrator now **follows the plan** instead of a flat cruise — slows into
+  turns, speeds up on straights, still jerk-limited.
+- **`data/routes/miami-cruise.json`** — downtown-Miami street loop, snapped to real roads, ~18 mph,
+  slowing for every corner, then an arrival dwell. Run: `spoof.cmd miami-cruise`. (~14 min — the
+  snapped street path is longer than crow-flies; kept because more Life360 sampling = better.)
+- Tests: `tests/test_speed_planning.py` (unittest, stdlib) — 7 passing (straight holds cruise,
+  corner dips *at the elbow* then recovers, plan is accel-feasible, sparse rest-to-rest legs ramp).
+
+**Bug caught + fixed in the final review (Critical):** `plan_speeds` collapsed **2-waypoint
+rest-to-rest** legs to `[0,0]` → the whole leg crawled at 0.4 m/s. This broke the non-snapped
+routes (`miami-demo`, `demo-drive`) and every route's straight-line fallback. Root cause was plan
+*resolution* — 2 vertices can't hold a ramp-up/cruise/ramp-down profile. Fixed by **densifying**
+sparse legs to ~15 m spacing before planning (`_densify` in renderer.py). Re-validated all routes:
+miami-demo 11.6 m/s, demo-drive 14.0, miami-drift 35.8 (unchanged), miami-cruise 8.1.
+
+Executed via subagent-driven development (implementer + reviewer per task, opus final review).
+
+**Deferred (unchanged):** Valhalla `trace_attributes` per-edge *speed* (timing half of Increment 2).
+
+**Next (owner, on-device):** run `spoof.cmd miami-cruise` — watch Life360 for a smooth gliding pin,
+a believable mph that **dips on corners and rises on straights** (~18 mph), and a clean arrival.
+Report the mph reading: it confirms/refutes the speed-rejection diagnosis. If a smooth 18 mph drive
+*still* shows no mph, the cause is Life360's own sample cadence (→ tune duration), not cornering.
+
+---
+
 ## 2026-07-08 — First on-device movement result + road-snapping (Increment 2 geometry) + miami-drift
 
 **Owner ran the miami-demo on the phone. Two firsts, one bug.** ✅ It teleported to Miami and
