@@ -8,6 +8,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.movement.renderer import plan_speeds, _haversine  # noqa: E402
 from backend.movement.model import CORNER_MIN_SPEED_MPS  # noqa: E402
+from backend.movement import Route, Segment, RouteRenderer, validate  # noqa: E402
+from backend.movement.validator import _smoothed_speeds  # noqa: E402
 
 _LAT0 = 25.0
 _M_PER_DEG = 111_111.0
@@ -55,6 +57,28 @@ class TestPlanSpeeds(unittest.TestCase):
                 continue
             implied = abs(v[i] ** 2 - v[i - 1] ** 2) / (2 * d)  # |d(v^2)|/(2 ds) = |accel|
             self.assertLessEqual(implied, a_lon + 0.05)
+
+
+class TestRenderWithPlan(unittest.TestCase):
+    def _render(self, waypoints, cruise=8.0):
+        seg = Segment(mode="drive", waypoints=waypoints, speed_mps=cruise)
+        return RouteRenderer(seed=1).render(Route(name="t", segments=[seg]))
+
+    def test_corner_route_validates_and_slows(self):
+        fixes = self._render(_l_shape())
+        res = validate(fixes)
+        self.assertTrue(res.ok, res.errors)                 # no accel/teleport hard-fails
+        self.assertLessEqual(res.max_accel, 2.85)
+        self.assertLess(res.max_smoothed_speed, 8.0 + 0.5)  # never exceeds cruise
+        # it actually slowed somewhere in the middle (the corner), below the straight cruise
+        speeds = _smoothed_speeds(fixes)
+        self.assertLess(min(speeds), 7.0)
+
+    def test_straight_route_reaches_cruise(self):
+        fixes = self._render(_east(60))
+        res = validate(fixes)
+        self.assertTrue(res.ok, res.errors)
+        self.assertGreater(res.max_smoothed_speed, 7.0)     # got up to ~cruise on the straight
 
 
 if __name__ == "__main__":
