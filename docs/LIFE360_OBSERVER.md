@@ -180,14 +180,18 @@ tools/
 
 ## 11. Build plan (incremental, each step verifiable)
 
-### Increment 1 — auth + one-shot read  🎯 first proof
-- [ ] `.gitignore` the creds file patterns.
-- [ ] `client.py`: `authenticate()` → bearer token; `circles()`; `members(circle_id)`.
-- [ ] `model.py`: `MemberState`; map the members JSON into it.
-- [ ] `tools/observe.py` one-shot: print the target member's current state.
-- [ ] **Verify on-device:** run it, confirm it prints your real location — and **confirm the speed
-      unit is MPH** (as the `life360` package documents) against a known-speed leg here.
-- **Exit criteria:** one command prints a correct, current `MemberState` for you.
+### Increment 1 — auth + one-shot read  🎯 first proof  🟡 CODE DONE (2026-07-09), live-verify pending
+- [x] `.gitignore` the creds file patterns (`.env` already ignored; added `data/life360.creds.json`).
+- [x] `client.py`: `authenticate()` → bearer token; `circles()`; `members(circle_id)`. Host/token/
+      endpoints cribbed from pnbruckner/life360; all HTTP/JSON quarantined; own `Life360Error`.
+- [x] `model.py`: `MemberState` + `oneline()`; JSON→dataclass mapping lives in the client.
+- [x] `tools/observe.py` one-shot: `.env` loader (stdlib), auth, list circles, print each member;
+      `--member` filter. Verified offline: imports, `--help`, and the no-creds path all work.
+- [ ] **Verify on-device (owner):** create `.env` from `.env.example`, run `tools/observe.py`,
+      confirm it prints your real location — and **confirm the speed unit is MPH** (as the `life360`
+      package documents) against a known-speed leg.
+- **Exit criteria:** one command prints a correct, current `MemberState` for you. *(Code ready;
+  awaits a live run with real credentials.)*
 
 ### Increment 2 — watch loop + logging
 - [ ] `--watch --interval` poll loop with backoff + token refresh.
