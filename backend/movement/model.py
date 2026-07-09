@@ -32,6 +32,13 @@ WALK_SPEED_CLAMP = (0.75, 2.4)        # clamp the sampled walk speed to a sane r
 DEFAULT_ACCEL_MPS2 = {WALK: 0.7, DRIVE: 1.8}   # peak accel; kept well under the ~2.85 wall
 DEFAULT_JERK_MPS3 = {WALK: 1.0, DRIVE: 2.0}    # rate-of-change of accel (ISO 15622 ≲2 m/s³)
 
+# --- Cornering (slow for turns like a real car) ---------------------------------
+# Lateral-acceleration budget when cornering: v_corner = sqrt(CORNER_LAT_ACCEL * radius).
+# 3.5 m/s^2 is brisk-but-believable street driving; exposed here so on-device feedback can tune
+# it without touching code. Floor keeps the tightest hairpins crawling rather than stalling.
+CORNER_LAT_ACCEL_MPS2 = 3.5
+CORNER_MIN_SPEED_MPS = 2.0
+
 # --- GPS noise -------------------------------------------------------------------
 # Default 1σ jitter (meters) when a segment omits jitter_m. Open-sky iPhone σ≈5 m; a "still"
 # phone still wanders a couple meters (never emit a pixel-frozen point).
