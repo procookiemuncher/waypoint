@@ -7,6 +7,37 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Built Observer Increment 4 (tools/correlate.py) — the offline analysis loop is done
+
+SWE-2 concurred on the ranking: #1 (live-verify + emoji A/B) is token/phone-gated, so the highest
+*coding* ROI right now is `correlate.py`. Built it.
+
+**`tools/correlate.py`** — aligns an Observer JSONL (`observe.py --log`) against the route GPX that was
+played, and reports the three things this whole effort exists to measure:
+- **Speed:** median observed vs emitted, a **unit guess** (mph / m/s / km/h from the ratio), and the
+  **under-read %** (sparse Life360 sampling smooths our speed down).
+- **isDriving timeline:** did the driving flag flip, and how far into the route — the direct
+  emoji-reachability answer.
+- **Server cadence:** min/median/max interval between distinct server updates — the "stutter,"
+  quantified.
+- **Aligns by position, not timestamp** (the GPX uses a synthetic 2020 epoch; the observer stamps real
+  wall-clock) — each sample matched to the nearest emitted GPX point. Read-only, stdlib.
+
+**Verified offline** against a synthesized JSONL + a built GPX: correctly reported MPH + an ~18%
+under-read + an `isDriving` flip at ~160s + 5s cadence; degrades cleanly on a no-speed/no-driving run.
+(Fixed a cp1252 mojibake — swapped `≈`/`×` for ASCII in the printed output, repo precedent.)
+
+**Observer status:** Inc 1 (auth/one-shot), Inc 2 (watch+JSONL), Inc 4 (correlate) all **code-complete
+and offline-verified**; only the **live run needs a token**. Inc 3 IS that live run (the instrumented
+emoji A/B) — nothing left to build for it.
+
+**Next (owner):** get `LIFE360_TOKEN` working → `observe.py --watch --log run.jsonl` during the emoji
+A/B (Motion & Fitness ON then OFF) → `correlate.py --log run.jsonl --gpx build/emoji-test.gpx`. That
+sequence answers the emoji question with data. Remaining cheap offline items if wanted: Valhalla
+`trace_attributes` per-edge speed, MOVEMENT_ENGINE.md doc-drift fix.
+
+---
+
 ## 2026-07-09 — Built Observer Increment 2 (watch loop + JSONL logging) — offline while owner's at work
 
 Owner is at work (no rig); asked for the highest-ROI offline SWE work. Analyzed the new

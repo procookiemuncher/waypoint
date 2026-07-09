@@ -229,10 +229,18 @@ tools/
 - **Exit criteria:** the driving-emoji gate is decided by data — flip
       `activity-emoji-coremotion.md` accordingly.
 
-### Increment 4 — correlation analysis (offline)
-- [ ] `tools/correlate.py`: load a JSONL + the played GPX, print emitted-vs-observed speed, the
-      `is_driving` timeline, and the server update interval.
-- **Exit criteria:** one report quantifies the speed gap and the stutter from a single run.
+### Increment 4 — correlation analysis (offline)  ✅ DONE (2026-07-09)
+- [x] `tools/correlate.py`: load a JSONL + the played GPX, print emitted-vs-observed speed (+ a
+      **unit guess** and under-read %), the `is_driving` timeline (did it flip, and how far in), and
+      the server update interval (the stutter). Read-only, stdlib.
+- [x] **Aligns by position, not timestamp** — the GPX uses a synthetic 2020 epoch while the observer
+      stamps real wall-clock, so each observed sample is matched to the nearest emitted GPX point
+      (the pin's location is the common reference).
+- [x] Verified offline against a synthesized JSONL + a built GPX: correctly reported mph + an ~18%
+      under-read + an `isDriving` flip + 5s cadence, and degraded gracefully on a no-speed/no-driving
+      run.
+- **Exit criteria met** (code): one report quantifies the speed gap, the emoji flag, and the stutter.
+  Real value lands once a live run's JSONL exists to feed it.
 
 ## 12. Risks & open questions
 
