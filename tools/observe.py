@@ -1,23 +1,33 @@
 """Life360 Observer CLI — read what Life360's servers currently report about your circle.
 
-Increment 1: one-shot read. Logs into YOUR Life360 account (creds from .env), lists your circles,
-and prints each member's current server-side state (location, speed, isDriving, battery, wifi).
-Read-only — it never writes anything to Life360. Watch/log modes land in Increment 2.
+Read-only — it never writes anything to Life360. Modes:
+  - one-shot (default): print each member's current state once and exit.
+  - --watch:            poll on an interval and print a timestamped line per sample.
+  - --log FILE:         also append every sample to FILE as JSONL (for offline correlation
+                        against a played route GPX — see tools/correlate.py, docs §7).
 
-    .venv\\Scripts\\python.exe tools\\observe.py                 # all members, all circles
-    .venv\\Scripts\\python.exe tools\\observe.py --member Juan    # just one member
+    .venv\\Scripts\\python.exe tools\\observe.py                        # one-shot, all members
+    .venv\\Scripts\\python.exe tools\\observe.py --member Juan           # one-shot, just Juan
+    .venv\\Scripts\\python.exe tools\\observe.py --watch --member Juan   # live tail
+    .venv\\Scripts\\python.exe tools\\observe.py --watch --log run.jsonl # tail + record
 
-Credentials: copy .env.example to .env and fill in LIFE360_USER / LIFE360_PASS. .env is
-gitignored — never commit real credentials. See docs/LIFE360_OBSERVER.md.
+Credentials come from .env (gitignored): LIFE360_TOKEN (preferred; required for passwordless
+phone+SMS accounts) or LIFE360_USER / LIFE360_PASS. See docs/LIFE360_OBSERVER.md +
+docs/OBSERVER_SETUP_AT_HOME.md.
 """
 import argparse
+import dataclasses
+import json
 import os
 import sys
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)                       # make `backend` importable
 
 from backend.life360 import Life360Client, Life360Error  # noqa: E402
+
+_MAX_BACKOFF_S = 60.0
 
 
 def load_env(path):
@@ -36,9 +46,89 @@ def load_env(path):
                 os.environ[key] = val
 
 
+def setup_client(token, user, password):
+    """Return an authenticated Life360Client (token preferred, else username/password)."""
+    client = Life360Client()
+    if token:
+        print("> Using LIFE360_TOKEN from .env...")
+        client.use_token(token)
+    else:
+        print("> Authenticating with Life360 (username/password)...")
+        client.authenticate(user, password)
+    return client
+
+
+def collect(client, circles, needle):
+    """One tick: return [(circle_name, MemberState)] across all circles, filtered by `needle`."""
+    rows = []
+    for cid, cname in circles:
+        for m in client.members(cid):
+            if needle and needle not in m.name.lower():
+                continue
+            rows.append((cname, m))
+    return rows
+
+
+def log_record(logf, circle, m):
+    """Append one MemberState to the JSONL log (+ an ISO timestamp and its circle)."""
+    rec = {"iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(m.fetched_ts)),
+           "circle": circle}
+    rec.update(dataclasses.asdict(m))
+    logf.write(json.dumps(rec) + "\n")
+    logf.flush()
+
+
+def run_once(client, circles, needle, logf):
+    """Print each matching member's current state, grouped by circle. Returns count shown."""
+    shown = 0
+    for cid, cname in circles:
+        members = client.members(cid)
+        if needle:
+            members = [m for m in members if needle in m.name.lower()]
+        if not members:
+            continue
+        print(f"\n  Circle: {cname}")
+        for m in members:
+            print(f"   - {m.oneline()}")
+            if logf:
+                log_record(logf, cname, m)
+            shown += 1
+    return shown
+
+
+def watch(client, circles, needle, interval, logf):
+    """Poll every `interval` seconds, printing a timestamped line per sample. Survives transient
+    errors with exponential backoff (cap 60s). Ctrl+C to stop."""
+    dest = " (logging to file)" if logf else ""
+    print(f"\n> Watching every {interval:g}s{dest}. Press Ctrl+C to stop.\n")
+    backoff = interval
+    while True:
+        try:
+            rows = collect(client, circles, needle)
+            ts = time.strftime("%H:%M:%S")
+            if not rows:
+                print(f"{ts}  (no matching members)")
+            for cname, m in rows:
+                print(f"{ts}  {m.oneline()}")
+                if logf:
+                    log_record(logf, cname, m)
+            backoff = interval
+        except Life360Error as e:
+            print(f"!  {e}  (retrying in {backoff:g}s)")
+            time.sleep(backoff)
+            backoff = min(backoff * 2, _MAX_BACKOFF_S)
+            continue
+        time.sleep(interval)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Read current Life360 state for your circle (read-only).")
     ap.add_argument("--member", help="only show members whose name contains this (case-insensitive)")
+    ap.add_argument("--watch", action="store_true", help="poll continuously instead of once")
+    ap.add_argument("--interval", type=float, default=4.0,
+                    help="seconds between polls in --watch mode (default 4; be gentle, Life360 "
+                         "updates coarsely and may rate-limit)")
+    ap.add_argument("--log", help="append every sample to this file as JSONL")
     ap.add_argument("--env", default=os.path.join(ROOT, ".env"), help="path to the .env file")
     ap.add_argument("--check", action="store_true",
                     help="show which credentials were loaded (password masked) and exit")
@@ -77,38 +167,28 @@ def main():
         print("  (.env is gitignored - nothing sensitive touches the repo.)")
         sys.exit(2)
 
-    client = Life360Client()
+    needle = args.member.lower() if args.member else None
+    logf = open(args.log, "a", encoding="utf-8") if args.log else None
     try:
-        if token:
-            print("> Using LIFE360_TOKEN from .env...")
-            client.use_token(token)
-        else:
-            print("> Authenticating with Life360 (username/password)...")
-            client.authenticate(user, password)
+        client = setup_client(token, user, password)
         circles = client.circles()
         if not circles:
             print("  authenticated, but this account is in no circles.")
             return
 
-        needle = args.member.lower() if args.member else None
-        shown = 0
-        for cid, cname in circles:
-            members = client.members(cid)
-            if needle:
-                members = [m for m in members if needle in m.name.lower()]
-            if not members:
-                continue
-            print(f"\n  Circle: {cname}")
-            for m in members:
-                print(f"   - {m.oneline()}")
-                shown += 1
-
-        if shown == 0:
-            who = f" matching '{args.member}'" if args.member else ""
-            print(f"\n  No members{who} found.")
+        if args.watch:
+            watch(client, circles, needle, args.interval, logf)
+        else:
+            shown = run_once(client, circles, needle, logf)
+            if shown == 0:
+                who = f" matching '{args.member}'" if args.member else ""
+                print(f"\n  No members{who} found.")
     except Life360Error as e:
         print(f"! {e}")
         sys.exit(1)
+    finally:
+        if logf:
+            logf.close()
 
 
 if __name__ == "__main__":
