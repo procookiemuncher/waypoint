@@ -258,6 +258,7 @@ class RouteRenderer:
 
         max_a = DEFAULT_ACCEL_MPS2.get(seg.mode, DEFAULT_ACCEL_MPS2["drive"])
         jerk = DEFAULT_JERK_MPS3.get(seg.mode, DEFAULT_JERK_MPS3["drive"])
+        vplan = plan_speeds(poly, v_cruise, v_entry, v_exit)
 
         fixes = []
         t = start_t
@@ -276,12 +277,13 @@ class RouteRenderer:
                 break
 
             remaining = total - d
-            # distance to bleed v down to v_exit at peak decel, + a margin for the jerk ramp
-            decel_dist = max(0.0, (v * v - v_exit * v_exit) / (2 * max_a)) + v * (max_a / jerk)
-            if remaining <= decel_dist:
-                a_des = -max_a
-            elif v < v_cruise - 1e-6:
+            # follow the pre-planned speed at this arc position: the backward pass already
+            # lowered it on the approach to every corner, so tracking it brakes *before* turns.
+            v_target = _plan_at(cum, vplan, d)
+            if v < v_target - 1e-6:
                 a_des = max_a
+            elif v > v_target + 1e-6:
+                a_des = -max_a
             else:
                 a_des = 0.0
             # jerk-limit the change in acceleration (S-curve, no instantaneous velocity step)
