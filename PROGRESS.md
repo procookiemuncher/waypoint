@@ -7,6 +7,34 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Built Observer Increment 2 (watch loop + JSONL logging) — offline while owner's at work
+
+Owner is at work (no rig); asked for the highest-ROI offline SWE work. Analyzed the new
+life360-flight-detection.md in depth: it *refines* the flight-push verdict (narrowed to the altitude
+gate; frontier territory) but is **phone-gated and explicitly warns against pre-building flight
+routes** (§7.4) — so it does NOT beat the Observer track. Built the clear winner instead: the exact
+next Observer step, fully offline-buildable, which unblocks the emoji A/B the moment the token lands.
+
+**Built (Increment 2, code done; live-verify pending a token):**
+- `tools/observe.py` gained **`--watch`** (poll loop, exponential backoff cap 60s on transient
+  errors), **`--interval`** (default 4s), **`--log FILE`** (append JSONL: every `MemberState` field +
+  ISO timestamp + circle, flushed per write). Refactored into `setup_client` / `collect` /
+  `run_once` / `watch` / `log_record`. Still read-only, stdlib-only.
+- **Verified offline with a fake client** (no network): `collect`+filter, `run_once`, JSONL shape,
+  and `--help` all pass. The infinite watch loop reuses the tested `collect`/`log_record`.
+
+**Analysis takeaways for the owner (things to do at work, no rig):** (1) try the **Method A token
+capture from a work browser** (life360.com + DevTools needs no home rig — could get the token today);
+(2) **save CDG as a Life360 Place** from the phone app (required precondition for the geofence
+"arrived" north star); (3) optional: line up a 2nd circle member for the flight experiment.
+
+**Next:** owner gets the token (home or work-browser) → run `observe.py --watch --log` during the
+emoji A/B. Then Increment 4 (`correlate.py`, fully offline) can align that JSONL against the played
+GPX. Still-open cheap offline items if wanted: Valhalla `trace_attributes` per-edge speed, and the
+MOVEMENT_ENGINE.md airport-auto-Place doc-drift fix.
+
+---
+
 ## 2026-07-09 — Deep research: Life360 Flight Detection — how it works, nobody's spoofed it, verdict narrows to ONE gate (altitude)
 
 Owner asked for a deep-research analysis of Life360's **Flight Detection / Landing Notifications** setting:

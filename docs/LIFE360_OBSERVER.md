@@ -208,11 +208,19 @@ tools/
 - **Exit criteria:** one command prints a correct, current `MemberState` for you. *(Code ready;
   awaits a live run with real credentials.)*
 
-### Increment 2 — watch loop + logging
-- [ ] `--watch --interval` poll loop with backoff + token refresh.
-- [ ] `--log run.jsonl` append-per-sample.
-- [ ] `--member` selection.
-- **Exit criteria:** a live tail runs for minutes without dying and writes a clean JSONL.
+### Increment 2 — watch loop + logging  🟡 CODE DONE (2026-07-09), live-verify pending
+- [x] `--watch --interval` poll loop with exponential backoff (cap 60s) on transient errors.
+      (Static-token auth can't be "refreshed" — on a token expiry the loop surfaces the error and
+      backs off; re-capture the token per the runbook.)
+- [x] `--log run.jsonl` append-per-sample (one JSON object per line: all `MemberState` fields +
+      an ISO timestamp + circle name; flushed each write).
+- [x] `--member` selection (already in Inc 1; reused).
+- [x] Verified offline with a fake client: `collect`/filter, `run_once`, and JSONL shape all pass;
+      `--help` shows the new flags.
+- [ ] **Verify live (owner):** once the token works, `observe.py --watch --member <you>` tails for
+      minutes without dying and writes a clean JSONL.
+- **Exit criteria:** a live tail runs for minutes and writes a clean JSONL. *(Code ready; awaits a
+  working token.)*
 
 ### Increment 3 — the emoji A/B, instrumented
 - [ ] Run `spoof.cmd emoji-test` while `observe.py --watch --log` records, **twice** (Motion &
