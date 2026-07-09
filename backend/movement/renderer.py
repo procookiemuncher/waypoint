@@ -31,6 +31,7 @@ _STOP_SAMPLE_S = 5.0       # during a dwell, drop a (jittered) fix this often
 _MIN_CRAWL_MPS = 0.4       # floor so a decelerating segment can't numerically stall
 _JITTER_STEP_MAX_M = 0.5   # max jitter offset change per second, per axis (bounds fake speed)
 _JITTER_ALONG_FRAC = 0.35  # along-track jitter is smaller than cross-track (realistic + safe)
+_PLAN_STEP_M = 15.0        # densify long gaps to this spacing so the speed plan can ramp
 _GPX_EPOCH = datetime(2020, 1, 1, tzinfo=timezone.utc)
 _M_PER_DEG = 111_111.0     # meters per degree latitude (good enough at city scale)
 _EARTH_R = 6_371_000.0
@@ -133,8 +134,26 @@ def plan_speeds(polyline, cruise, v_entry, v_exit):
     for i in range(n - 2, -1, -1):                          # backward: decel into what's ahead
         v[i] = min(v[i], math.sqrt(v[i + 1] ** 2 + 2 * a_lon * gap[i + 1]))
     for i in range(1, n):                                   # forward: accel out, cap at cruise
-        v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * a_lon * gap[i]), cruise)
+        v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * a_lon * gap[i]))
     return v
+
+
+def _densify(poly, max_step=_PLAN_STEP_M):
+    """Subdivide long gaps so the speed plan has resolution to ramp up and down — a 2-waypoint
+    rest-to-rest leg otherwise can't represent accelerate->cruise->decelerate and collapses to a
+    crawl. Geometry-preserving: inserted points lie on the existing straight segments, so the
+    path is unchanged; only the sampling density increases."""
+    if len(poly) < 2:
+        return list(poly)
+    out = [poly[0]]
+    for i in range(1, len(poly)):
+        a, b = poly[i - 1], poly[i]
+        d = _haversine(a, b)
+        n = max(1, int(math.ceil(d / max_step)))
+        for k in range(1, n + 1):
+            f = k / n
+            out.append((a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1])))
+    return out
 
 
 def _plan_at(cum, vplan, d):
@@ -246,7 +265,7 @@ class RouteRenderer:
         return fixes, end
 
     def _emit_move(self, seg, start_t, v_entry, v_exit, v_cruise):
-        poly = seg.waypoints
+        poly = _densify(seg.waypoints)
         cum = _cumulative(poly)
         total = cum[-1]
         jitter = seg.jitter_m or DEFAULT_JITTER_M.get(seg.mode, 5.0)
