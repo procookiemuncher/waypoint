@@ -23,6 +23,7 @@ from .model import (
     Route, LocationFix, WALK, STOP,
     DEFAULT_SPEED_MPS, DEFAULT_ACCEL_MPS2, DEFAULT_JERK_MPS3, DEFAULT_JITTER_M,
     WALK_SPEED_MEAN_MPS, WALK_SPEED_STD_MPS, WALK_SPEED_CLAMP,
+    CORNER_LAT_ACCEL_MPS2, CORNER_MIN_SPEED_MPS,
 )
 
 _DT = 1.0                  # emit one fix per second
@@ -82,6 +83,70 @@ def _interp(polyline, cum, d):
 def _heading_at(polyline, cum, d):
     i = _bracket(cum, min(max(d, 0.0), cum[-1]))
     return _bearing(polyline[i - 1], polyline[i])
+
+
+def _local_xy(origin, p):
+    """Meters (east, north) of point p relative to origin — equirectangular, fine at city scale."""
+    de = (p[1] - origin[1]) * _M_PER_DEG * math.cos(math.radians(origin[0]))
+    dn = (p[0] - origin[0]) * _M_PER_DEG
+    return de, dn
+
+
+def _corner_speed(a, b, c, cruise):
+    """Safe speed through vertex b given neighbors a and c: sqrt(a_lat * R), where R is the
+    Menger radius of the circle through a, b, c. Collinear -> R=inf -> full cruise."""
+    ax, ay = _local_xy(b, a)
+    cx, cy = _local_xy(b, c)
+    dab = math.hypot(ax, ay)
+    dcb = math.hypot(cx, cy)
+    dac = math.hypot(ax - cx, ay - cy)
+    area2 = abs(ax * cy - ay * cx)          # twice the triangle area (b at the origin)
+    if area2 < 1e-6 or dab < 1e-6 or dcb < 1e-6:
+        return cruise
+    radius = (dab * dcb * dac) / (2.0 * area2)   # (|ab||bc||ca|) / (4*area); 4*area == 2*area2
+    v = math.sqrt(CORNER_LAT_ACCEL_MPS2 * radius)
+    return max(CORNER_MIN_SPEED_MPS, min(cruise, v))
+
+
+def plan_speeds(polyline, cruise, v_entry, v_exit):
+    """Per-vertex target speed that slows for corners and is feasible under longitudinal accel.
+    (1) corner speed limit per interior vertex, (2) backward pass to brake *before* corners,
+    (3) forward pass to cap acceleration out of them and hold cruise. See
+    docs/superpowers/specs/2026-07-08-corner-aware-speed-realism-design.md."""
+    n = len(polyline)
+    if n == 0:
+        return []
+    if n == 1:
+        return [min(cruise, max(v_entry, v_exit))]
+
+    gap = [0.0] * n
+    for i in range(1, n):
+        gap[i] = _haversine(polyline[i - 1], polyline[i])   # distance from vertex i-1 to i
+
+    v = [cruise] * n
+    for i in range(1, n - 1):
+        v[i] = _corner_speed(polyline[i - 1], polyline[i], polyline[i + 1], cruise)
+    v[0] = min(v[0], v_entry)
+    v[-1] = min(v[-1], v_exit)
+
+    a_lon = DEFAULT_ACCEL_MPS2["drive"]
+    for i in range(n - 2, -1, -1):                          # backward: decel into what's ahead
+        v[i] = min(v[i], math.sqrt(v[i + 1] ** 2 + 2 * a_lon * gap[i + 1]))
+    for i in range(1, n):                                   # forward: accel out, cap at cruise
+        v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * a_lon * gap[i]), cruise)
+    return v
+
+
+def _plan_at(cum, vplan, d):
+    """Planned speed at arc distance d along the polyline (linear between vertices)."""
+    if d <= 0:
+        return vplan[0]
+    if d >= cum[-1]:
+        return vplan[-1]
+    i = _bracket(cum, d)
+    d0, d1 = cum[i - 1], cum[i]
+    f = (d - d0) / (d1 - d0) if d1 > d0 else 0.0
+    return vplan[i - 1] + f * (vplan[i] - vplan[i - 1])
 
 
 class RouteRenderer:
