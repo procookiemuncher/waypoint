@@ -84,5 +84,26 @@ class TestRenderWithPlan(unittest.TestCase):
         self.assertGreater(res.max_smoothed_speed, 7.0)     # got up to ~cruise on the straight
 
 
+class TestRestToRestRamp(unittest.TestCase):
+    """Regression: a sparse (2-waypoint) rest-to-rest drive leg must accelerate to cruise,
+    not collapse to a crawl. Guards the densify fix."""
+
+    def _render_leg(self, end_lon, cruise):
+        seg = Segment(mode="drive", waypoints=[(25.0, 0.0), (25.0, end_lon)], speed_mps=cruise)
+        return RouteRenderer(seed=1).render(Route(name="t", segments=[seg]))
+
+    def test_two_waypoint_city_leg_reaches_cruise(self):
+        fixes = self._render_leg(0.01, 8.0)          # ~1.0 km straight, 18 mph
+        res = validate(fixes)
+        self.assertTrue(res.ok, res.errors)
+        self.assertGreater(res.max_smoothed_speed, 7.0)   # got up to ~cruise, not crawling
+
+    def test_two_waypoint_fast_leg_reaches_cruise(self):
+        fixes = self._render_leg(0.08, 35.7)         # ~8 km straight, 80 mph
+        res = validate(fixes)
+        self.assertTrue(res.ok, res.errors)
+        self.assertGreater(res.max_smoothed_speed, 34.0)
+
+
 if __name__ == "__main__":
     unittest.main()
