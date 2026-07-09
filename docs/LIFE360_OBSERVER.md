@@ -79,6 +79,20 @@ that package's `api.py` / `const.py` (§14) rather than guess. Base host histori
 > how to refresh the client token," not a crash. Everything downstream is stable-ish once a bearer
 > token is in hand.
 
+**Passwordless (phone + SMS) accounts — CONFIRMED on the owner's account (2026-07-09).** The
+`grant_type=password` flow returns **403 "Invalid login and password"** because the account has no
+password to check. And the SMS-code login flow is **not reliably reverse-engineered** in any public
+client — the main library's maintainer couldn't get it working, and over-requesting codes **locks
+verification for 24 h** (don't guess endpoints against it). So for these accounts we **skip login and
+use a pre-obtained bearer token**: `Life360Client.use_token(token)`, fed from `LIFE360_TOKEN` in
+`.env`. Get the token from an existing session you control (no new SMS beyond one login you make):
+- **Proxy capture (reliable):** run mitmproxy on the PC, trust its cert on the iPhone, set the phone's
+  Wi-Fi proxy to the PC, open Life360, copy the `Authorization: Bearer …` header for
+  `api-cloudfront.life360.com`.
+- **Web DevTools (if the web login works):** log in at life360.com (one OTP), then Network tab → copy
+  the Bearer token from an API request.
+Tokens are long-lived, so this is a one-time step.
+
 ## 4. Data model
 
 One clean dataclass, populated from a member's `location` block. The field set below is **confirmed
@@ -146,8 +160,9 @@ not belong in the client. Keeps the read path clean.
 
 - **Own account, own circle only.** This reads *your* data about *your* member — legitimate personal
   use, consistent with the whole project.
-- **Credentials never in the repo.** Read from `LIFE360_USER` / `LIFE360_PASS` env vars, or a
-  **gitignored** `data/life360.creds.json`. Add both patterns to `.gitignore` before writing any code.
+- **Credentials never in the repo.** Read from `.env` (gitignored): `LIFE360_TOKEN` (preferred, and
+  required for passwordless accounts) **or** `LIFE360_USER` / `LIFE360_PASS`. `.env.example` is the
+  committed template.
 - **Read-only, always.** The client exposes no write methods. This is a design constraint, not a
   convention.
 - Unofficial API ⟹ it can break or rate-limit; poll gently and treat it as best-effort telemetry.

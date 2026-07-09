@@ -7,6 +7,31 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Observer auth: owner's account is passwordless → added token-based login
+
+**On-device result:** running `observe.py` returned **403 "Invalid login and password."** The client
+token + endpoints are correct (Life360 accepted the request and rejected only the creds). Owner then
+signed out/in and confirmed the account is **passwordless — phone number + SMS code, no password
+anywhere in settings.** So `grant_type=password` can never succeed for this account.
+
+**Researched the SMS-code path — dead end for a safe build.** The passwordless SMS-verification
+endpoints are **not reliably reverse-engineered** in any public client (pnbruckner/life360,
+kaylathedev/life360-node-api, the API-docs site all do username/password only; the main maintainer
+said he couldn't get SMS login working). Guessing endpoints risks Life360's **24 h verification
+lockout**. Did NOT build the SMS script — not worth risking the account on guesses.
+
+**Pivoted to token auth (safe, reliable).** Added `Life360Client.use_token()` and taught
+`observe.py` / `.env` to accept **`LIFE360_TOKEN`** (used first; falls back to user/pass). The owner
+obtains a long-lived bearer token once from a session they control — mitmproxy capture off the iPhone,
+or web-login DevTools — and pastes it into `.env`. No new SMS requests, no lockout risk. Verified the
+token path offline (`--check` shows it, `use_token` authenticates the client). Updated
+docs/LIFE360_OBSERVER.md §3/§8 and `.env.example` (LIFE360_TOKEN is now the primary option).
+
+**Next (owner):** grab a bearer token (proxy or web DevTools), set `LIFE360_TOKEN` in `.env`, run
+`observe.py`. Then Increment 2 (watch loop + JSONL) and the instrumented emoji A/B.
+
+---
+
 ## 2026-07-09 — Built Life360 Observer Increment 1 (auth + one-shot read)
 
 Built the read-path core per docs/LIFE360_OBSERVER.md. **Nothing on-device yet — code is done and
