@@ -1,8 +1,8 @@
 ---
 title: Activity emoji vs. CoreMotion — is the walking/driving indicator spoofable?
 status: research                # research | device-verified | superseded
-last_verified: 2026-07-08
-device_verified: none           # the long-drive emoji test (Phase A #1) has NOT been run
+last_verified: 2026-07-09
+device_verified: partial         # on-device: emoji won't HOLD on a still spoof (CoreMotion contradiction); the Motion&Fitness-OFF test is still pending
 open_gates: [movement-emoji, isSimulatedBySoftware]
 depends_on: [life360-detection-and-realism]
 source_tier: mixed              # primary (Apple CoreMotion / pmd3 source) + Life360 vendor + one third-party
@@ -20,6 +20,21 @@ recheck_if: [Life360 app update, iOS point release]
 **The on-map movement emoji is LIKELY spoofable (MEDIUM confidence) — one on-device test
 confirms it. The formal "Driving" analytics product is NOT spoofable (HIGH confidence).** These
 are two different Life360 subsystems, and conflating them is the trap.
+
+> **On-device update (2026-07-09, `device_verified: partial`).** Owner ran a sustained ~18 mph
+> spoof (`miami-cruise`) on a physically still phone: the car emoji + mph would **not reliably
+> show/hold**. Same day, a *real* drive showed the car emoji fine **even at slow speed**. This is
+> the two-subsystem split in action: a real drive is classified `automotive` by CoreMotion and the
+> icon holds through slow patches (motion-derived), while a still-phone spoof produces a
+> **contradiction** — GPS says "moving," the accelerometer says `stationary` — and Life360
+> suppresses the emoji. (Consistent with §3's note that the icon can disagree with GPS.) The
+> earlier "one on-device test confirms it" refers to the initial `miami-demo` **teleport** briefly
+> flashing the car emoji — the speed-derived path *can* fire, but the "stationary" vote wins over a
+> sustained still-phone drive. **Verdict not yet flipped to NO:** the decisive test is whether
+> turning Life360's **Motion & Fitness permission OFF** forces GPS-only activity inference (the §
+> "Cheapest on-device experiment" sub-test). Route `data/routes/emoji-test.json` (steady ~35 mph,
+> >1.5 mi, ~10 min, no trailing stop) was built for exactly this; run it with the permission ON
+> then OFF.
 
 ## 1. CoreMotion is motion-hardware based and GPS-independent  *(HIGH)*
 

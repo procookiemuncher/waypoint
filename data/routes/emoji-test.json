@@ -1,0 +1,15 @@
+{
+  "name": "emoji-test",
+  "description": "Phase A #1 driving-emoji probe: a single, steady ~35 mph (15.6 m/s) run west out of downtown Miami along the Dolphin Expressway (SR-836), Valhalla-snapped to real roads. Deliberately built to Life360's activity thresholds - above the ~15 mph walk/drive split, well below the 80 mph speeding flag, >1.5 mi, ~6 min sustained, no trailing stop - so the ONLY variable being tested is whether the car emoji appears on a physically still phone. Limited-access expressway = few sharp turns, so the speed stays flat (no corner dips) and it reads as clean highway driving. Run with Life360's Motion & Fitness permission toggled OFF to test the GPS-only-fallback hypothesis (docs/research/activity-emoji-coremotion.md).",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 15.6,
+      "snap": true,
+      "waypoints": [
+        [25.78100, -80.19400],
+        [25.79300, -80.25000]
+      ]
+    }
+  ]
+}
