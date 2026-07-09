@@ -49,11 +49,23 @@ Folded docs/research/ findings into the core:
 - [x] **Walk speed** sampled ~N(1.34, 0.30); **perpendicular-biased jitter** (σ≈5 m default).
 - [x] Negative tests: teleport + mid-track velocity step both rejected; clean ramp passes.
 
-### Increment 2 — Valhalla road-snapping (build time)
-- [ ] Snap each segment's waypoints to a road-following polyline via the FOSSGIS public
+### Increment 2 — Valhalla road-snapping (build time)  🟡 GEOMETRY DONE (2026-07-08)
+- [x] Snap each segment's waypoints to a road-following polyline via the FOSSGIS public
   Valhalla (`pedestrian`/`auto` costing per mode) *before* the renderer runs.
-- [ ] Keep the straight-line path as the offline/no-network fallback.
-- [ ] Cache the snapped result so a build needs the network at most once per route edit.
+  `backend/movement/snapper.py` — `/route` + polyline6 decode (1e6), opt-in per segment via
+  `"snap": true`. Wired into `tools/build_route.py` and `spoof.py` (`snap_route`).
+- [x] Keep the straight-line path as the offline/no-network fallback (per-segment `SnapError`
+  → keep hand-authored waypoints + warn).
+- [x] Cache the snapped result (`build/snap-cache/<hash>.json`, keyed on waypoints+costing) so a
+  build needs the network at most once per route edit.
+- [ ] **Per-edge speed via `trace_attributes`** (the *timing* half) — NOT done. Geometry is
+  snapped but timing still comes from the segment's `speed_mps` / renderer. Needed for
+  auto-realistic per-road speeds.
+- [ ] **Corner-aware slowing** — known gap surfaced building `miami-drift`: at ~80 mph a 1 s
+  step (~36 m) *cuts* sharp snapped-road turns, so measured speed dips→recovers and the accel
+  gate flags it (real cars slow for turns; the renderer doesn't). Worked around for now by
+  routing the fast preset on limited-access expressway (few sharp turns). Add a curvature/
+  lateral-accel speed cap to the renderer so surface-street fast routes validate + look real.
 
 ### Increment 3 — `play_route` (device)
 - [ ] `LocationBackend.play_route(gpx_path, timing_noise_ms=0)` wrapping
