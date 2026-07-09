@@ -7,6 +7,46 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-08 — On-device: Paris/no-VPN confirmed · stutter is downstream, not the engine · flight-push manual-toggle idea
+
+**Three findings from the owner's testing.**
+
+**1. IP geolocation is NOT enforced — Paris spoof worked with NO VPN (CONFIRMED).** Owner spoofed
+Paris from the normal Miami connection and Life360 showed Paris. So Life360 trusts the spoofed GPS
+over the connection's IP city; no VPN needed. Retired the "IP is the one silent server-side tell"
+worry in AGENTS.md (ground rule #3).
+
+**2. The `miami-cruise` "stutter" is NOT the movement engine.** Owner reports the pin moves, then
+freezes ~3 s, then moves — jerky, and suspects it blocks the driving (car) icon. Debugged the
+engine output: the built GPX is a clean, regular **1 Hz** track during driving (684 one-second gaps;
+the only 5 s gaps are the final parked dwell) with smooth per-step distances (0.3→8 m ramp, no
+jumps). So the engine emits smooth motion — the stutter is introduced **downstream at the
+device/observer layer**. Two candidates, not yet distinguished (needs an on-device measurement I
+can't take from here):
+  - **(likely) Life360's own pin-refresh cadence** — it does not render other members at 1 Hz; a
+    few-seconds stepped update is normal for viewing someone else. Not fixable in the engine.
+  - **(possible) userspace-tunnel `set()` latency** — if each `set()` round-trip is slow, the
+    effective on-device update rate lags the 1 Hz GPX.
+  **Distinguishing test for the owner:** (a) does `miami-cruise` playback take ~14 min (≈ the GPX
+  duration → transport keeps up → it's Life360's refresh) or much longer (→ tunnel latency)? and
+  (b) does **Find My** update smoothly while **Life360** steps (→ Life360 refresh), or do both step
+  (→ transport)? No engine fix until this says which layer. **Bottom line: the movement engine's
+  output is correct/smooth; this is a rendering/transport artifact.**
+
+**3. Flight "landed" push — owner's manual airplane-mode idea added as an untested experiment.**
+Confirmed the geofence "arrived at CDG" substitute + the flight-detection mechanism are already
+documented (docs/research/life360-notification-triggers.md). The doc had marked the literal flight
+push NO partly because "can't toggle airplane mode from the PC" — but the owner would toggle it **by
+hand**, which overcomes that (and forces the post-landing reconnect). Added the owner's sequence
+(spoof MIA → dwell → manual airplane-mode ON → teleport to CDG → manual airplane-mode OFF) to the
+doc as **open gate `flight-push-manual-toggle`**; only the altitude/barometer requirement remains
+unknown. Verdict stays NO-until-tried; geofence arrival is the reliable fallback.
+
+**Next:** owner runs the stutter distinguishing test (duration + Find My vs Life360) so we fix the
+right layer; the movement engine itself needs no change for smoothness.
+
+---
+
 ## 2026-07-08 — Corner-aware speed realism (slow for turns) + miami-cruise street route
 
 **Why:** the 80 mph `miami-drift` run moved the pin but Life360 showed **no mph** (an earlier slow

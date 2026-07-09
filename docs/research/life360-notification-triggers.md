@@ -3,7 +3,7 @@ title: Life360 notification triggers — what we can and can't fire (and the met
 status: research                # research | device-verified | superseded
 last_verified: 2026-07-08
 device_verified: none           # the spoofability matrix is sourced/reasoned, not yet tested on our phone
-open_gates: [isSimulatedBySoftware, flight-gap]
+open_gates: [isSimulatedBySoftware, flight-gap, flight-push-manual-toggle]
 depends_on: [life360-detection-and-realism, activity-emoji-coremotion]
 source_tier: mixed              # primary (Life360/Arity/pmd3 source + Apple docs) + press releases
 recheck_if: [Life360 app update, iOS point release]
@@ -70,6 +70,20 @@ paper, but (a) the **altitude** channel reads invalid (not injectable), (b) the 
 reads flat on a still phone, (c) we cannot toggle **airplane mode** from the PC, and (d) we cannot
 manufacture a **network reconnect** event. Even the commercial tools on the same DVT rails don't
 attempt it (and cap simulated speed ~62 mph, below the 100 mph gate).
+
+**Owner's manual-toggle idea — worth an on-device experiment (2026-07-08, UNTESTED).** The owner
+proposed doing the airplane-mode toggle *by hand on the phone*, which changes premise (c) — and
+therefore (d), since turning airplane mode off is exactly what forces the post-landing network
+reconnect. Proposed sequence: spoof at/near **MIA** (satisfies the "within 100 m of an airport"
+ping) → dwell → **manually turn airplane mode ON** → spoof-teleport the pin to **CDG** (a second
+airport, >100 mph apart, within 24 h) → **manually turn airplane mode OFF** (network reconnects).
+This hand-supplies conditions (a)(c)(d) and the two-airport/speed gates. **The only remaining
+unknowns are (b)** — whether Life360's algorithm *hard-requires* the real **altitude/barometer**
+climb-and-descent, or whether location + derived-speed + the airplane-mode/reconnect envelope is
+enough. Nobody's published this specific attempt, so it's genuinely untested. **Verdict stays NO
+until tried**, but this is the closest reachable shot at the literal flight push and is worth a
+deliberate experiment (new **open gate: flight-push-manual-toggle**). If it fails, fall back to the
+geofence "arrived at CDG" (below), which needs none of this.
 
 **Correction to a repo assumption** *(HIGH):* airports are **NOT** auto-recognized Places. The
 only *automatic* airport notification is Flight Detection itself — which is the unreachable one.
