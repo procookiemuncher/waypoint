@@ -3,7 +3,7 @@ title: Research index
 status: research
 last_verified: 2026-07-08
 device_verified: none           # the whole corpus is desk research pending the Phase A on-device gates
-open_gates: [isSimulatedBySoftware, movement-emoji, motion-and-fitness-off, flight-gap]
+open_gates: [isSimulatedBySoftware, movement-emoji, motion-and-fitness-off, flight-gap, flight-push-manual-toggle, flight-altitude-hard-gate]
 source_tier: mixed
 recheck_if: [Life360 app update, iOS point release, pmd3 version bump]
 ---
@@ -27,6 +27,7 @@ recheck_if: [Life360 app update, iOS point release, pmd3 version bump]
 | [life360-notification-triggers.md](life360-notification-triggers.md) | Can we trigger crash / "landed at airport" / *every* Life360 notification? The injection surface (location only), a full catalog + spoofability matrix, and the method for the reachable ones. |
 | [oss-spoofer-landscape.md](oss-spoofer-landscape.md) | Who's built OSS spoofers, has anyone done Find My + Life360, what notifications people actually trigger, and the anti-spoof arms race. |
 | [coremotion-injection-feasibility.md](coremotion-injection-feasibility.md) | Can we inject/override/**suppress** CoreMotion so Life360 shows "driving" on a still phone? Exhaustive pmd3/DVT/DTX enumeration, XCTest/Simulator + jailbreak/TrollStore reality on iOS 26.6, and the one no-JB lever: the Motion&Fitness-OFF suppress test. |
+| [life360-flight-detection.md](life360-flight-detection.md) | Deep-dive on the **Flight Detection / Landing Notifications** setting: exactly how it works (triggers, tier, defaults), whether **anyone has spoofed it** (no public prior art), and whether *we* can — verdict narrowed to a single altitude gate, with the hand-airplane-mode test spelled out. |
 
 ---
 
@@ -100,6 +101,15 @@ recheck_if: [Life360 app update, iOS point release, pmd3 version bump]
    **Motion & Fitness permission OFF**, letting its speed-derived emoji fall back to GPS — a Settings
    toggle, testable now with `emoji-test.json`. Might work, might hit an `isDriving`-flag wall.
    Full proof + the A/B test: coremotion-injection-feasibility.md.
+
+10. **Flight/landing push: NO public prior art, and the verdict narrows to ONE gate — altitude.** Deep-dive
+    on Life360's Flight Detection setting (free, default-on; fires on 100 m-airport + >100 mph + airplane-mode
+    ON→OFF + a 2nd airport within 24 h + network-reconnect). **Nobody has publicly spoofed the "landed" push**
+    — the scene pranks *crash* detection but never *landing*. The old flat "NO" was too pessimistic: the
+    owner's **hand airplane-mode toggle** satisfies the airplane-mode + reconnect gates *authentically*, and
+    the airport/speed/two-airport gates are injectable — so it reduces to **one unknown: does Life360 require
+    a real altitude climb/descent** (dead on our stack either way) **or treat altitude as a soft signal?**
+    NO-until-tried, with a cheap decisive test. Full mechanism + prior-art + test: life360-flight-detection.md.
 
 ---
 

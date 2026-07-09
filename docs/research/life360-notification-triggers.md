@@ -85,6 +85,13 @@ until tried**, but this is the closest reachable shot at the literal flight push
 deliberate experiment (new **open gate: flight-push-manual-toggle**). If it fails, fall back to the
 geofence "arrived at CDG" (below), which needs none of this.
 
+> **Deep-dive (2026-07-09) → `life360-flight-detection.md`.** A dedicated brief now fully specifies the
+> mechanism, confirms **no one has publicly spoofed the landing push**, and **narrows this verdict to a
+> single gate: altitude.** The hand airplane-mode toggle satisfies the airplane-mode *and* network-reconnect
+> conditions authentically (the old blanket NO over-weighted them); the airport/speed/two-airport gates are
+> injectable. So the literal push fires **iff Life360 treats altitude as soft rather than a hard
+> climb/descent requirement** — untested. That doc spells out the exact MIA→CDG hand-toggle experiment.
+
 **Correction to a repo assumption** *(HIGH):* airports are **NOT** auto-recognized Places. The
 only *automatic* airport notification is Flight Detection itself — which is the unreachable one.
 The earlier docs' "Life360 recognizes airports itself, no manual Place needed" is wrong. What the

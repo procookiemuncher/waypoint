@@ -7,6 +7,49 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-09 — Deep research: Life360 Flight Detection — how it works, nobody's spoofed it, verdict narrows to ONE gate (altitude)
+
+Owner asked for a deep-research analysis of Life360's **Flight Detection / Landing Notifications** setting:
+how it works, and whether anyone's spoofed the "landed at <airport>" push. Ran it as a 4-front dive (same
+method as the CoreMotion brief) — read the new `backend/life360/` client + Observer doc firsthand, fanned
+out four cited + adversarially-verified web agents (official mechanism/settings; prior-spoofing hunt; the
+technical gates; the API/server-side read path). New doc: **docs/research/life360-flight-detection.md**.
+
+**How it works (HIGH, primary/verbatim):** a sensor-fusion + airport-geofence + airplane-mode heuristic
+(NOT a flight-API lookup). Signals = location + altitude + speed. Fires when the phone pings **within 100 m
+of an airport**, hits **>100 mph**, goes **Airplane Mode ON**, then **OFF** near a **second airport within
+24 h**, and the push is sent **on network reconnect post-landing**. It's **free**, **ON by default**,
+per-member at **Settings → Flight Detection**, and draws a **plane icon** on the map. Motion & Fitness is
+NOT tied to it (Life360's permissions page scopes Motion only to driving/crash) ⟹ flight "altitude" is
+likely `CLLocation.altitude` (GPS), not the barometer; and `CMMotionActivity` has no "flying" class anyway.
+
+**Has anyone spoofed it? NO public prior art (HIGH).** Zero confirmed demos, zero credible claims, and no
+"can't be done" consensus either — the scene pranks *crash* detection but never *landing*. Only two Life360
+tools exist (`lifespoof` = MITM payload rewrite; an empty stub); the 2024 Life360 API breach proves the
+ingest API is MITM-able. Frontier territory.
+
+**Can WE trigger it? NO-until-tried, gated solely on ALTITUDE (this REFINES the old flat NO).** The prior
+doc over-weighted the airplane-mode/reconnect gates — the owner's **hand toggle satisfies them
+authentically** (it produces the genuine connectivity gap→restore), and airport/speed/two-airport are
+injectable (USB tunnel should survive airplane mode — verify). **Every gate is satisfiable except
+altitude**, which is dead both ways (injected GPS carries no altitude; barometer reads ground-flat on a
+still phone). So the literal push fires **iff Life360 treats altitude as a soft signal, not a hard
+climb/descent gate** — genuinely untested. Documented the exact MIA→CDG hand-airplane-mode experiment
+(§5), plus a Path B escalation (API MITM payload injection — most capable, unattempted, out of scope). The
+API can neither produce nor observe the push (no flight field, no notification endpoint — confirms the
+Observer §1.3 caveat).
+
+**Docs touched:** new life360-flight-detection.md; README index + TL;DR #10 + new open gates
+(`flight-push-manual-toggle`, `flight-altitude-hard-gate`); cross-linked from
+life360-notification-triggers.md §2. No code touched.
+
+**Next (owner, on-device):** run the §5 sequence — establish at MIA → >100 mph leg → hand Airplane Mode ON
+→ inject the gap to CDG → Airplane Mode OFF → watch a second circle member's phone for the "landed at CDG"
+push. Fires ⟹ altitude is soft ⟹ literal push reachable (flip the gate YES). No push ⟹ altitude is a hard
+gate ⟹ keep the geofence "arrived at CDG" fallback (needs none of this).
+
+---
+
 ## 2026-07-09 — Wrote the Observer at-home setup runbook
 
 Owner is at work; will do the token capture at home. Wrote **docs/OBSERVER_SETUP_AT_HOME.md** — a
