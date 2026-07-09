@@ -74,8 +74,11 @@ derives speed from the GPX time deltas and takes an optional ± timing-noise arg
 - **No untethered spoof without a jailbreak** — the "location stays after you disconnect" that
   commercial tools sell is a frozen *stale dot* (`cantfix` API artifact), cleared by iOS 18+.
   Live control is the Phase C long-lived session.
-- **IP geolocation** is the one silent server-side tell (Life360 infers coarse city from IP);
-  test off home Wi-Fi.
+- **IP geolocation is NOT enforced (confirmed 2026-07-08).** A plain Paris spoof from the owner's
+  normal (Miami) connection — **no VPN** — showed up on Life360 as Paris. So Life360 trusts the
+  (spoofed) GPS over the connection's IP city; the IP mismatch is not a blocker and VPN is not
+  needed. (Earlier this was flagged as the one silent server-side tell — that worry is retired for
+  a static/route spoof.)
 
 ## Environment (fixed facts)
 
