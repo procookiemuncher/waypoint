@@ -1,0 +1,21 @@
+{
+  "name": "jfk-to-hotel",
+  "description": "Leg 2 of the NYC flight trip: after the airplane-mode gap, the phone reconnects at JFK; this drives JFK -> a Manhattan hotel (placeholder: The Plaza, 40.7644 -73.9744), Valhalla-snapped to real roads, ending in a 5-minute dwell INSIDE the hotel Place. Because it starts ~20 km outside the hotel and drives in, it makes a genuine outside->inside geofence crossing (the reliable 'arrived' trigger, geofence-arrival-mechanics.md §2). SWAP the final waypoint + stop coords to match the real Life360 Place you save. Run via fly.cmd.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 18.0,
+      "snap": true,
+      "waypoints": [
+        [40.64130, -73.77810],
+        [40.72200, -73.84400],
+        [40.74400, -73.97000],
+        [40.76440, -73.97440]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 300
+    }
+  ]
+}

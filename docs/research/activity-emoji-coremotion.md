@@ -1,8 +1,8 @@
 ---
 title: Activity emoji vs. CoreMotion — is the walking/driving indicator spoofable?
 status: research                # research | device-verified | superseded
-last_verified: 2026-07-09
-device_verified: partial         # on-device: emoji won't HOLD on a still spoof (CoreMotion contradiction); the Motion&Fitness-OFF test is still pending
+last_verified: 2026-07-10
+device_verified: full            # on-device, both legs, Observer-instrumented (2026-07-10): Motion & Fitness ON vs OFF made NO difference - speed/isDriving never triggered in either. The Motion&Fitness-OFF fallback hypothesis is REFUTED; suspect server-side position-update cadence (not the permission) is the real gate. See update block below.
 open_gates: [movement-emoji, isSimulatedBySoftware]
 depends_on: [life360-detection-and-realism]
 source_tier: mixed              # primary (Apple CoreMotion / pmd3 source) + Life360 vendor + one third-party
@@ -17,9 +17,11 @@ recheck_if: [Life360 app update, iOS point release]
 
 ## Verdict
 
-**The on-map movement emoji is LIKELY spoofable (MEDIUM confidence) — one on-device test
-confirms it. The formal "Driving" analytics product is NOT spoofable (HIGH confidence).** These
-are two different Life360 subsystems, and conflating them is the trap.
+**The on-map movement emoji does NOT reliably trigger on a physically-still spoofed phone
+(MEDIUM-HIGH confidence, two-leg on-device test, 2026-07-10). The formal "Driving" analytics
+product is NOT spoofable (HIGH confidence).** The Motion & Fitness permission toggle — the one
+lever this brief flagged as promising — made **no measurable difference**; see the on-device
+update below for what actually looks like the real gate.
 
 > **On-device update (2026-07-09, `device_verified: partial`).** Owner ran a sustained ~18 mph
 > spoof (`miami-cruise`) on a physically still phone: the car emoji + mph would **not reliably
@@ -35,6 +37,35 @@ are two different Life360 subsystems, and conflating them is the trap.
 > "Cheapest on-device experiment" sub-test). Route `data/routes/emoji-test.json` (steady ~35 mph,
 > >1.5 mi, ~10 min, no trailing stop) was built for exactly this; run it with the permission ON
 > then OFF.
+
+> **On-device update — BOTH legs complete (2026-07-10, Observer-instrumented; analyzed by Claude
+> Sonnet 5).** Owner ran `spoof.cmd emoji-test` (steady ~35 mph, no trailing stop) twice — once
+> with Motion & Fitness **OFF**, once **ON** — each with `tools/observe.py --watch --log` recording
+> server-side truth throughout, compared via `tools/correlate.py`:
+>
+> | | Motion & Fitness OFF | Motion & Fitness ON |
+> |---|---|---|
+> | Route span captured | ~12 min (306 samples) | ~19 min (376 samples) |
+> | `speed_raw` ever nonzero | never (0/-1 only) | never (0/-1 only) |
+> | `isDriving` ever TRUE | never | never |
+> | Distinct server updates | 12 | 15 |
+> | Update interval (min/med/max) | 61s / 63s / 952s | 62s / 75s / 715s |
+>
+> **Result: the two legs are statistically indistinguishable.** Toggling Motion & Fitness made
+> **no difference** — refuting the "OFF unlocks GPS-only speed/driving inference" hypothesis this
+> brief originally proposed as the decisive lever. Both runs confirm the pin genuinely moved the
+> full route (so the spoof + engine worked correctly); Life360's server simply never computed a
+> nonzero speed or drive classification in either condition.
+>
+> **New leading hypothesis: it's the server-side position-update cadence, not the permission.**
+> Both runs show Life360 only recording a new position every ~60-75s (median) — far too sparse to
+> derive a meaningful speed or clear the ½-mi/15-mph/850m Drive Detection gates in any single
+> interval. That cadence is plausibly itself downstream of CoreMotion reporting `stationary` (a
+> still phone), i.e. **the accelerometer contradiction may be throttling how often Life360's
+> background location manager even uploads**, independent of whether Motion & Fitness has read
+> access. This is reasoned from the data, not yet directly confirmed — untested next step would be
+> checking whether a *longer* sustained run (30+ min) ever produces a burst of tighter-interval
+> updates, or whether the cadence is a fixed server-side poll unrelated to motion state at all.
 
 ## 1. CoreMotion is motion-hardware based and GPS-independent  *(HIGH)*
 
@@ -99,9 +130,10 @@ Run **one long, believable constant-speed drive** and watch the member's icon in
   1 point/sec, small ±timing jitter via `simulate-location play <gpx> 500`.
 - **Car emoji appears ⟹ speed-derived ⟹ spoofable.** Stays walking/stationary ⟹ motion-gated ⟹
   not reachable on a still phone.
-- Cheap extra sub-test: repeat with **Motion & Fitness permission OFF** — it may make Life360
-  fall back to GPS-only activity (paradoxically *helping* a still-phone spoof by removing the
-  contradicting "stationary" signal). *(LOW confidence hypothesis — worth the free check.)*
+- ~~Cheap extra sub-test: repeat with **Motion & Fitness permission OFF**~~ — **DONE, REFUTED
+  (2026-07-10):** ran both ON and OFF, Observer-instrumented; no difference in speed/isDriving
+  either way (see the on-device update in the Verdict section above). The permission is not the
+  gate.
 - Prior test phases of 10–15 s were almost certainly **too short**; duration/thresholds are
   first-class parameters here.
 

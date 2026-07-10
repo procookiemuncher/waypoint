@@ -48,9 +48,12 @@ method: **docs/research/life360-notification-triggers.md**.
     consumer "external provider" spoofers read `false`; our path uses Apple's *own* DVT service,
     so it may read `true` — in which case any app (Life360 included) can detect the sim in one
     line and realism is moot. Test with a ~20-line app. → docs/research/life360-detection-and-realism.md.
-  - **#1 CoreMotion / movement emoji:** a long constant-speed drive → does Life360's *movement
-    emoji* flip? (The icon is speed-derived and likely spoofable; drive *reports* are Arity
-    CoreMotion and are NOT — see docs/research/activity-emoji-coremotion.md.)
+  - [x] **#1 CoreMotion / movement emoji — RESOLVED NO (2026-07-10, Observer-instrumented, both
+    Motion & Fitness ON and OFF legs).** The emoji/speed/driving-flag does NOT reliably trigger on
+    a physically-still spoofed phone; toggling Motion & Fitness made no measurable difference in
+    either direction. Leading suspect is Life360's own sparse server-side position-update cadence
+    (~60-75s median in both legs), not the permission. See
+    docs/research/activity-emoji-coremotion.md for the full data.
   - **#2 flight-gap:** does iOS revert to real GPS when we stop calling `set()`?
 - [ ] **Build the movement engine** (Phase B — the missing piece; see M2 and the design doc).
   Believable movement: road-snapped interpolation, per-segment speed profiles (walk / drive /
@@ -64,12 +67,22 @@ method: **docs/research/life360-notification-triggers.md**.
 - [ ] Arrival must look real: no impossible-speed teleport, GPS drift present.
 
 **Route presets (the movement engine):**
-- [ ] "Airport route" — believable ~30–40 min drive CDG → a 5-star Paris hotel.
+- [~] **Flight-arrival spoofer BUILT (offline) — 2026-07-10.** `fly.cmd` choreographs a full
+  airplane-mode "flight" that fires "arrived at <destination>": drive to departure airport → manual
+  airplane-mode gap (offline, so Life360 never sees the compressed hop) → drive from arrival airport
+  into a saved Place → dwell. First trip: **`nyc`** (Miami → Manhattan hotel), with `mia-departure`
+  + `jfk-to-hotel` routes and an Observer arrival signal (`place_name` / `--places`). Repeatable
+  per city. Design: docs/superpowers/specs/2026-07-10-flight-arrival-spoofer-design.md. **Pending
+  on-device:** Step 0 tunnel-survives-airplane-mode gate, then a real run with a 2nd member watching.
+- [ ] "Airport route" — believable ~30–40 min drive airport → a 5-star hotel. *(The `nyc` trip's
+  `jfk-to-hotel` leg is the first instance; CDG → Paris hotel is a coord swap.)*
 - [ ] "Full Ride" — multi-hour: airport → hotel, then mixed walking / driving / stops.
-- [ ] Trigger Life360's **movement emoji** (walk / drive icon). Research
-  (docs/research/activity-emoji-coremotion.md) finds this icon is **speed-derived → likely
-  spoofable** (Life360 defines it by speed thresholds, and its icon set includes flying/boating
-  which can't be accelerometer-based); confirm in Phase A #1.
+- [ ] Trigger Life360's **movement emoji** (walk / drive icon). ❌ **RESOLVED NO (2026-07-10,
+  Phase A #1):** on-device testing (both Motion & Fitness ON and OFF, Observer-instrumented) shows
+  the emoji/speed/driving-flag does NOT reliably trigger on a still spoofed phone in either
+  condition — see docs/research/activity-emoji-coremotion.md. Deprioritize this goal unless a new
+  lever surfaces (e.g. a much longer sustained run, or evidence the server cadence itself is
+  fixable).
   - ⚠ **Out of scope:** Life360 **driver reports / hard-braking / crash detection** are Arity
     **CoreMotion** (real accelerometer + gyro) and are **not** reproducible on a physically still
     phone. Don't promise them.

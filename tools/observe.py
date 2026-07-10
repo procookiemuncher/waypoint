@@ -78,6 +78,20 @@ def log_record(logf, circle, m):
     logf.flush()
 
 
+def show_places(client, circles):
+    """Print each circle's saved Places (name / center / radius). Read-only."""
+    for cid, cname in circles:
+        places = client.places(cid)
+        print(f"\n  Circle: {cname}")
+        if not places:
+            print("   (no saved places)")
+            continue
+        for name, lat, lon, radius in places:
+            loc = f"{lat:.5f},{lon:.5f}" if lat is not None and lon is not None else "?,?"
+            rad = f"{radius:.0f} m" if radius is not None else "? m"
+            print(f"   - {name} | {loc} | radius {rad}")
+
+
 def run_once(client, circles, needle, logf):
     """Print each matching member's current state, grouped by circle. Returns count shown."""
     shown = 0
@@ -129,6 +143,8 @@ def main():
                     help="seconds between polls in --watch mode (default 4; be gentle, Life360 "
                          "updates coarsely and may rate-limit)")
     ap.add_argument("--log", help="append every sample to this file as JSONL")
+    ap.add_argument("--places", action="store_true",
+                    help="list each circle's saved Places (name/center/radius) and exit")
     ap.add_argument("--env", default=os.path.join(ROOT, ".env"), help="path to the .env file")
     ap.add_argument("--check", action="store_true",
                     help="show which credentials were loaded (password masked) and exit")
@@ -176,7 +192,9 @@ def main():
             print("  authenticated, but this account is in no circles.")
             return
 
-        if args.watch:
+        if args.places:
+            show_places(client, circles)
+        elif args.watch:
             watch(client, circles, needle, args.interval, logf)
         else:
             shown = run_once(client, circles, needle, logf)

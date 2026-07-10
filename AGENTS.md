@@ -49,10 +49,18 @@ On iOS 17+ that service lives behind Apple's RemoteXPC **tunnel** (RSD), reached
 
 **Confirmed API constraint (2026-07-08, verified against pmd3 upstream):** `simulate-location
 set` accepts **only latitude + longitude** — no accuracy, altitude, speed, or heading (see
-upstream issue #340). ⟹ **iOS derives speed and heading from successive positions**, so the
-spacing/timing of the points we emit *is* the speed signal Life360 sees — which is why the
-movement engine is all about the point stream. `simulate-location play <gpx> [noise_ms]`
-derives speed from the GPX time deltas and takes an optional ± timing-noise argument.
+upstream issue #340). The point *spacing/timing* still sets what displacement Life360 can
+measure, so the movement engine is all about the point stream. `simulate-location play <gpx>
+[noise_ms]` replays the points on their GPX time deltas and takes an optional ± timing-noise arg.
+
+**⚠ Correction (2026-07-10, on-device): the injected location carries `CLLocation.speed == -1`
+(invalid) — iOS does NOT synthesize a speed from successive injected fixes.** The earlier claim
+here ("iOS derives speed from successive positions → point spacing is the speed signal") was wrong.
+The emoji-A/B Observer logs showed the spoofed *moving* phone report `speed = -1` on every sample,
+while the real *stationary* phone reports `0.0` — so Life360 reads the phone's `CLLocation.speed`
+field directly and gets no valid value from us. This is why the driving emoji is unreachable
+(docs/research/activity-emoji-coremotion.md). It does **not** affect the geofence arrival, which is
+purely spatial / speed-independent (docs/research/life360-geofence-arrival-mechanics.md §4).
 
 ## Detection surface & landscape (research 2026-07-08 — details in `docs/research/`)
 
@@ -138,6 +146,15 @@ are rendered + validated into a GPX and replayed over the `--userspace` tunnel (
 presets/coords hold a point until you press ENTER. **Drop a new JSON in `data/routes/` and it
 appears in the menu automatically.** Needs the `.venv` (Python 3.12/3.13, see BUILD_PLAN.md),
 the Apple Mobile Device Service, and the phone **unlocked** with Developer Mode on.
+
+**Flight choreographer:** `fly.cmd <trip>` (e.g. `fly.cmd nyc`) runs a believable **flight** that
+fires Life360's "arrived at <destination>" push — drive to the departure airport, a manual
+**airplane-mode** gap (the phone goes offline like a real flight, so Life360 never sees the
+impossible compressed hop), then drive from the arrival airport into a saved destination Place and
+dwell. ENTER-gated at the two manual airplane-mode toggles. A **trip** is `{depart route, arrive
+airport, destination Place + drive-in route}`, so new cities are copies with swapped coords. Design:
+docs/superpowers/specs/2026-07-10-flight-arrival-spoofer-design.md. ⚠ Verify the airplane-mode
+tunnel gate (Step 0 in the spec) once before trusting a real run.
 
 **Full app (planned):** launcher → prerequisite checks → FastAPI + browser UI. See ROADMAP.md.
 
