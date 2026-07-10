@@ -7,6 +7,124 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-07-10 — Built the flight-arrival spoofer (Miami -> NYC): choreographer + routes + Observer arrival signal
+
+**Model: Claude Sonnet 5 (Claude Code).** Pivoted from the (dead) emoji goal to the real north star —
+a believable **flight** that fires Life360's "arrived at <destination>" push. Brainstormed the design
+with the owner, wrote the spec, and built the offline-buildable parts.
+
+**The design insight (why this works):** in airplane mode the phone is **offline**, so Life360 never
+sees the flight — only the airport departure before the gap and the driven arrival after. Airplane
+mode *launders* the impossible 10-min compression (a real 2.5 h flight and our 10-min gap look
+identical to Life360: "offline, then far away"). So the flight arc is **never spoofed** (decided with
+the owner); all realism goes into the two ground legs Life360 *does* see. Full design:
+**docs/superpowers/specs/2026-07-10-flight-arrival-spoofer-design.md**.
+
+**Built (offline, all verified):**
+- **`tools/fly.py` + `fly.cmd`** — the guided choreographer. Runs: drive to MIA (route) -> hold ->
+  [you toggle airplane mode ON] -> jump spoof to JFK while offline -> hold -> [you toggle airplane
+  mode OFF] -> drive JFK->Manhattan hotel -> dwell -> "arrived" push. ENTER-gated at the two manual
+  airplane-mode steps. Reuses spoof.py's transport glue (no duplicated pmd calls). `fly.cmd nyc`.
+- **`data/routes/mia-departure.json`** (drive to MIA + dwell, snapped, 25.7 min, validates) and
+  **`data/routes/jfk-to-hotel.json`** (JFK -> The Plaza placeholder, snapped, 36.5 min, ends with a
+  5-min dwell inside the hotel Place; starts ~20 km out so the entry is a genuine outside->inside
+  crossing — the reliable arrival trigger). Both build + validate clean (1 harmless launch-accel warn).
+- **Observer arrival signal:** `MemberState.place_name` now surfaces `location.name` (the Place name
+  while INSIDE a Place) — previously **masked** behind the street address in `client.py._member`, so
+  the arrival-state signal was being lost. Added `Life360Client.places()` (reads a Place's exact
+  **radius** in meters) and `observe.py --places`. `place_name` flows into the JSONL log automatically.
+  Verified offline: inside-a-Place vs raw-GPS mapping, oneline shows `@Place`, all 7 movement tests
+  still pass.
+
+**API-behavior correction (ground rule #3):** the earlier AGENTS.md claim that "iOS derives speed
+from successive positions, so our point spacing is the speed signal" is **wrong on-device.** Today's
+emoji-A/B logs showed the spoofed-moving phone reports `CLLocation.speed == -1` (invalid) on every
+sample, while the real stationary phone reports `0.0` — i.e. the DVT-injected location carries **no
+valid speed** (the service is lat/lon only) and Life360 reads that field directly. Corrected in
+AGENTS.md. (Good news for arrival: it's purely spatial, speed-independent — §4 of the geofence brief.)
+
+**Next (owner, on-device, in order):**
+1. **Step 0 gate (decisive):** does the userspace tunnel survive an airplane-mode toggle? Hold
+   `spoof.cmd eiffel`, toggle airplane mode on then off, confirm the spoof holds/re-establishes. This
+   gates the whole choreographer (if it drops, we handle the reconnect race).
+2. Save a Manhattan hotel as a Life360 **Place**; read its real radius with `observe.py --places`;
+   point `jfk-to-hotel.json`'s final waypoint at it.
+3. Line up a 2nd circle member to watch for the push; run `observe.py --watch --log flight.jsonl`.
+4. `fly.cmd nyc` -> follow the prompts -> watch for "arrived". Then stamp out CDG/LAX from the same shape.
+
+---
+
+## 2026-07-10 — Emoji A/B COMPLETE: Motion & Fitness makes no difference; Phase A #1 resolved NO
+
+**Model: Claude Sonnet 5 (Claude Code).**
+
+Ran the second (ON) leg to complete the Motion & Fitness A/B from earlier today. Full comparison:
+
+| | OFF leg | ON leg |
+|---|---|---|
+| Route span captured | ~12 min (306 samples) | ~19 min (376 samples) |
+| `speed_raw` ever nonzero | never | never |
+| `isDriving` ever TRUE | never | never |
+| Server update interval | 61-952s | 62-715s |
+
+**Verdict: the two legs are statistically indistinguishable — Motion & Fitness ON vs OFF made no
+difference.** This refutes the brief's original hypothesis that turning the permission OFF would
+unlock GPS-only speed/driving inference. Both runs confirm the spoof + engine genuinely moved the
+pin the full route; Life360's server just never computed a nonzero speed or driving classification
+in either condition.
+
+**New leading hypothesis (reasoned, not yet directly confirmed):** it's Life360's own sparse
+**server-side position-update cadence** (~60-75s median in both legs) that's the real bottleneck —
+too coarse to ever clear the ½-mi/15-mph/850m Drive Detection gates within a single interval,
+independent of the permission. Possibly itself downstream of CoreMotion reporting `stationary`
+(throttling background upload frequency), but that's speculative.
+
+**Docs updated:** `docs/research/activity-emoji-coremotion.md` (verdict flipped, frontmatter
+`device_verified: full`, on-device update block rewritten with the full comparison table);
+`ROADMAP.md` (Phase A #1 checked off as RESOLVED NO, movement-emoji route-preset item marked
+resolved/deprioritized).
+
+**Next:** the movement-emoji goal is deprioritized per the roadmap update above (no known lever
+left except an untested much-longer sustained run). Remaining open items unchanged: re-run the
+flight-gap research brief; locate/re-add a real UI.
+
+---
+
+## 2026-07-10 — Live Observer confirmed working + first emoji A/B leg (Motion & Fitness OFF): no speed, no isDriving flip
+
+**Model: Claude Sonnet 5 (Claude Code).** Flagging in case this gets revisited/redone with Opus.
+
+**Token auth confirmed live.** Owner captured a `LIFE360_TOKEN` via web DevTools (life360.com →
+Network tab → `Authorization: Bearer` header on the `/v3/circles` GET, not the OPTIONS preflight)
+and dropped it in `.env`. `observe.py` now reads the real account: 2 circles ("og clan" 12 members,
+"bird gang" 3 members). Also spotted (same token, unused by our client) `/v3/users/me` (account
+profile) and `/v4/users/premium` (subscription status) — documented in `docs/LIFE360_OBSERVER.md` §3
+for future reference, not wired in.
+
+**Ran the Motion & Fitness OFF leg of the emoji A/B, instrumented.** With the permission OFF, owner
+ran `spoof.cmd emoji-test` while `observe.py --watch --log` recorded. Result: **306/360 samples
+landed on the route corridor over a real ~12 min span** (so the spoof itself played correctly, then
+reverted to the real home location afterward — not a mid-route crash as first suspected) **but
+`speed_raw` stayed 0/-1 and `isDriving` never flipped TRUE for the entire run.** This is evidence
+*against* the "Motion & Fitness OFF unlocks GPS-only speed detection" hypothesis from the CoreMotion
+research brief — but not conclusive on its own; the **Motion & Fitness ON** comparison leg (same
+route, same instrumentation) hasn't been run yet. Updated
+`docs/research/activity-emoji-coremotion.md` with this on-device result; **did not flip the verdict**
+— that needs the ON leg run + compared via `correlate.py` first.
+
+**Bug fix: `tools/correlate.py` crashed on this exact data shape.** `ratio = ... if (med_obs and
+med_emi) else None` treated a median observed speed of `0.0` as falsy → crashed formatting `None` as
+a float. Fixed the truthiness check to `is not None`, made the report degrade cleanly ("n/a") instead
+of crashing, and fixed an em-dash mojibake in the unit-guess string. Re-verified against the real
+`run-off.jsonl` — prints cleanly now. Details in `docs/LIFE360_OBSERVER.md` §11.5.
+
+**Next:** run the Motion & Fitness **ON** leg of the same emoji-test A/B (same instrumentation),
+then `correlate.py` both logs side by side to actually decide the verdict. Also still open: re-run
+the flight-gap research brief; locate/re-add a real UI (the Waypoint Visualizer is a standalone
+export, not wired in).
+
+---
+
 ## 2026-07-09 — Added the Waypoint Map Visualizer (first UI artifact), committed + pushed
 
 Owner added **`Waypoint Map Visualizer/export/Waypoint.html`** — a single self-contained ~530 KB

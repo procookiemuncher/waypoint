@@ -79,6 +79,17 @@ that package's `api.py` / `const.py` (§14) rather than guess. Base host histori
 > how to refresh the client token," not a crash. Everything downstream is stable-ish once a bearer
 > token is in hand.
 
+**Two more endpoints observed live (2026-07-10, web DevTools, same Bearer token; noted by Claude
+Sonnet 5) — not currently used
+by the client, noted here for future research:**
+- `GET /v3/users/me` — the authed user's own account profile (name, email, avatar, phone).
+- `GET /v4/users/premium` — the authed user's Life360 subscription/premium plan status.
+
+Both 200'd with the same `Authorization: Bearer …` token as `/v3/circles`, confirming the token is a
+general-purpose bearer credential (not scoped to just the circles/members endpoints). Neither is
+wired into `backend/life360/client.py` — add if a future research question needs account/plan info
+(e.g. does premium tier gate flight-detection or geofence features).
+
 **Passwordless (phone + SMS) accounts — CONFIRMED on the owner's account (2026-07-09).** The
 `grant_type=password` flow returns **403 "Invalid login and password"** because the account has no
 password to check. And the SMS-code login flow is **not reliably reverse-engineered** in any public
@@ -241,6 +252,16 @@ tools/
       run.
 - **Exit criteria met** (code): one report quantifies the speed gap, the emoji flag, and the stutter.
   Real value lands once a live run's JSONL exists to feed it.
+
+## 11.5 Bug fix (2026-07-10, Claude Sonnet 5) — `correlate.py` crashed on an all-zero speed run
+
+The first live run (`run-off.jsonl`, the Motion & Fitness OFF emoji-test leg) hit a real bug:
+`ratio = (med_obs / med_emi) if (med_obs and med_emi) else None` treated a median observed speed of
+exactly `0.0` as falsy, so `ratio` stayed `None` even though `median_observed_speed` printed fine —
+then the report tried to format `{ratio:.2f}` and crashed. Fixed to check `med_obs is not None`
+instead of truthiness, and made `print_report` / `_infer_unit` handle a `None` ratio without
+crashing (prints "n/a (observed speed is 0 the whole run)" instead). Also fixed an em-dash → cp1252
+mojibake in `_infer_unit`'s output (repo precedent: keep console output ASCII on Windows).
 
 ## 12. Risks & open questions
 

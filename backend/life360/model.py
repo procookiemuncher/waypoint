@@ -22,6 +22,7 @@ class MemberState:
     wifi_state: bool | None
     gps_accuracy: float | None
     address: str | None
+    place_name: str | None       # location.name — the Place name while INSIDE a Place (arrival state)
     since_ts: int | None         # Life360's "last location update" epoch (server side)
     fetched_ts: int              # when WE polled (for cadence measurement)
 
@@ -34,5 +35,7 @@ class MemberState:
         spd = f"{self.speed_raw:.1f}" if self.speed_raw is not None else "?"
         batt = f"{self.battery:.0f}%" if self.battery is not None else "?"
         acc = f"{self.gps_accuracy:.0f}m" if self.gps_accuracy is not None else "?"
+        # The Place name (when inside one) is the arrival signal — surface it prominently.
+        at = f" | @{self.place_name}" if self.place_name else ""
         return (f"{self.name} | {loc} | speed {spd} | driving={drv} | "
-                f"batt {batt} | wifi {wifi} | acc {acc}")
+                f"batt {batt} | wifi {wifi} | acc {acc}{at}")

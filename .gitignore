@@ -16,6 +16,12 @@ env/
 data/life360.creds.json
 *.local
 
+# Observer logs — contain real location data, NEVER commit
+*.jsonl
+
+# Built GPX artifacts (regenerated from data/routes/*.json on demand)
+data/routes/*.gpx
+
 # iOS device pairing records / secrets — NEVER commit
 pairing_records/
 *.mobiledevicepairing

@@ -117,14 +117,14 @@ def _median(xs):
 
 def _infer_unit(ratio):
     if ratio is None:
-        return "unknown (no speed samples)"
+        return "unknown (observed speed is 0 the whole run - no unit signal)"
     if 0.80 <= ratio <= 1.25:
         return "MPH (observed ~= emitted mph)"
     if 0.35 <= ratio <= 0.55:
         return "m/s (observed ~= emitted mph x 0.447)"
     if 3.0 <= ratio <= 4.0:
         return "km/h (observed ~= emitted mph x 1.61) - unlikely, check"
-    return "inconclusive — see raw ratio"
+    return "inconclusive - see raw ratio"
 
 
 def correlate(pts, emitted_mps, samples):
@@ -150,7 +150,7 @@ def correlate(pts, emitted_mps, samples):
     obs_speeds = [o for o, _, _ in speed_pairs]
     emi_speeds = [e for _, e, _ in speed_pairs]
     med_obs, med_emi = _median(obs_speeds), _median(emi_speeds)
-    ratio = (med_obs / med_emi) if (med_obs and med_emi) else None
+    ratio = (med_obs / med_emi) if (med_obs is not None and med_emi) else None
 
     return {
         "n_gpx": len(pts),
@@ -183,7 +183,10 @@ def print_report(rep):
     else:
         print(f"  median observed speed : {rep['median_observed_speed']:.1f}")
         print(f"  median emitted speed  : {rep['median_emitted_mph']:.1f} mph")
-        print(f"  observed / emitted    : {rep['ratio']:.2f}")
+        if rep["ratio"] is None:
+            print("  observed / emitted    : n/a (observed speed is 0 the whole run)")
+        else:
+            print(f"  observed / emitted    : {rep['ratio']:.2f}")
         print(f"  => Life360 speed unit : {rep['unit_guess']}")
         if rep["ratio"] and rep["ratio"] < 0.8:
             print(f"  => under-reading by ~{(1 - rep['ratio']) * 100:.0f}% "

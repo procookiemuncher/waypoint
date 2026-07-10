@@ -112,13 +112,28 @@ class Life360Client:
         data = self._request("GET", f"/v3/circles/{circle_id}/members")
         return [self._member(m) for m in (data.get("members") or [])]
 
+    def places(self, circle_id: str) -> list[tuple[str, float | None, float | None, float | None]]:
+        """Return [(name, lat, lon, radius_m)] for a circle's saved Places.
+
+        Read-only. The `radius` field is in meters (geofence-arrival-mechanics.md §5) — read the
+        exact radius of a saved Place before authoring a drive-in route rather than guessing.
+        """
+        data = self._request("GET", f"/v3/circles/{circle_id}/places")
+        out = []
+        for p in (data.get("places") or []):
+            out.append((p.get("name") or "(unnamed)", _f(p.get("latitude")),
+                        _f(p.get("longitude")), _f(p.get("radius"))))
+        return out
+
     # -- JSON -> dataclass (mapping stays here, not above the client) ----------
 
     @staticmethod
     def _member(m: dict) -> MemberState:
         loc = m.get("location") or {}
         name = " ".join(x for x in (m.get("firstName"), m.get("lastName")) if x) or "(unknown)"
-        address = loc.get("shortAddress") or loc.get("address1") or loc.get("name") or None
+        # Keep these separate: `place_name` (location.name) is populated only while the member is
+        # INSIDE a Place — it's the arrival-state signal. `address` is the raw street address.
+        # Folding name into address (the old behavior) masked the arrival signal behind the street.
         return MemberState(
             name=name,
             lat=_f(loc.get("latitude")),
@@ -128,7 +143,8 @@ class Life360Client:
             battery=_f(loc.get("battery")),
             wifi_state=_b(loc.get("wifiState")),
             gps_accuracy=_f(loc.get("accuracy")),
-            address=address,
+            address=loc.get("shortAddress") or loc.get("address1") or None,
+            place_name=loc.get("name") or None,
             since_ts=_i(loc.get("since")),
             fetched_ts=int(time.time()),
         )
