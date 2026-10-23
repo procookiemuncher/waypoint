@@ -10,7 +10,7 @@ single waypoint list at one speed (the first moving segment with a speed, or --m
 for bends, drifts around cruise, stops. Not tried on the phone yet.
 
     ./mac-version/drive.command emoji-test              # write + play (route name or path)
-    ./mac-version/drive.command emoji-test --vary       # changing speed
+    ./mac-version/drive.command emoji-test --vary       # changing speed, stop with Ctrl+C
     ./mac-version/drive.command emoji-test --vary --write-only   # print the chunk plan
     ./mac-version/drive.command miami-cruise --mph 25
     ./mac-version/drive.command emoji-test --write-only
@@ -211,13 +211,16 @@ def play_chunks(chunks, device, cancel, log=print, wrap=lambda cmd: cmd):
     for k, c in enumerate(chunks):
         if cancel.wait(max(0.0, t0 + at - time.monotonic())):
             return True
+        late = time.monotonic() - (t0 + at)
         p = subprocess.run(wrap(chunk_cmd(c, device)), capture_output=True, text=True, timeout=30)
+        took = time.monotonic() - (t0 + at) - late
         if p.returncode:
             for line in (p.stdout + p.stderr).splitlines():
                 log(line)
             return False
         what = f"{c['speed'] / MPH:.0f} mph" if c["kind"] == "move" else "stopped"
-        log(f"  [{k + 1}/{len(chunks)}] {what} for {c['secs']:.0f}s")
+        # late/call: if devicectl takes ~1s per call, short chunks spend a lot of time handing off
+        log(f"  [{k + 1}/{len(chunks)}] {what} for {c['secs']:.0f}s  (late {late:.1f}s, call {took:.1f}s)")
         at += c["secs"]
     return True
 
@@ -257,9 +260,16 @@ def main():
     if args.clear:
         devicectl("device", "simulate", "location", "clear", "--device", device)
         return
-    print("> Playing. Keep the phone unlocked. Stop it with:  ./mac-version/drive.command --clear")
     if chunks:
+        import signal
         import threading
+        # --clear from another window would only clear the chunk playing now, then the next one
+        # starts. So this window owns the stop: Ctrl+C, closing the window or a kill all clear.
+        def interrupt(*_):
+            raise KeyboardInterrupt
+        signal.signal(signal.SIGTERM, interrupt)
+        signal.signal(signal.SIGHUP, interrupt)
+        print("> Playing. Keep the phone unlocked. Stop it with Ctrl+C in THIS window.")
         cancel = threading.Event()
         try:
             ok = play_chunks(chunks, device, cancel)
@@ -269,6 +279,7 @@ def main():
             return
         print("> done" if ok else "> devicectl refused a chunk, see above")
         return
+    print("> Playing. Keep the phone unlocked. Stop it with:  ./mac-version/drive.command --clear")
     devicectl("device", "simulate", "location", "route", "--device", device,
               "--route-file", route_file)
 
