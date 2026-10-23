@@ -78,14 +78,16 @@ function typeLine(text, cls='sys'){
   return typeChain;
 }
 function echoCommand(cmd){
+  if(promptRunning) return typeChain;
   typeChain = typeChain.then(()=>new Promise(res=>{
-    const typed=$('prompt-typed');
+    const input=$('prompt-in');
     const done=()=>{ logLine('','cmd',true).innerHTML='<span class="ps">waypoint ›</span> '+esc(cmd); res(); };
-    if(RM){ done(); return; }
+    // don't type over whatever the user is writing in the prompt
+    if(RM || input.value || document.activeElement===input){ done(); return; }
     let i=0;
     const t=setInterval(()=>{
-      typed.textContent=cmd.slice(0,++i);
-      if(i>=cmd.length){ clearInterval(t); setTimeout(()=>{ typed.textContent=''; done(); }, 140); }
+      input.value=cmd.slice(0,++i); sizePrompt();
+      if(i>=cmd.length){ clearInterval(t); setTimeout(()=>{ input.value=''; sizePrompt(); done(); }, 140); }
     }, 22);
   }));
   return typeChain;
@@ -324,6 +326,84 @@ function resetView(){
   if(live && marker) map.flyTo(marker.getLatLng(), 14, { duration:1.2 });
   else map.flyTo([25.7617,-80.1918], 13, { duration:1.2 });
 }
+
+/* ============ PROMPT (typed commands) ============ */
+const promptIn=$('prompt-in');
+const cmdHistory=[]; let histAt=0, promptRunning=false;
+function sizePrompt(){ promptIn.style.width=(promptIn.value.length+1)+'ch'; }
+function clearConsole(){ consoleEl.innerHTML=''; }
+const HELP = [
+  'clear                     clear the console (ctrl+L)',
+  'reset                     stop, put the phone back on real GPS, reset the map + console',
+  'stop                      stop whatever is running and clear the spoof',
+  'set <place>               hold at a saved place',
+  'set <lat> <lon>           hold at a coordinate',
+  'play <route> [--spoof|--drive] [--mph N]',
+  'ls [routes|places]        list what you can set / play',
+  'help                      this',
+];
+const COMMANDS = {
+  help(){ HELP.forEach(l=>logLine(l,'sys')); },
+  clear(){ clearConsole(); },
+  reset(){
+    clearConsole();
+    if(STATUS?.active || STATUS?.busy) stopAll();
+    clearPreview();
+    map.flyTo([25.7617,-80.1918], 13, { duration:1.2 });
+    setAccent(DEFAULT_ACCENT);
+    if(!STATUS?.active) typeLine('phone is on real GPS.','ok');
+  },
+  stop(){ stopAll(); },
+  set(args){
+    if(args.length===2 && args.every(a=>isFinite(parseFloat(a)))) return setPoint(parseFloat(args[0]), parseFloat(args[1]));
+    const p=PLACES.find(p=>p.id===args[0]);
+    if(!p) return logLine(args.length ? `no place called '${args[0]}' — try ls places` : 'usage: set <place> | set <lat> <lon>','warn');
+    setPlace(p);
+  },
+  play(args){
+    const rt=ROUTES.find(r=>r.id===args[0]);
+    if(!rt) return logLine(args.length ? `no route called '${args[0]}' — try ls routes` : 'usage: play <route> [--spoof|--drive] [--mph N]','warn');
+    const ids=availableEngines().map(e=>e.id);
+    const engine=ids.find(id=>args.includes('--'+id)) || selEngine();
+    const mi=args.indexOf('--mph'), mph=mi>=0 ? parseFloat(args[mi+1]) : null;
+    if(mi>=0 && !(mph>0)) return logLine('--mph needs a number','warn');
+    if(mph && engine!=='drive') return logLine('--mph only works with --drive','warn');
+    send(`play ${rt.id} --${engine}`+(mph?` --mph ${mph}`:''), '/api/play', { route:rt.id, engine, mph });
+  },
+  ls(args){
+    const what=args[0];
+    if(what && !['routes','places'].includes(what)) return logLine('usage: ls [routes|places]','warn');
+    if(what!=='places') ROUTES.forEach(r=>logLine(`route  ${r.id.padEnd(16)} ${r.sub}`,'sys'));
+    if(what!=='routes') PLACES.forEach(p=>logLine(`place  ${p.id.padEnd(16)} ${p.name}`,'sys'));
+  },
+};
+function runPrompt(line){
+  const [name, ...args]=line.trim().split(/\s+/);
+  if(!name) return;
+  const fn=COMMANDS[name.toLowerCase()];
+  logLine('','cmd',true).innerHTML='<span class="ps">waypoint ›</span> '+esc(line.trim());
+  if(!fn) return logLine(`command not found: ${name} — try help`,'warn');
+  promptRunning=true;   // already echoed above, so send() shouldn't echo again
+  try{ fn(args); } finally{ promptRunning=false; }
+}
+promptIn.addEventListener('input', sizePrompt);
+promptIn.addEventListener('keydown', e=>{
+  if(e.key==='Enter'){
+    const line=promptIn.value;
+    if(line.trim()){ cmdHistory.push(line); histAt=cmdHistory.length; }
+    promptIn.value=''; sizePrompt();
+    runPrompt(line);
+  } else if(e.key==='ArrowUp' && histAt>0){
+    e.preventDefault(); promptIn.value=cmdHistory[--histAt]; sizePrompt();
+  } else if(e.key==='ArrowDown' && histAt<cmdHistory.length){
+    e.preventDefault(); histAt++; promptIn.value=cmdHistory[histAt]||''; sizePrompt();
+  } else if(e.key==='l' && e.ctrlKey){
+    e.preventDefault(); clearConsole();
+  } else if(e.key==='Escape'){
+    promptIn.value=''; sizePrompt(); promptIn.blur();
+  }
+});
+$('promptline').addEventListener('mousedown', e=>{ if(e.target!==promptIn){ e.preventDefault(); promptIn.focus(); } });
 
 /* ============ COMMAND PANEL (tabs + hero + thumbs) ============ */
 let curTab='routes', selected=null, engineChoice=null;
