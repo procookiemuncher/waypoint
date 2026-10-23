@@ -7,6 +7,38 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-22 — Waypoint: connect screen (plug in + unlock) with a rainbow wire
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wanted a modern screen after the terminal boot log
+that waits for the phone to be connected + unlocked, with a rainbow cable between computer and phone.
+
+**Broke / fixed**
+- **`Session.devices()` always returned None** — in 850ad09 the `return self._devices` line got
+  glued onto the end of a comment. So the app said "no phone" no matter what (even in dry run). The
+  previous entry's "correctly showed not found" was this bug, not a real check. Fixed (e439e33).
+
+**Changed**
+- `device.py`: `Pmd3.mount()` returns `(state, message)` — `ready` / `locked` / `error` — parsed
+  from auto-mount's output (it exits 0 on most failures, so the exit code is useless). `DeviceLocked`
+  / `PasswordProtected` → locked, "Developer Mode is disabled" → error, "already mounted" /
+  "mounted successfully" → ready.
+- `session.py`: `status()` has a `phone` field: `none | checking | locked | ready | error`. Unlocked is
+  judged by mounting the DDI (which won't happen on a locked phone), retried in the background every
+  ~4s, never inside the status request. Side effect: the DDI is already on before the first play.
+- Page: `#link` overlay between the boot log and the app (laptop → SVG wire → phone, three step pills,
+  "continue without phone"). Wire is dim + unplugged when there's no phone, a flowing rainbow (same
+  colors as the window ring) when plugged in, with white packets + glow when ready. Holds ~1.8s on
+  ready, then hands off. Scanlines fade out while it's up.
+- `VIDA_DRY_PHONE=slow` (with `VIDA_DRY_RUN=1`): fake phone is missing for 12s, locked until 20s, then
+  ready — for working on this screen.
+
+**Verified**: dry-run screenshots of none → locked → ready → app handoff. **Not verified on the real
+phone**: whether pmd3 really prints `DeviceLocked` for a locked phone on iOS 27 (it did on 26.6 in
+July), and the error state's copy. Limit: once mounted, re-locking the phone isn't noticed (one-time
+gate, not a live lock indicator).
+
+**Next**: plug the real phone in locked and watch the screen flip to "Unlock your iPhone".
+
 ## 2026-10-22 — Waypoint: a real Mac app (Dock icon, map UI) on top of the engine
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wanted something they can run from the Dock instead
