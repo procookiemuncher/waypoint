@@ -24,6 +24,29 @@ clear command runs; `clear`, `ls`, `help`, unknown command, history all fine. No
 
 ---
 
+## 2026-10-23 — Drive with changing speed (chained devicectl calls)
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wants the Miami drive to have realistic, changing speed.
+
+devicectl holds one speed per call, so a varying drive is a chain of calls.
+`devicectl_route.plan_chunks` renders the route with the movement engine (ramps, slows for bends,
+stops), cuts it into 5–30s chunks of roughly steady speed, and averages each chunk's speed with
+its neighbours, so the renderer's braking for every bend doesn't read as 18-31-18 mph. On top
+of that a slow ±12% wander gets a new target every 30–60s. Stops become a `coordinate` hold. New
+seed every run. `play_chunks` launches each chunk against one start clock and checks a cancel
+Event right before every launch.
+- Terminal: `drive.command emoji-test --vary` (`--write-only` prints the plan).
+- App: Drive now varies by default; typing an MPH keeps the old single steady call.
+  `ChainJob` stops by joining the thread, so no chunk lands after the clear.
+- emoji-test plan: 9→37 mph, ~48 chunks, ~10 min. miami-demo: walk 2 mph → 26 mph → stop → … → park.
+- Also fixed: devicectl `coordinate` with a negative longitude (`--longitude=-80.19`), which broke Miami pins + stops.
+
+**Verified**: dry run (plays through, stop in 0.2s, steady mph path unchanged), speed-planning tests OK.
+**NOT verified on the phone**: whether a new `route` call cleanly replaces the running one, and what
+Life360 shows at each handoff. First on-device try: `drive.command emoji-test --vary`, phone unlocked.
+
+---
+
 ## 2026-10-23 — drive.command shows mph again, app polling slowed during routes
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner ran `./mac-version/drive.command emoji-test` per the
