@@ -6,6 +6,12 @@
 /* ============ WINDOW CHROME ============ */
 function winMinimize(){ if(window.pywebview?.api) window.pywebview.api.minimize(); }
 function winClose(){ if(window.pywebview?.api) window.pywebview.api.close(); else window.close(); }
+// the titlebar drags the window natively (AppKit). pywebview's own drag region moved it with a
+// bridge call per mousemove, which lagged way behind the cursor
+document.getElementById('titlebar').addEventListener('mousedown', e=>{
+  if(e.button!==0 || e.target.closest('.no-drag') || !window.pywebview?.api?.drag) return;
+  window.pywebview.api.drag();
+});
 
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = id => document.getElementById(id);
@@ -122,6 +128,9 @@ function initMap(){
     attribution:'© Stadia Maps © OpenMapTiles © OpenStreetMap', maxZoom:20,
   }).addTo(map);
   tiles.once('load', ()=>{ tilesReady=true; });
+  // the spinning halo + frosted HUDs repaint every frame; pause them while the map moves
+  map.on('movestart', ()=> document.body.classList.add('panning'));
+  map.on('moveend', ()=> document.body.classList.remove('panning'));
   map.on('zoomend', ()=> $('v-zoom').textContent = map.getZoom());
   map.on('mousemove', e=>{ if(!live) setCoord(e.latlng.lat, e.latlng.lng); });
   map.on('click', e=> dropPin(e.latlng.lat, e.latlng.lng));
