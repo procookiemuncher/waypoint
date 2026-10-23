@@ -113,18 +113,21 @@ prior-art survey + design + data model in **docs/research/behavioral-engine-prio
   + jitter) extending the existing validator.
 - Reference tool on our exact stack: **`locwarp`** (Windows + pymobiledevice3) — study, don't fork.
 
-### M2 — Backend core
-- [ ] `LocationBackend` interface — `ensure_ready()` / `set_location()` / `clear()` / `status()`
-- [ ] `pymobiledevice3` adapter (all transport glue lives here)
-- [ ] Managed tunnel helper (handles elevation)
-- [ ] Status/health reporting (device · tunnel · DDI · dev-mode · current coord)
+### M2 — Backend core  🟡 thin version built 2026-10-22
+- [x] Session (`core/backend/session.py`) — set / play / stop / status, one job at a time, clears every sim it touched
+- [x] `pymobiledevice3` adapter (`core/backend/device.py`) — still CLI subprocesses, `--userspace`
+- [ ] Managed tunnel helper (handles elevation) — not needed so far, `--userspace` per call works
+- [~] Status/health reporting — device found (usbmux) + active job; no DDI / dev-mode / tunnel detail yet
 
-### M3 — Local web UI
-- [ ] FastAPI app serving the static Leaflet page
-- [ ] Map click-to-set + location label
-- [ ] Landmark presets (Eiffel Tower, Dubai, Miami, …)
-- [ ] Save / reuse named locations (local JSON)
-- [ ] Status panel + Set / Clear controls
+### M3 — Local web UI  ✅ first version 2026-10-22 (Waypoint, Mac app)
+- [x] FastAPI app serving the static Leaflet page (`core/backend/server.py`, `core/web/`)
+- [x] Map click-to-set (drop a pin → set location)
+- [x] Landmark presets (`core/places.json`, shared with spoof.py)
+- [ ] Save / reuse named locations from the UI (presets are hand-edited JSON for now)
+- [x] Status pills + set / play / stop & clear, console fed by the server log
+- [x] Route picker with Drive (real mph, Mac) / Spoof engine toggle + mph override
+- [x] Mac Dock app — `mac-version/make-app.command` → ~/Applications/Waypoint.app
+- [ ] **On-device run from the app** (only dry-run + headless-browser checks so far)
 
 ### M4 — MVP polish
 - [ ] Prerequisite checks surfaced in the UI with fixes

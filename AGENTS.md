@@ -35,7 +35,7 @@ Movement-engine work.
   detection** are Arity **CoreMotion** (real accelerometer + gyro), which we do NOT spoof — the
   phone sits physically still — so those are out of scope. Target the emoji, not the reports.
 
-A **UI** is wanted eventually, but deferred.
+**UI: first version built (2026-10-22)** — the Waypoint app (Mac Dock app + the same page in a browser). See *Running it*.
 
 ## How it works (the mechanism)
 
@@ -151,8 +151,14 @@ docs/              design docs + research
 .venv  .env  requirements.txt   stay at the repo root
 ```
 
-Planned (M2/M3): `core/backend/` grows the FastAPI app + `LocationBackend` + pmd3 adapter, and a
-static Leaflet UI lands under `core/web/`.
+App (built 2026-10-22): `core/backend/server.py` (FastAPI, 127.0.0.1 only) + `session.py` (one job
+at a time, stop = kill + clear every sim touched) + `device.py` (the pmd3 adapter — still CLI
+subprocesses, same commands spoof.py runs) + `routes.py`/`places.py`; page in `core/web/`. Route
+engines plug into the Session: core ships `spoof` (pmd3 GPX); **the Mac-only `drive` engine lives in
+`mac-version/drive_engine.py`** (wraps `devicectl_route.py`) and `mac-version/app.py` registers it — so
+devicectl code never lands in core. `mac-version/app.py` = pywebview window; `make-app.command` builds
+`~/Applications/Waypoint.app` (compiled `app/launcher.c` that execs the venv python — macOS 26 won't
+launch a bundle whose executable is a shell script, error -10669).
 
 ## Running it
 
@@ -179,7 +185,11 @@ airport, destination Place + drive-in route}`, so new cities are copies with swa
 docs/superpowers/specs/2026-07-10-flight-arrival-spoofer-design.md. ⚠ Verify the airplane-mode
 tunnel gate (Step 0 in the spec) once before trusting a real run.
 
-**Full app (planned):** launcher → prerequisite checks → FastAPI + browser UI. See ROADMAP.md.
+**Waypoint app (Mac):** `./mac-version/make-app.command` once → Waypoint in ~/Applications / the
+Dock. Or `./mac-version/app.command`. `VIDA_DRY_RUN=1` makes every phone command a printed no-op —
+**use it for UI work; a real run moves the owner's pin in front of their Life360 circle.** Map tiles:
+Stadia `alidade_smooth_dark`, keyless from localhost (CARTO's dark_all started demanding an API key).
+Windows can run `core/backend/server.py` and use a browser for now (spoof engine only).
 
 ## Prerequisites (these bite first)
 
