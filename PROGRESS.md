@@ -24,6 +24,20 @@ clear command runs; `clear`, `ls`, `help`, unknown command, history all fine. No
 
 ---
 
+## 2026-10-23 — drive.command shows mph again, app polling slowed during routes
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner ran `./mac-version/drive.command emoji-test` per the
+10-22 recipe (clear first, phone unlocked, 3–5 min) and **Life360 showed the speed**. So devicectl
+speed still works on iOS 27.0.1.
+
+The app's Drive button already runs the same thing (same `build_route_file`, `find_device`, same
+`devicectl … simulate location route` call). Only difference found: the app's readiness check
+runs `devicectl device info lockState` every 2s, also mid-route. Now every 20s while a route is
+active. **A guess, not a proven cause** — today's app runs were also much shorter (40s–2.5 min) and
+the phone kept locking. Next: the same emoji-test from the app, 3–5 min, phone unlocked.
+
+---
+
 ## 2026-10-23 — "Speed spoof doesn't work on one of the routes"
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner: picking one of the routes, the speed doesn't show.
