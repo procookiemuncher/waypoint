@@ -24,6 +24,28 @@ clear command runs; `clear`, `ls`, `help`, unknown command, history all fine. No
 
 ---
 
+## 2026-10-23 — "Speed spoof doesn't work on one of the routes"
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner: picking one of the routes, the speed doesn't show.
+
+**Found** (Waypoint.log + code, owner hasn't said which route yet)
+- **miami-demo could never play on Drive**: `build_route_file` took the speed of the *first* moving
+  segment only, and miami-demo starts with a walk that has no speed → "no speed … pass --mph". The
+  card still said 26 mph CRUISE because `summary()` skips segments without a speed. Fixed: same
+  rule as `summary()` (f153d12). All 7 routes now build for Drive.
+- **Engine toggle could stick on Spoof**: `selEngine()` stored its fallback, so if a route card
+  rendered before the first `/api/status` (ENGINES empty → Spoof only), Spoof stayed picked even
+  after Drive appeared. Now only a click stores a choice, and the toggle re-renders when the
+  engine list changes (623d255). Today's 13:21 run was **emoji-test via spoof**, which is 0 mph by
+  design, so that run looks like "speed doesn't work" whichever way Spoof got picked.
+- The Drive runs in the log (jfk-to-hotel 00:10, 67 mph, cleared after ~40s; demo-drive 13:35,
+  Paris, ~2.5 min) both started fine on devicectl. Both were long teleports and short, so Life360
+  may just not have caught a moving sample. Not a code bug as far as the log shows.
+
+**Not verified**: on the phone. **Still open**: negative-longitude `hold` (places, not routes).
+
+---
+
 ## 2026-10-23 — Dragging the window was laggy
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner said dragging is really laggy.
