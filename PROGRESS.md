@@ -42,6 +42,9 @@ Event right before every launch.
 - Also fixed: devicectl `coordinate` with a negative longitude (`--longitude=-80.19`), which broke Miami pins + stops.
 
 **Verified**: dry run (plays through, stop in 0.2s, steady mph path unchanged), speed-planning tests OK.
+- Terminal `--vary` must be stopped with **Ctrl+C in its own window** (or closing it). `--clear` from
+  another window only clears the current chunk, and then the next chunk starts. Each `[k/n]` line logs
+  `late`/`call` seconds. If `call` is around 1s on the phone, raise `CHUNK_MIN_S` (20–30s).
 **NOT verified on the phone**: whether a new `route` call cleanly replaces the running one, and what
 Life360 shows at each handoff. First on-device try: `drive.command emoji-test --vary`, phone unlocked.
 
