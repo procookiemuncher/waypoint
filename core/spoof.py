@@ -2,7 +2,7 @@
 (or run `python spoof.py`).
 
 Shows a "where do you want to go?" menu:
-  - **Routes** (realistic movement) — every data/routes/*.json, built by the movement engine
+  - **Routes** (realistic movement) — every core/routes/*.json, built by the movement engine
     into a validated GPX and replayed on the phone (walk/drive/stop, ramps, jitter).
   - **Static presets** — hold a fixed point (quick teleport).
   - **Clear** — revert to the phone's real GPS.
@@ -24,7 +24,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)                       # make `backend` importable
-ROUTES_DIR = os.path.join(ROOT, "data", "routes")
+ROUTES_DIR = os.path.join(ROOT, "routes")
 BUILD_DIR = os.path.join(ROOT, "build")
 
 # Static teleport presets: key -> (lat, lon, label). Just hold a fixed point.

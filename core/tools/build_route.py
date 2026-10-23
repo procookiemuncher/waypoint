@@ -5,8 +5,8 @@ road-snapping step will slot in here later. Run this before any on-device play â
 the trajectory and refuses to write a GPX that would look impossible to Life360. Warnings are
 printed but don't block; errors do.
 
-    py tools/build_route.py data/routes/demo-drive.json
-    py tools/build_route.py data/routes/demo-drive.json --out build/demo-drive.gpx --seed 7
+    py core/tools/build_route.py core/routes/demo-drive.json
+    py core/tools/build_route.py core/routes/demo-drive.json --out core/build/demo-drive.gpx --seed 7
 """
 import argparse
 import os
