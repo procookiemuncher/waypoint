@@ -7,6 +7,26 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-23 — Dragging the window was laggy
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner said dragging is really laggy.
+
+**Found**: the titlebar used pywebview's `pywebview-drag-region`, which moves the window with one
+JS→Python bridge call per mousemove, so the window always lagged behind the cursor.
+
+**Changed**
+- `app.py`: a local NSEvent monitor remembers the last left mouse-down; `WindowApi.drag()` hands it
+  to `NSWindow.performWindowDragWithEvent_` (only if the button is still held), so AppKit runs the drag.
+- `index.html`/`app.js`: titlebar no longer has the pywebview class; a mousedown on it (not on
+  `.no-drag`) calls `api.drag()`. Browser/Windows paths skip it (no `pywebview.api.drag`).
+- `app.css`: while the map pans (`body.panning`), the halo/ring spin pauses and HUD backdrop blur is
+  off, in case "drag" also meant the map. Not measured, just less repaint.
+
+**Verified** (dry run, synthetic Quartz mouse events on the titlebar): the window follows the drag
+exactly. **Not verified**: how it feels by hand, and whether map panning feels better.
+
+---
+
 ## 2026-10-23 — Quitting the Mac app "crashed": it was a main-thread hang
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner: the app crashes when you close it.
