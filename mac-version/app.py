@@ -76,6 +76,10 @@ def main():
         if done.is_set():
             return
         done.set()
+        try:
+            window.hide()           # clearing takes a few seconds; don't look frozen meanwhile
+        except Exception:
+            pass
         session.shutdown()          # stop the job + clear every sim we touched
         server.should_exit = True
 
