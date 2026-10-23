@@ -273,6 +273,7 @@ function toggleFollow(){
 
 /* ============ STATUS POLL ============ */
 let statusFails=0;
+let booted=false, hadPhone=false;   // after boot, losing a phone we had brings the connect screen back
 async function pollStatus(){
   try{
     const st = await api('/api/status');
@@ -284,6 +285,12 @@ async function pollStatus(){
     ENGINES = st.engines;
     if(enginesChanged && selected?.type==='route'){ renderEngines(); updateRouteNote(); }
     const dev = st.devices[0];
+    if(dev) hadPhone=true;
+    else if(booted && hadPhone && !linkDone){
+      hadPhone=false;
+      typeLine('phone disconnected — plug it back in + unlock it.','warn');
+      linkPhone();
+    }
     const pp=$('pill-phone');
     pp.classList.toggle('ok', !!dev); pp.classList.toggle('bad', !dev);
     $('sb-phone').textContent = dev ? `${dev.name} · iOS ${dev.ios}` : 'not found';
@@ -658,6 +665,7 @@ async function boot(){
   await wait(250);
   if(STATUS?.dry_run) typeLine('dry run — commands are printed, the phone is not touched.','warn');
   typeLine('pick a route or place, or click the map to drop a pin.','sys');
+  booted=true;
   setInterval(pollStatus, 2000);
   setInterval(pollLogs, 1000);
 }
@@ -672,7 +680,7 @@ const LINK_COPY = {
   ready:    ['iPhone ready', ''],
   error:    ['Something\'s off', ''],
 };
-let linkDone = null;
+let linkDone = null, linkHideTimer = null;
 function renderLink(){
   const dev = STATUS?.devices?.[0];
   const ph = STATUS?.phone || { state: dev ? 'checking' : 'none' };
@@ -690,6 +698,8 @@ function renderLink(){
 }
 async function linkPhone(){
   const el = $('link');
+  clearTimeout(linkHideTimer);
+  el.classList.remove('in','out');   // a second visit (phone came unplugged) starts from scratch
   el.hidden = false;
   $('frame').classList.add('linking');
   if(RM) $('link-scene').pauseAnimations();
@@ -717,7 +727,7 @@ function leaveLink(){
   const el = $('link');
   el.classList.add('out');
   $('frame').classList.remove('linking');
-  setTimeout(()=>{ el.hidden = true; }, 650);
+  linkHideTimer = setTimeout(()=>{ el.hidden = true; }, 650);
   finish();
 }
 
