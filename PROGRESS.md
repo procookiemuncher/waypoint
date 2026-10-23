@@ -25,6 +25,14 @@ build OK, all 7 movement tests pass, `fly.command` lists trips.
 
 **Note:** Mac's built-in python3 is 3.9 — always use `.venv/bin/python`.
 
+**First on-device run (same day) — two dependency breakages, fixed:** a fresh install pulled
+deps newer than pmd3 9.33.1 (released 2026-07-04): `pmd-pytcp` 0.3.8 made `stack.start()` async so
+the userspace tunnel never came up, and `construct-typing` 0.8.1 crashed on importing `afc.py`.
+Pinned the pre-July-8 versions in requirements.txt. After that the tunnel connects.
+**⚠ Phone is now on iOS 27.0.1** (was 26.6). The update turned Developer Mode off (that's the
+current blocker), and pmd3 warns the DDI build (27A5228h) is newer than it knows — may need a pmd3
+upgrade if mounting fails after Developer Mode is back on.
+
 **Next (owner, on-device, on the Mac):**
 1. First Mac device run: plug in + unlock, `./mac/spoof.command eiffel`, confirm in Maps.
 2. Then pick up where 2026-07-10 left off — Step 0 airplane-mode tunnel gate, then `fly nyc`.
