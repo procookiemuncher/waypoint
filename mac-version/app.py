@@ -70,7 +70,9 @@ def main():
     signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGTERM])   # before any thread exists
     look_like_an_app()
     session = Session()
-    session.register(DriveEngine())
+    drive = DriveEngine()
+    session.register(drive)
+    session.use_placer(drive)   # places + pins through devicectl too
     if not DRY_RUN:   # dry runs keep the fake phone so the connect screen can be worked on
         session.use_readiness(DevicectlReadiness())
 
