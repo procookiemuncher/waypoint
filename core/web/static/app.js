@@ -279,7 +279,10 @@ async function pollStatus(){
     statusFails=0;
     STATUS=st;
     clockOffset = st.now - Date.now()/1000;
+    const engIds=e=>e.map(x=>x.id).join();
+    const enginesChanged = engIds(st.engines)!==engIds(ENGINES);
     ENGINES = st.engines;
+    if(enginesChanged && selected?.type==='route'){ renderEngines(); updateRouteNote(); }
     const dev = st.devices[0];
     const pp=$('pill-phone');
     pp.classList.toggle('ok', !!dev); pp.classList.toggle('bad', !dev);
@@ -491,8 +494,10 @@ function renderList(){
 function availableEngines(){ return ENGINES.length ? ENGINES : [{id:'spoof',label:'Spoof',real_speed:false}]; }
 function selEngine(){
   const ids=availableEngines().map(e=>e.id);
-  if(!ids.includes(engineChoice)) engineChoice = ids.includes('drive') ? 'drive' : ids[0];
-  return engineChoice;
+  // only a click stores a choice; the default is worked out fresh, so a Spoof-only list from
+  // before the first status poll doesn't stick once Drive shows up
+  if(ids.includes(engineChoice)) return engineChoice;
+  return ids.includes('drive') ? 'drive' : ids[0];
 }
 function renderEngines(){
   const seg=$('engine-seg'), cur=selEngine();
