@@ -19,7 +19,8 @@ recheck_if: [Life360 app update, iOS point release]
 > measured with pmd3's DVT simulate-location, which is lat/lon only and leaves `CLLocation.speed == -1`.
 > Xcode's CoreDevice sim (`xcrun devicectl device simulate location route --speed 15.6 ...`, iOS 27.0.1,
 > Mac) made Life360 show **35 mph** for the member on another phone. So the July "no speed" result was
-> the injector, not Life360. Car icon / `isDriving` with this path: not yet checked.
+> the injector, not Life360. **The car icon showed up too** — so the emoji
+> was gated on speed, and the July "server cadence" theory was wrong.
 
 ## Verdict
 
