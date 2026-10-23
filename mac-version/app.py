@@ -56,8 +56,34 @@ class WindowApi:
     def minimize(self):
         self._window.minimize()
 
+    def drag(self):
+        """Titlebar mousedown -> hand the press to AppKit's own window drag, so the window tracks
+        the cursor natively instead of one bridge round trip per mousemove."""
+        from AppKit import NSEvent
+        from PyObjCTools import AppHelper
+
+        def go():
+            down = _last_press[0]
+            # by now the press might be over; starting a drag then would glue the window to the cursor
+            if down is not None and NSEvent.pressedMouseButtons() & 1:
+                self._window.native.performWindowDragWithEvent_(down)
+        AppHelper.callAfter(go)
+
     def close(self):
         self._quit()
+
+
+_last_press = [None]   # the latest left mouse-down; performWindowDragWithEvent_ needs the real event
+
+
+def watch_presses():
+    """Main thread only. Remembers each left mouse-down (and passes it on untouched)."""
+    from AppKit import NSEvent, NSEventMaskLeftMouseDown
+
+    def seen(event):
+        _last_press[0] = event
+        return event
+    watch_presses.monitor = NSEvent.addLocalMonitorForEventsMatchingMask_handler_(NSEventMaskLeftMouseDown, seen)
 
 
 def on_sigterm(cleanup):
@@ -139,7 +165,8 @@ def main():
         frameless=True, easy_drag=False, background_color="#050609")
     api._window, api._quit = window, quit_soon
     window.events.closing += on_closing
-    webview.start()
+    from PyObjCTools import AppHelper
+    webview.start(lambda: AppHelper.callAfter(watch_presses))
     cleanup()
 
 
