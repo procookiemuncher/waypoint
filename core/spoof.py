@@ -60,28 +60,12 @@ def load_routes():
 
 def build_gpx(route_path):
     """Render + validate a route into build/<name>.gpx. Returns the path, or None on failure."""
-    from backend.movement import load_route, RouteRenderer, validate, snap_route
-    route = load_route(route_path)
-    route, snap_warnings = snap_route(route)
-    for w in snap_warnings:
-        print(f"  ! {w}")
-    fixes = RouteRenderer().render(route)
-    result = validate(fixes)
-    for w in result.warnings:
-        print(f"  ! {w}")
-    if not result.ok:
-        print("  route FAILED validation — not playing:")
-        for e in result.errors:
-            print(f"    - {e}")
+    from backend.routes import build_gpx as render, RouteError
+    try:
+        return render(route_path)[0]
+    except RouteError as e:
+        print(f"  {e} — not playing")
         return None
-    os.makedirs(BUILD_DIR, exist_ok=True)
-    out = os.path.join(BUILD_DIR, f"{route.name}.gpx")
-    with open(out, "w", encoding="utf-8") as f:
-        f.write(RouteRenderer.to_gpx(fixes))
-    mins = (fixes[-1].t - fixes[0].t) / 60 if fixes else 0
-    print(f"  built '{route.name}': {len(fixes)} points, ~{mins:.1f} min, "
-          f"top {result.max_smoothed_speed * 3.6:.0f} km/h")
-    return out
 
 
 def play_route(route_path):
