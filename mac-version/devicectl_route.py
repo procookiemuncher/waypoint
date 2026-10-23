@@ -5,7 +5,7 @@ devicectl's `simulate location route` takes a real speed, and Life360 shows it: 
 route at 15.6 m/s read as 35 mph on another member's phone (2026-10-22).
 
 devicectl takes ONE constant speed per call, so this flattens the route's moving segments into a
-single waypoint list at one speed (the first moving segment's, or --mph). No dwell, no corner slowdowns.
+single waypoint list at one speed (the first moving segment with a speed, or --mph). No dwell, no corner slowdowns.
 
     ./mac-version/drive.command emoji-test              # write + play (route name or path)
     ./mac-version/drive.command miami-cruise --mph 25
@@ -71,9 +71,11 @@ def build_route_file(route_path, mph=None, interval=1.0):
     moving = [s for s in route.segments if s.waypoints]
     if not moving:
         sys.exit(f"{route.name} has no moving segments")
-    speed = mph * MPH if mph else moving[0].speed_mps
+    # same rule as the app's CRUISE stat: the first moving segment that has a speed (a walk to
+    # the car usually doesn't)
+    speed = mph * MPH if mph else next((s.speed_mps for s in moving if s.speed_mps), None)
     if not speed:
-        sys.exit("no speed on the route's first moving segment — pass --mph")
+        sys.exit("no speed on any of the route's moving segments — pass --mph")
     waypoints = []
     for s in moving:
         for lat, lon in s.waypoints:
