@@ -77,6 +77,9 @@ method: **docs/research/life360-notification-triggers.md**.
 - [ ] "Airport route" — believable ~30–40 min drive airport → a 5-star hotel. *(The `nyc` trip's
   `jfk-to-hotel` leg is the first instance; CDG → Paris hotel is a coord swap.)*
 - [ ] "Full Ride" — multi-hour: airport → hotel, then mixed walking / driving / stops.
+- [~] **Life360 shows real mph — CONFIRMED 2026-10-22** via `xcrun devicectl ... simulate location route
+  --speed` (tools/devicectl_route.py), 35 mph on the emoji-test route. Next: variable speed (chain
+  segments), confirm the car icon, and retry the >100 mph flight-detection gate with it.
 - [ ] Trigger Life360's **movement emoji** (walk / drive icon). ❌ **RESOLVED NO (2026-07-10,
   Phase A #1):** on-device testing (both Motion & Fitness ON and OFF, Observer-instrumented) shows
   the emoji/speed/driving-flag does NOT reliably trigger on a still spoofed phone in either

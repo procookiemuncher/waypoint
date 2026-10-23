@@ -62,6 +62,14 @@ field directly and gets no valid value from us. This is why the driving emoji is
 (docs/research/activity-emoji-coremotion.md). It does **not** affect the geofence arrival, which is
 purely spatial / speed-independent (docs/research/life360-geofence-arrival-mechanics.md §4).
 
+**✅ Speed workaround found (2026-10-22, on-device, Mac):** Xcode's CoreDevice location sim —
+`xcrun devicectl device simulate location route --speed <m/s>` — is a *different* service from pmd3's
+DVT one and it carries a real speed. The emoji-test route played this way at 15.6 m/s showed **35 mph**
+on Life360 (seen on another circle member's phone). Tool: `tools/devicectl_route.py`. Limits: Mac +
+Xcode only (breaks the same-code-both-platforms rule — fine while it's the only speed path), one
+constant speed per call (no corner slowdowns or dwell yet), no altitude. Whether the car icon /
+`isDriving` also flips is not yet confirmed.
+
 ## Detection surface & landscape (research 2026-07-08 — details in `docs/research/`)
 
 - **⚠ `isSimulatedBySoftware` is an unresolved, decisive risk.** iOS 15+ apps can read
