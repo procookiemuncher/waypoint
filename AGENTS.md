@@ -90,7 +90,8 @@ purely spatial / speed-independent (docs/research/life360-geofence-arrival-mecha
 
 ## Environment (fixed facts)
 
-- **Host:** Windows (primary). macOS is a future nice-to-have, not MVP.
+- **Host:** Windows (original) and macOS (added 2026-10-22). Same Python code on both; only the
+  launchers differ — `windows/*.cmd` and `mac/*.command`. Don't fork the code per platform.
 - **Target:** iPhone on **iOS 26.6** → RemoteXPC tunnel path only.
 - **Language:** Python end-to-end. No JS, no Swift.
 - **Transport lib:** `pymobiledevice3` — the only maintained cross-platform library that
@@ -123,7 +124,7 @@ API** for the frequent set/clear/route calls against the RSD that tunneld expose
 
 | Decision | Why |
 |---|---|
-| Python core, not Swift | Swift tools are macOS-only; host is Windows. |
+| Python core, not Swift | Swift tools are macOS-only; host is Windows + Mac. |
 | `pymobiledevice3` as transport | Only maintained lib for iOS 17+ on Windows. |
 | FastAPI + Leaflet local web UI | Best map picker for least code; single Python process; cross-platform for free. Rejected Electron (2nd runtime) and PyQt (painful embedded map). |
 | Hybrid `tunneld` daemon + library API | CLI-stable transport, library-level control for frequent calls. |
@@ -134,20 +135,24 @@ API** for the frequent set/clear/route calls against the RSD that tunneld expose
 - `backend/` — FastAPI app + `LocationBackend` + pymobiledevice3 adapter
 - `web/` — static Leaflet UI
 - `data/` — landmark presets + saved locations (JSON)
-- `run.*` — launcher
+- `windows/`, `mac/` — per-platform launchers (the only platform-specific files)
 
 ## Running it
 
-**Spoof launcher:** `spoof.cmd` (double-click) opens a **"where do you want to go?"** menu —
+**Launchers live per platform:** `windows/` (`spoof.cmd`, `fly.cmd`) and `mac/` (`spoof.command`,
+`fly.command`, `setup.command`). Each folder has a README. Below, `spoof` / `fly` means whichever
+launcher matches your OS — e.g. `windows\spoof.cmd eiffel` or `./mac/spoof.command eiffel`.
+
+**Spoof launcher:** `spoof` (double-click) opens a **"where do you want to go?"** menu —
 pick a **route** (realistic movement, built by the movement engine from `data/routes/*.json`),
 a **static preset** (hold a fixed point), or **clear**. Direct args also work:
-`spoof.cmd miami` / `spoof.cmd eiffel` / `spoof.cmd 48.8584 2.2945` / `spoof.cmd clear`. Routes
+`spoof miami` / `spoof eiffel` / `spoof 48.8584 2.2945` / `spoof clear`. Routes
 are rendered + validated into a GPX and replayed over the `--userspace` tunnel (no admin);
 presets/coords hold a point until you press ENTER. **Drop a new JSON in `data/routes/` and it
 appears in the menu automatically.** Needs the `.venv` (Python 3.12/3.13, see BUILD_PLAN.md),
-the Apple Mobile Device Service, and the phone **unlocked** with Developer Mode on.
+the Apple Mobile Device Service (Windows only — built into macOS), and the phone **unlocked** with Developer Mode on.
 
-**Flight choreographer:** `fly.cmd <trip>` (e.g. `fly.cmd nyc`) runs a believable **flight** that
+**Flight choreographer:** `fly <trip>` (e.g. `fly nyc`) runs a believable **flight** that
 fires Life360's "arrived at <destination>" push — drive to the departure airport, a manual
 **airplane-mode** gap (the phone goes offline like a real flight, so Life360 never sees the
 impossible compressed hop), then drive from the arrival airport into a saved destination Place and

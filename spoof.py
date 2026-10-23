@@ -1,4 +1,5 @@
-"""vida-360 spoof launcher — double-click **spoof.cmd** (or run `python spoof.py`).
+"""vida-360 spoof launcher — double-click **windows/spoof.cmd** / **mac/spoof.command**
+(or run `python spoof.py`).
 
 Shows a "where do you want to go?" menu:
   - **Routes** (realistic movement) — every data/routes/*.json, built by the movement engine
@@ -13,7 +14,7 @@ Also takes a direct argument, e.g.:
   spoof.cmd clear         # clear the spoof
 
 Requires: the .venv with pymobiledevice3 (see docs/BUILD_PLAN.md -> Environment), the Apple
-Mobile Device Service installed, and the iPhone plugged in + UNLOCKED with Developer Mode on.
+Mobile Device Service installed (Windows only), and the iPhone plugged in + UNLOCKED with Developer Mode on.
 """
 import glob
 import json
