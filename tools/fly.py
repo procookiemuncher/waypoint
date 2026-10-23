@@ -87,7 +87,7 @@ def run_trip(trip):
     print("\n  Reminders before we start:")
     print("   - Destination saved as a Life360 Place? (the arrival push needs it)")
     print("   - A 2nd circle member watching their phone for the push?")
-    print("   - Observer running?  tools\\observe.py --watch --member \"<you>\" --log flight.jsonl")
+    print("   - Observer running?  tools/observe.py --watch --member \"<you>\" --log flight.jsonl")
     print("   - Phone unlocked, Developer Mode on.")
     input("\n  Press ENTER to begin the departure drive...")
 
