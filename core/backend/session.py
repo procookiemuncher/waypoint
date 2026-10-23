@@ -65,6 +65,7 @@ class Session:
         self.readiness = ("checking", "")  # last mount attempt's verdict, for the connect screen
         self._probe_at, self._probing = 0.0, False
         self.readiness_check = None        # optional (udid) -> (state, message); see use_readiness()
+        self.placer = None                 # optional engine with hold(lat, lon, log); see use_placer()
         self.logs = deque(maxlen=400)
         self.seq = 0
         self._devices, self._devices_at = [], 0.0
@@ -79,6 +80,11 @@ class Session:
         uses devicectl's real lock state). `check(udid)` returns (state, message), state being
         "ready", "locked" or "error". It must be cheap — it's polled every couple of seconds."""
         self.readiness_check = check
+
+    def use_placer(self, engine):
+        """Hold places / pins with a registered engine's hold() instead of pmd3's (the Mac app
+        uses devicectl, since pmd3 can't mount on iOS 27)."""
+        self.placer = engine
 
     def log(self, text: str, level: str = "sys"):
         self.seq += 1
@@ -219,11 +225,14 @@ class Session:
     def set_location(self, lat: float, lon: float, label: str):
         def go():
             self._stop_job()
-            self._clear_dirty(keep="pmd3")
-            self._ensure_mounted()
+            service = self.placer.service if self.placer else "pmd3"
+            self._clear_dirty(keep=service)
+            if not self.placer:
+                self._ensure_mounted()
             self.log(f"holding at {label} ({lat:.5f}, {lon:.5f})", "accent")
-            self.job = self.pmd3.hold(lat, lon, lambda line: self.log(line, "dim"))
-            self.dirty.add("pmd3")
+            holder = self.placer or self.pmd3
+            self.job = holder.hold(lat, lon, lambda line: self.log(line, "dim"))
+            self.dirty.add(service)
             self.active = {"kind": "place", "label": label, "lat": lat, "lon": lon,
                            "started": time.time(), "state": "running"}
         self._in_background(f"setting {label}", go)
