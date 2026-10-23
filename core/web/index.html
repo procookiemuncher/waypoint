@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waypoint</title>
+<link rel="stylesheet" href="static/fonts/fonts.css">
+<link rel="stylesheet" href="static/leaflet/leaflet.css">
+<link rel="stylesheet" href="static/app.css">
+<script src="static/leaflet/leaflet.js"></script>
+</head>
+<body>
+<div id="halo"></div>
+<div id="ring"></div>
+<div id="frame">
+
+  <!-- TITLEBAR -->
+  <div id="titlebar" class="pywebview-drag-region">
+    <div class="appmark">
+      <svg width="10" height="10" viewBox="0 0 10 10"><path d="M5 0 L8.5 9 L5 6.8 L1.5 9 Z" fill="#231303"></path></svg>
+    </div>
+    <span class="wordmark">Waypoint</span>
+    <div class="statuspill no-drag" id="pill">
+      <span class="dot" id="pill-map"><i></i>map</span>
+      <span class="dot" id="pill-gps"><i></i>gps</span>
+      <span class="dot" id="pill-sync"><i></i>sync</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="winbtn no-drag" onclick="winMinimize()" title="Minimize" aria-label="Minimize">
+      <svg width="11" height="11" viewBox="0 0 11 11"><line x1="1.5" y1="5.5" x2="9.5" y2="5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></line></svg>
+    </button>
+    <button class="winbtn close no-drag" onclick="winClose()" title="Close" aria-label="Close">
+      <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2 2 L9 9 M9 2 L2 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+    </button>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="mapwrap">
+      <div id="map"></div>
+      <div class="hud" id="hud-coord"><span class="lbl">POS</span><span class="val" id="v-coord">--.----, --.----</span></div>
+      <div class="hud" id="hud-speed"><span class="lbl">SPD</span><span class="val" id="v-speed">0.0 mph</span><span class="lbl">HDG</span><span class="val" id="v-hdg">—</span></div>
+      <div class="hud" id="hud-leg"><span class="lbl">LEG</span><span class="val" id="v-leg">—</span></div>
+      <div class="hud" id="hud-zoom"><span class="lbl">ZM</span><span class="val" id="v-zoom">13</span></div>
+      <div id="sweep"></div>
+      <div id="toast"><span>▸</span><span id="toast-msg">ARRIVED</span></div>
+    </div>
+
+    <div id="panel">
+      <div id="cmd">
+        <div id="cmdhead" style="--d:.05s">
+          <div id="tabs">
+            <div id="tabglider"></div>
+            <button class="tab on" id="tab-routes" onclick="setTab('routes')">ROUTES</button>
+            <button class="tab" id="tab-places" onclick="setTab('places')">PLACES</button>
+          </div>
+          <button id="resetview" onclick="resetView()" title="Reset view" aria-label="Reset view">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11.5 7 A4.5 4.5 0 1 1 9.8 3.5 M9.8 3.5 L9.8 1.2 M9.8 3.5 L12 3.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"></path></svg>
+          </button>
+        </div>
+        <div id="hero" style="--d:.12s">
+          <div class="tick"></div>
+          <div class="hero-in">
+            <div class="hero-top">
+              <div id="hero-thumb"></div>
+              <div style="min-width:0">
+                <div id="hero-name">—</div>
+                <div id="hero-sub">—</div>
+              </div>
+            </div>
+            <div class="hero-stats" id="hero-stats"></div>
+            <button id="hero-action" onclick="runSelected()">▸ PLAY</button>
+          </div>
+        </div>
+        <div id="cmdlist"></div>
+      </div>
+      <div id="nowplaying">
+        <div id="np-head"><span style="color:var(--accent);font-size:11px">▸</span><span id="np-name">—</span><span id="np-time">t+00:00</span></div>
+        <div id="np-bar"><div id="np-fill"></div></div>
+        <div id="np-ctl">
+          <button class="ctlbtn primary" id="btn-play" onclick="togglePlay()">PAUSE</button>
+          <button class="ctlbtn" onclick="resetRoute()">RESET</button>
+        </div>
+      </div>
+      <div id="consolewrap">
+        <div class="seclabel" style="padding-bottom:4px">Console</div>
+        <div id="console"></div>
+        <div id="promptline"><span class="ps">waypoint ›</span><span class="typed" id="prompt-typed"></span><span class="cursor"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="statusbar">
+    <span id="sb-mode">MODE <b id="sb-mode-v">BOOT</b></span>
+    <span>POS <b id="sb-coord">—</b></span>
+    <span>ELAPSED <b id="sb-elapsed">--:--</b></span>
+    <span class="flex"></span>
+    <span>SPD</span><div id="gauge"><i id="gauge-fill"></i></div>
+  </div>
+
+  <!-- BOOT OVERLAY -->
+  <div id="boot"><div id="bootlog"></div></div>
+
+  <div id="crt"></div>
+  <div id="vignette"></div>
+  <div id="flicker"></div>
+</div>
+
+<script src="static/app.js"></script>
+
+
+</body></html>
