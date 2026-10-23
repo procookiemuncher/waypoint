@@ -61,6 +61,7 @@ class Session:
         self.active = None                 # what's on the phone right now, for the UI
         self.busy = None                   # short description while an action is in flight
         self.dirty = set()                 # services that may still be holding a fake location
+        self.closing = False               # set by shutdown(); queued actions then do nothing
         self.mounted = False
         self.readiness = ("checking", "")  # last mount attempt's verdict, for the connect screen
         self._probe_at, self._probing = 0.0, False
@@ -168,6 +169,8 @@ class Session:
     def _in_background(self, label: str, fn):
         def go():
             with self.lock:
+                if self.closing:
+                    return   # the app is quitting; don't put a new spoof on after the final clear
                 self.busy = label
                 try:
                     fn()
@@ -267,7 +270,10 @@ class Session:
         self._in_background("clearing", go)
 
     def shutdown(self):
-        """Blocking stop + clear, for app exit. Quitting must never leave a spoof running."""
+        """Blocking stop + clear, for app exit. Quitting must never leave a spoof running.
+        Can take a while (an action in flight finishes first, then the clears), so don't call it
+        from a UI thread."""
+        self.closing = True
         with self.lock:
             self._stop_job()
             self.active = None
