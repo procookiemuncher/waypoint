@@ -21,8 +21,10 @@ import uvicorn
 import webview
 
 from backend.server import create_app, free_port
+from backend.device import DRY_RUN
 from backend.session import Session
 from drive_engine import DriveEngine
+from phone_check import DevicectlReadiness
 
 APP_NAME = "Waypoint"
 ICON = os.path.join(HERE, "app", "Waypoint.icns")
@@ -69,6 +71,8 @@ def main():
     look_like_an_app()
     session = Session()
     session.register(DriveEngine())
+    if not DRY_RUN:   # dry runs keep the fake phone so the connect screen can be worked on
+        session.use_readiness(DevicectlReadiness())
 
     port = free_port()
     server = uvicorn.Server(uvicorn.Config(create_app(session), host="127.0.0.1", port=port,
