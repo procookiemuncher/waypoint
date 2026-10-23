@@ -83,7 +83,8 @@ class Session:
         if time.time() - self._devices_at > 4:
             self._devices, self._devices_at = self.pmd3.list_devices(), time.time()
             if not self._devices:
-                self.mounted = False   # unplugged / rebooted → the DDI has to go back on        return self._devices
+                self.mounted = False   # unplugged / rebooted → the DDI has to go back on
+        return self._devices
 
     def status(self) -> dict:
         active = dict(self.active) if self.active else None
