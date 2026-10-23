@@ -7,7 +7,8 @@ bools and Job handles.
 Set VIDA_DRY_RUN=1 to swap every phone command for a harmless stand-in — handy for working on
 the app without moving your pin in front of the whole circle. Add VIDA_DRY_PHONE=slow to fake a
 phone that shows up a few seconds in, locked, then gets unlocked (for the connect screen), or
-VIDA_DRY_PHONE=none for one that never shows up.
+VIDA_DRY_PHONE=none for one that never shows up, or VIDA_DRY_PHONE=flaky for one that's there,
+gets unplugged 30s in and comes back 15s later (for the reconnect screen).
 """
 import json
 import os
@@ -20,6 +21,7 @@ import time
 DRY_RUN = os.environ.get("VIDA_DRY_RUN") == "1"
 DRY_SLOW = DRY_RUN and os.environ.get("VIDA_DRY_PHONE") == "slow"
 DRY_NONE = DRY_RUN and os.environ.get("VIDA_DRY_PHONE") == "none"
+DRY_FLAKY = DRY_RUN and os.environ.get("VIDA_DRY_PHONE") == "flaky"
 WINDOWS = sys.platform == "win32"
 _T0 = time.time()
 
@@ -96,7 +98,7 @@ class Pmd3:
     def list_devices(self) -> list[dict]:
         """Connected phones as {name, udid, ios, connection}. Empty list if none / no usbmuxd."""
         if DRY_RUN:
-            if DRY_NONE or DRY_SLOW and time.time() - _T0 < 12:
+            if DRY_NONE or DRY_SLOW and time.time() - _T0 < 12 or DRY_FLAKY and 30 < time.time() - _T0 < 45:
                 return []
             return [{"name": "Dry-run iPhone", "udid": "dry-run", "ios": "27.0", "connection": "USB"}]
         try:
