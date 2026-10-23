@@ -12,3 +12,4 @@ uv venv --python 3.12
 uv pip install -r requirements.txt
 echo
 echo "Done. Plug in the iPhone, unlock it, then try:  ./mac-version/spoof.command"
+echo "Want the Dock app? Run:  ./mac-version/make-app.command"
