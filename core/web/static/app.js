@@ -553,6 +553,7 @@ async function boot(){
   const r=bootLine('', dev?'ok':'dim');
   await typeInto(r, dev ? '  ready.' : '  no phone yet — plug it in + unlock it, I\'ll keep looking.', 14);
   await wait(450);
+  await linkPhone();
   $('boot').classList.add('gone');
   $('panel').classList.add('reveal');
   map.invalidateSize();
@@ -564,6 +565,65 @@ async function boot(){
   typeLine('pick a route or place, or click the map to drop a pin.','sys');
   setInterval(pollStatus, 2000);
   setInterval(pollLogs, 1000);
+}
+
+/* ============ CONNECT SCREEN ============ */
+/* Sits between the boot log and the app until the phone is plugged in and unlocked (the server
+   checks unlock by mounting the DDI). Already-ready phones get a quick look at the green wire. */
+const LINK_COPY = {
+  none:     ['Connect your iPhone', 'Plug it into this computer with a USB cable.'],
+  checking: ['Checking your iPhone…', 'Getting the developer disk image ready.'],
+  locked:   ['Unlock your iPhone', 'Enter your passcode — and keep it unlocked while you spoof.'],
+  ready:    ['iPhone ready', ''],
+  error:    ['Something\'s off', ''],
+};
+let linkDone = null;
+function renderLink(){
+  const dev = STATUS?.devices?.[0];
+  const ph = STATUS?.phone || { state: dev ? 'checking' : 'none' };
+  const state = dev ? ph.state : 'none';
+  const el = $('link');
+  el.dataset.state = state;
+  const [title, sub] = LINK_COPY[state] || LINK_COPY.error;
+  $('link-title').textContent = title;
+  $('link-sub').textContent = state==='ready' ? `${dev.name} · iOS ${dev.ios}` : (ph.message && state!=='locked' ? ph.message : sub);
+  const step = (id, cls) => { $(id).className = 'lstep '+(cls||''); };
+  step('ls-plug', dev ? 'done' : 'now');
+  step('ls-unlock', !dev ? '' : state==='locked' ? 'warn' : state==='error' ? 'bad' : state==='checking' ? 'now' : 'done');
+  step('ls-ready', state==='ready' ? 'done' : '');
+  return state;
+}
+async function linkPhone(){
+  const el = $('link');
+  el.hidden = false;
+  $('frame').classList.add('linking');
+  if(RM) $('link-scene').pauseAnimations();
+  renderLink();
+  await wait(30);
+  el.classList.add('in');
+  $('boot').classList.add('gone');   // covered by now; gone so it can't show through the fade-out
+  const done = new Promise(res => linkDone = res);
+  (async function loop(){
+    while(linkDone){
+      await pollStatus();
+      if(!linkDone) break;
+      if(renderLink()==='ready'){
+        await new Promise(r=>setTimeout(r, 1800));   // a moment to see the lit wire
+        leaveLink(); break;
+      }
+      await new Promise(r=>setTimeout(r, 700));   // not wait(): that's 0 under reduced motion
+    }
+  })();
+  await done;
+}
+function leaveLink(){
+  if(!linkDone) return;
+  const finish = linkDone; linkDone = null;
+  const el = $('link');
+  el.classList.add('out');
+  $('frame').classList.remove('linking');
+  setTimeout(()=>{ el.hidden = true; }, 650);
+  finish();
 }
 
 /* ============ INIT ============ */
