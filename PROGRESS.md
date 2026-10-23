@@ -27,6 +27,13 @@ what changed, what was decided, what broke, what's next.
 every 2s, live — notices re-locking). `mac-version/phone_check.py` = devicectl lockState + one-time
 ddiServices check; app.py registers it (not in dry run). Windows keeps the pmd3-mount check.
 
+**Then: places didn't spoof.** Places/pins always went through pmd3 (`hold`), so on iOS 27 the mount
+crashed and the hold ran on a phone pmd3 couldn't drive. Added `Session.use_placer(engine)`; the Mac
+app hands places/pins to `DriveEngine.hold()` = `xcrun devicectl device simulate location coordinate
+--latitude --longitude` (stop clears it via devicectl). Dry-run checked; real run pending with owner.
+A Drive route (jfk-to-hotel) did start on the phone at 00:10 ("Started location simulation…").
+The **Spoof** route engine is still pmd3 → expect it to fail on iOS 27 until pmd3 is upgraded.
+
 **Not verified yet**: that `passcodeRequired` flips to true when the phone locks (needs the owner to
 lock it). Whether pmd3's DVT location sim (Spoof engine) works on iOS 27 with Xcode's DDI already
 mounted — that's a real pin move, owner watching.
