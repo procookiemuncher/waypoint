@@ -152,7 +152,7 @@ class Session:
     def status(self) -> dict:
         active = dict(self.active) if self.active else None
         if active and self.job:
-            code = self.job.proc.poll()
+            code = self.job.poll()
             # pmd3 jobs stay alive until stopped; devicectl hands off and exits 0. Anything
             # else exiting is a failure the UI should show.
             if code not in (None, 0):
