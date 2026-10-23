@@ -22,8 +22,7 @@ circle member's phone. First time the spoof has ever produced a nonzero speed.
 waypoints, one speed) and plays it; `--mph` override, `--clear`. Docs updated (AGENTS.md,
 ROADMAP.md, activity-emoji brief, mac/README).
 
-**Not known yet:** whether the car icon / isDriving flips with this path; whether devicectl
-`route` blocks until done.
+**Car icon showed up too** (owner confirmed). Still unknown: whether devicectl `route` blocks until done.
 
 **Next:**
 1. Variable speed — chain one devicectl call per segment so it slows for corners and stops.

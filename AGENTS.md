@@ -67,8 +67,8 @@ purely spatial / speed-independent (docs/research/life360-geofence-arrival-mecha
 DVT one and it carries a real speed. The emoji-test route played this way at 15.6 m/s showed **35 mph**
 on Life360 (seen on another circle member's phone). Tool: `tools/devicectl_route.py`. Limits: Mac +
 Xcode only (breaks the same-code-both-platforms rule — fine while it's the only speed path), one
-constant speed per call (no corner slowdowns or dwell yet), no altitude. Whether the car icon /
-`isDriving` also flips is not yet confirmed.
+constant speed per call (no corner slowdowns or dwell yet), no altitude. **The car icon showed up
+too** — the driving emoji, dead since July, works on this path.
 
 ## Detection surface & landscape (research 2026-07-08 — details in `docs/research/`)
 
