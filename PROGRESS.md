@@ -7,6 +7,23 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-23 — Console takes typed commands
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wanted terminal-style commands like clear and reset
+that put the location back and remove the spoof.
+
+**Changed** (`core/web/` only, no backend change)
+- The `waypoint ›` prompt is now a real input (click the prompt line to focus it). Up/down = history,
+  ctrl+L = clear, Esc = blur.
+- Commands: `clear` (wipes the console), `reset` (stop + clear the spoof via `/api/stop`, map back to
+  default view, console wiped), `stop`, `set <place>` / `set <lat> <lon>`, `play <route> [--spoof|--drive]
+  [--mph N]`, `ls [routes|places]`, `help`.
+
+**Verified** (dry run, headless Chrome): set place, set coord, then `reset` → `active` goes null and the
+clear command runs; `clear`, `ls`, `help`, unknown command, history all fine. Not tried on the real phone.
+
+---
+
 ## 2026-10-23 — Dragging the window was laggy
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner said dragging is really laggy.
