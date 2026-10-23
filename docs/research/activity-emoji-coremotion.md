@@ -1,7 +1,7 @@
 ---
 title: Activity emoji vs. CoreMotion — is the walking/driving indicator spoofable?
 status: research                # research | device-verified | superseded
-last_verified: 2026-07-10
+last_verified: 2026-10-22
 device_verified: full            # on-device, both legs, Observer-instrumented (2026-07-10): Motion & Fitness ON vs OFF made NO difference - speed/isDriving never triggered in either. The Motion&Fitness-OFF fallback hypothesis is REFUTED; suspect server-side position-update cadence (not the permission) is the real gate. See update block below.
 open_gates: [movement-emoji, isSimulatedBySoftware]
 depends_on: [life360-detection-and-realism]
@@ -14,6 +14,12 @@ recheck_if: [Life360 app update, iOS point release]
 > Research brief. Question: is Life360's per-member walking/driving activity emoji derived from
 > GPS or from CoreMotion (accelerometer + motion coprocessor), and can we trigger it with a
 > **physically stationary** phone whose GPS we drive via pmd3? Confidence marked; sources at end.
+
+> **On-device update (2026-10-22) — SPEED IS REACHABLE, via a different injector.** Everything below was
+> measured with pmd3's DVT simulate-location, which is lat/lon only and leaves `CLLocation.speed == -1`.
+> Xcode's CoreDevice sim (`xcrun devicectl device simulate location route --speed 15.6 ...`, iOS 27.0.1,
+> Mac) made Life360 show **35 mph** for the member on another phone. So the July "no speed" result was
+> the injector, not Life360. Car icon / `isDriving` with this path: not yet checked.
 
 ## Verdict
 
