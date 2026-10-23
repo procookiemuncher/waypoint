@@ -24,6 +24,8 @@ No iTunes / Apple Devices install needed — macOS already has the Apple device 
 | Explicit coordinate | `./mac/spoof.command 48.8584 2.2945` |
 | Clear the spoof | `./mac/spoof.command clear` |
 | List flights / run one | `./mac/fly.command` · `./mac/fly.command nyc` |
+| Drive with real speed (Life360 shows mph) | `.venv/bin/python tools/devicectl_route.py data/routes/emoji-test.json` |
+| Stop the devicectl drive | `.venv/bin/python tools/devicectl_route.py --clear` |
 | Any other tool | `.venv/bin/python tools/observe.py --watch` |
 
 Wherever the docs say `.venv\Scripts\python.exe tools\x.py`, the Mac equivalent is
