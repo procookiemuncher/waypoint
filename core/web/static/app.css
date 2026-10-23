@@ -50,6 +50,8 @@ button { font-family: inherit; }
   opacity: .85;
 }
 @keyframes spin { to { --ang: 360deg; } }
+body.panning #halo, body.panning #ring { animation-play-state: paused; }
+body.panning .hud { backdrop-filter: none; }
 
 /* ============ TITLEBAR ============ */
 #titlebar {
