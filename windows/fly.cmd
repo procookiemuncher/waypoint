@@ -5,7 +5,7 @@ REM Read tools\fly.py header first; verify the airplane-mode tunnel gate (Step 0
 setlocal
 set "PY=%~dp0..\.venv\Scripts\python.exe"
 if not exist "%PY%" goto noenv
-"%PY%" "%~dp0..\tools\fly.py" %*
+"%PY%" "%~dp0..\core\tools\fly.py" %*
 pause
 exit /b 0
 

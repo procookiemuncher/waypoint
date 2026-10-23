@@ -13,5 +13,5 @@ if [ ! -x "$PY" ]; then
   read -r -p "Press ENTER to close..."
   exit 1
 fi
-"$PY" "$ROOT/tools/fly.py" "$@"
+"$PY" "$ROOT/core/tools/fly.py" "$@"
 read -r -p "Press ENTER to close..."

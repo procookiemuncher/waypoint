@@ -12,5 +12,5 @@ if [ ! -x "$PY" ]; then
   read -r -p "Press ENTER to close..."
   exit 1
 fi
-"$PY" "$ROOT/spoof.py" "$@"
+"$PY" "$ROOT/core/spoof.py" "$@"
 read -r -p "Press ENTER to close..."
