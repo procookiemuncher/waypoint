@@ -1,4 +1,5 @@
-"""vida-360 flight choreographer — double-click **fly.cmd** (or run `python tools/fly.py`).
+"""vida-360 flight choreographer — double-click **windows/fly.cmd** / **mac/fly.command**
+(or run `python tools/fly.py`).
 
 Runs a believable *flight* between two cities so Life360 pushes "arrived at <destination>". It
 choreographs the spoof around a manual **airplane-mode** gap: the phone goes offline exactly like a
@@ -117,7 +118,7 @@ def run_trip(trip):
 
 
 def list_trips():
-    print("\n  vida-360 flights (fly.cmd <name>):")
+    print("\n  vida-360 flights (fly <name>):")
     for name, t in TRIPS.items():
         print(f"   - {name:<6} {t['label']}")
     print()
