@@ -62,6 +62,8 @@ class Session:
         self.busy = None                   # short description while an action is in flight
         self.dirty = set()                 # services that may still be holding a fake location
         self.mounted = False
+        self.readiness = ("checking", "")  # last mount attempt's verdict, for the connect screen
+        self._probe_at, self._probing = 0.0, False
         self.logs = deque(maxlen=400)
         self.seq = 0
         self._devices, self._devices_at = [], 0.0
@@ -86,6 +88,33 @@ class Session:
                 self.mounted = False   # unplugged / rebooted → the DDI has to go back on
         return self._devices
 
+    def phone(self) -> dict:
+        """Is the phone plugged in and unlocked? Unlocked = the DDI mounted (it won't on a locked
+        phone). The mount runs in the background so polling stays fast. Once mounted we don't
+        notice the phone re-locking — this is a one-time gate, not a live lock indicator."""
+        if not self.devices():
+            self.readiness = ("checking", "")
+            return {"state": "none", "message": ""}
+        if self.mounted:
+            return {"state": "ready", "message": ""}
+        if not self._probing and time.time() - self._probe_at > 4:
+            self._probing = True
+            threading.Thread(target=self._probe, daemon=True).start()
+        state, message = self.readiness
+        return {"state": state, "message": message}
+
+    def _probe(self):
+        try:
+            if not self.lock.acquire(blocking=False):
+                return   # an action is running; it mounts on its own
+            try:
+                if not self.mounted:
+                    self._ensure_mounted(quiet=self.readiness[0] != "checking")
+            finally:
+                self.lock.release()
+        finally:
+            self._probe_at, self._probing = time.time(), False
+
     def status(self) -> dict:
         active = dict(self.active) if self.active else None
         if active and self.job:
@@ -97,6 +126,7 @@ class Session:
                 self.mounted = False   # most pmd3 failures are a missing/stale DDI — remount next time
         return {
             "devices": self.devices(),
+            "phone": self.phone(),
             "active": active,
             "busy": self.busy,
             "engines": [{"id": e.id, "label": e.label, "real_speed": e.real_speed}
@@ -143,10 +173,23 @@ class Session:
             self.log(f"couldn't clear {', '.join(sorted(left))} — unlock the phone and hit stop again", "warn")
         return not left
 
-    def _ensure_mounted(self):
-        if not self.mounted:
-            self.log("mounting developer disk image (phone must be unlocked)…", "dim")
-            self.mounted = self.pmd3.mount(lambda line: self.log(line, "dim"))
+    def _ensure_mounted(self, quiet: bool = False):
+        """Mount the DDI if it isn't yet. `quiet` skips the console noise on connect-screen
+        retries — a locked phone gets re-checked every few seconds."""
+        if self.mounted:
+            return
+        log = (lambda line: None) if quiet else (lambda line: self.log(line, "dim"))
+        log("mounting developer disk image (phone must be unlocked)…")
+        state, message = self.pmd3.mount(log)
+        if state != self.readiness[0] or not quiet:
+            if state == "locked":
+                self.log("phone is locked — unlock it to continue", "warn")
+            elif state == "ready":
+                self.log("phone unlocked — developer disk image is on", "ok")
+            elif state == "error":
+                self.log(f"couldn't mount the developer disk image: {message}", "warn")
+        self.readiness = (state, message)
+        self.mounted = state == "ready"
 
     # ---- actions ----
     def set_location(self, lat: float, lon: float, label: str):
