@@ -30,7 +30,10 @@ real GPS.
 
 After `make-app`, open Waypoint from Launchpad, then right-click its Dock icon → Options → Keep in
 Dock. The app has this repo's path baked in, so **if you move the repo, run `make-app` again**.
-Logs: `~/Library/Logs/Waypoint.log`.
+Logs (every phone command): `~/Library/Logs/Waypoint.log`.
+
+If the app ever gets force-quit mid-spoof, the phone can stay spoofed. Put it back with
+`./mac-version/spoof.command clear` and `./mac-version/drive.command --clear`.
 
 ## Running from Terminal
 

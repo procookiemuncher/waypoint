@@ -189,7 +189,7 @@ tunnel gate (Step 0 in the spec) once before trusting a real run.
 Dock. Or `./mac-version/app.command`. `VIDA_DRY_RUN=1` makes every phone command a printed no-op —
 **use it for UI work; a real run moves the owner's pin in front of their Life360 circle.** Map tiles:
 Stadia `alidade_smooth_dark`, keyless from localhost (CARTO's dark_all started demanding an API key).
-Windows can run `core/backend/server.py` and use a browser for now (spoof engine only).
+Windows *should* be able to run `core/backend/server.py` and use a browser (spoof engine only) — **untested**, including `Job.stop()`'s Windows path (writes ENTER to pmd3's stdin). **Force-quit / kill -9 leaves the pmd3 child holding the spoof** (normal close, Cmd+Q and SIGTERM all clear) — recover with `spoof clear` + `drive.command --clear`.
 
 ## Prerequisites (these bite first)
 
