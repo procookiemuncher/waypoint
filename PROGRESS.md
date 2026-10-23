@@ -7,6 +7,36 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-23 — Quitting the Mac app "crashed": it was a main-thread hang
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner: the app crashes when you close it.
+
+**Found**: no crash report, but there's a hang report: `/Library/Logs/DiagnosticReports/python3.12_2026-10-23-000900_*.hang`
+(15.9s). Stack: Cmd+Q → `applicationShouldTerminate_` → pywebview's `closing` event → our `cleanup()`
+→ waiting on `session.lock`. pywebview runs `closing` **synchronously on the Cocoa main thread**, so
+`session.shutdown()` (wait for any in-flight action, then `Job.stop` up to 5s + devicectl clear up to 30s)
+froze the UI. The old `window.hide()` there did nothing useful: it's only `callAfter`, so it ran
+after the handler returned. Dry run never showed it because fake clears are instant.
+
+**Changed**
+- `app.py`: Cmd+Q, Dock → Quit, Cmd+W and the titlebar close button all go to `quit_soon()`, which
+  hides the window, clears on a thread, then `window.destroy()`. The closing handler returns False
+  until the clear finishes. 45s cap (`QUIT_LIMIT`), then `os._exit`. SIGTERM/atexit now wait for a
+  clear that's already running instead of skipping it.
+- `session.py`: `closing` flag. Once shutdown starts, queued actions do nothing, so no hold lands
+  after the last clear.
+
+**Verified** (dry run, with a `Session.shutdown` slowed to 8s + a probe timing `callAfter` on the
+main thread): before = main thread blocked 8s with the window still showing on Cmd+Q. After = no
+blocking on Cmd+Q / titlebar / performClose, window hidden in under 1s, clear runs, process exits.
+Real mode (phone unavailable) quits clean in ~7s. **Not verified**: quitting with the real phone holding a pin.
+
+**Separate bug spotted, not fixed**: `DriveEngine.hold` with a negative coordinate fails. devicectl
+reads `-80.19` as a flag (`Missing value for '--longitude'`, log 00:19:31), so pins in the western
+hemisphere don't work. Likely fix: `--longitude=<value>`.
+
+---
+
 ## 2026-10-23 — Connect screen on the real phone: pmd3 can't mount on iOS 27, switched the Mac to devicectl
 
 **Model: Claude Opus 5.5 (Claude Code).** First try of the connect screen with the real phone.
