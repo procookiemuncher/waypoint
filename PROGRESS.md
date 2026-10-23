@@ -7,6 +7,25 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-23 — Unplugging the phone goes back to the connect screen
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner: if the phone disconnects while the app is running, go
+back to the phone + cable loading screen.
+
+**Changed**
+- `app.js`: after boot, if the phone was there and `/api/status` stops listing it, the console logs
+  "phone disconnected" and the connect screen comes back. It leaves by itself once the phone is plugged
+  in + unlocked again (same flow as at startup). "Continue without phone" still works and it won't
+  pop again until the phone has been seen again.
+- `device.py`: `VIDA_DRY_PHONE=flaky` dry run — fake phone unplugs 30s in, comes back 15s later.
+- Whatever was playing is not stopped by the frontend; the backend does whatever it did before on unplug.
+
+**Verified** (dry run `flaky`, headless Chrome): screen shows at the unplug, goes back to the app when the
+phone returns. Not tried on the real phone — the backend only re-lists devices every 4s, so expect up
+to ~6s before the screen shows.
+
+---
+
 ## 2026-10-23 — Console takes typed commands
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wanted terminal-style commands like clear and reset
