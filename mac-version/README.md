@@ -16,7 +16,7 @@ No iTunes / Apple Devices install needed — macOS already has the Apple device 
 
 ## Running
 
-All commands from the repo root: `cd ~/Desktop/vida-360`
+All commands from the repo root: `cd ~/Desktop/projects/vida-360`
 
 | What | Command |
 |---|---|
