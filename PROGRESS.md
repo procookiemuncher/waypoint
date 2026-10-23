@@ -7,6 +7,34 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-23 — Routes/places panel → Destinations
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner found the routes/places tabs messy. Mocked 3 ideas
+(search + chips, destinations, trips) then 4 destination homes × 3 city layouts in the throwaway playground;
+owner picked **Gallery + Map cards**.
+
+**Changed**
+- The ROUTES/PLACES tabs + list are gone. The panel opens on **Destinations**: one big card per city with its
+  routes drawn on a little map (tiles + svg, `mapArt()` in app.js), flag, country, route/place/mile counts.
+- Clicking a city: map header with a back button, stat boxes (routes / miles / minutes of driving), places
+  as chips, routes as a 2-column grid of map cards. Click = select, double-click = play.
+- Cities aren't in the data: a place's `region` is its city; a route goes to the known city (`CITY_INFO`) or
+  place region nearest its last point within 100 km, else "Elsewhere". `CITY_INFO` holds flag/country/color
+  for Miami, New York, LA, Paris, London, Dubai; unknown cities still get a card (📍 + a palette color).
+  Routes and places now take their city's color as their accent.
+- Route names are shown readable (`jfk-to-hotel` → "JFK → hotel"); ids/commands unchanged.
+- Map: world view with clickable city tags on the home screen; inside a city its routes are drawn faintly.
+  It won't fly anywhere while something is playing. Reset view frames the current screen.
+- The play card is hidden until something is picked and is compact now (play button beside the name, the
+  stat boxes are gone since the cards show them).
+- Live badge on the playing route's card and on its city card.
+
+**Verified** (dry run, headless Chrome): gallery, Miami city page, select → preview, play → live badges.
+
+**Next**: the play card, now-playing bar, console and status bar still have the old mono/glow look.
+
+---
+
 ## 2026-10-23 — Titlebar redesign: device pill + status dropdown
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wants the UI to look less vibe-coded / more modern
