@@ -145,7 +145,8 @@ def main():
     ap.add_argument("--log", help="append every sample to this file as JSONL")
     ap.add_argument("--places", action="store_true",
                     help="list each circle's saved Places (name/center/radius) and exit")
-    ap.add_argument("--env", default=os.path.join(ROOT, ".env"), help="path to the .env file")
+    ap.add_argument("--env", default=os.path.join(os.path.dirname(ROOT), ".env"),
+                    help="path to the .env file (repo root)")
     ap.add_argument("--check", action="store_true",
                     help="show which credentials were loaded (password masked) and exit")
     args = ap.parse_args()

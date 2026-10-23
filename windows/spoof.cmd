@@ -4,7 +4,7 @@ REM   spoof.cmd miami  /  spoof.cmd eiffel  /  spoof.cmd 48.8584 2.2945  /  spoo
 setlocal
 set "PY=%~dp0..\.venv\Scripts\python.exe"
 if not exist "%PY%" goto noenv
-"%PY%" "%~dp0..\spoof.py" %*
+"%PY%" "%~dp0..\core\spoof.py" %*
 pause
 exit /b 0
 
