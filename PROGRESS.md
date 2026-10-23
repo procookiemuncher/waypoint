@@ -7,6 +7,33 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-23 — Titlebar redesign: device pill + status dropdown
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wants the UI to look less vibe-coded / more modern
+(Linear / Vercel / YC-startup feel). Started with the top-left. Mocked 4 options in a throwaway
+localhost playground (not in the repo); owner picked "pill + dock", in Inter.
+
+**Changed**
+- Titlebar: the logo, "Waypoint" wordmark and map/phone/live dot pill are gone. In their place is a
+  device pill: a see-through glass phone (its screen light is the overall state and pulses while a spoof
+  is live), the phone name, a status word (Live / Ready / Needs attention / N problems / Not connected),
+  a small dock of map · live · link · speed icons each with a status dot, and an arrow.
+- Clicking it opens a dropdown: a bigger phone + iOS/connection, an alert card per problem with a plain
+  fix, then tiles grouped iPhone (USB, Screen lock) / Connection (Local server, Speed engine) / Waypoint
+  (Location, Map, Internet). Footer: Check again, plus Back to real GPS while something is on the phone.
+- Only shows what `/api/status` really knows. Tunnel / Developer Mode / disk image aren't reported on
+  their own (the playground had them); the phone's `ready`/`locked`/`error` state covers them for now.
+- Esc closes the dropdown instead of stopping the spoof; a click outside closes it without dropping a pin.
+- `static/icons.js`: the 14 Lucide icons it uses, inlined so it works offline.
+
+**Verified** (dry run, headless Chrome): ready, live, and faked locked + server down + failed command.
+
+**Next (design pass, from the brainstorm)**: the rest of the app still uses the old look — mono caps
+labels, glows, the rainbow frame, CRT/flicker. Candidates: drop the decorative layers, one accent, Inter
+everywhere with mono only for numbers, one telemetry card on the map, a ⌘K palette instead of the console.
+
+---
+
 ## 2026-10-23 — Unplugging the phone goes back to the connect screen
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner: if the phone disconnects while the app is running, go
