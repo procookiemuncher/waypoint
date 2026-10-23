@@ -108,6 +108,71 @@
   <!-- BOOT OVERLAY -->
   <div id="boot"><div id="bootlog"></div></div>
 
+  <!-- CONNECT SCREEN (after boot, until the phone is plugged in + unlocked) -->
+  <div id="link" data-state="none" hidden>
+    <div id="link-card">
+      <svg id="link-scene" viewBox="0 0 560 270" aria-hidden="true">
+        <defs>
+          <linearGradient id="rainbow" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="320" y2="0" spreadMethod="repeat">
+            <stop offset="0" stop-color="#b49aff"></stop>
+            <stop offset=".17" stop-color="#7a8cff"></stop>
+            <stop offset=".33" stop-color="#c47aff"></stop>
+            <stop offset=".5" stop-color="#ff7ab8"></stop>
+            <stop offset=".67" stop-color="#ffb37a"></stop>
+            <stop offset=".83" stop-color="#b8e67a"></stop>
+            <stop offset="1" stop-color="#b49aff"></stop>
+            <animateTransform id="rainbow-flow" attributeName="gradientTransform" type="translate" from="0 0" to="320 0" dur="3s" repeatCount="indefinite"></animateTransform>
+          </linearGradient>
+          <filter id="wireglow" x="-20%" y="-60%" width="140%" height="220%"><feGaussianBlur stdDeviation="5"></feGaussianBlur></filter>
+        </defs>
+
+        <!-- laptop -->
+        <g class="dev laptop">
+          <rect x="44" y="52" width="176" height="112" rx="9" class="shell"></rect>
+          <rect x="52" y="60" width="160" height="96" rx="4" class="screen"></rect>
+          <path d="M132 92 L141 116 L132 110 L123 116 Z" class="mark"></path>
+          <path d="M28 164 H236 L226 178 H38 Z" class="shell"></path>
+          <rect x="230" y="166" width="10" height="7" rx="1.5" class="port"></rect>
+        </g>
+
+        <!-- the wire: a dim base, a blurred glow, the rainbow, and packets riding along it -->
+        <path id="wire-plugged" class="wire-base" d="M240 169 C 300 169, 296 238, 360 238 S 466 236, 466 196"></path>
+        <path id="wire-loose" class="wire-base loose" d="M240 169 C 300 169, 296 238, 360 238 S 410 240, 418 226"></path>
+        <path class="wire-glow" d="M240 169 C 300 169, 296 238, 360 238 S 466 236, 466 196" filter="url(#wireglow)"></path>
+        <path class="wire-rgb" d="M240 169 C 300 169, 296 238, 360 238 S 466 236, 466 196"></path>
+        <g class="packets">
+          <circle r="2.6"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#wire-plugged"></mpath></animateMotion></circle>
+          <circle r="2.6"><animateMotion dur="1.8s" begin=".6s" repeatCount="indefinite"><mpath href="#wire-plugged"></mpath></animateMotion></circle>
+          <circle r="2.6"><animateMotion dur="1.8s" begin="1.2s" repeatCount="indefinite"><mpath href="#wire-plugged"></mpath></animateMotion></circle>
+        </g>
+        <rect class="plug plugged" x="460" y="186" width="12" height="11" rx="2.5"></rect>
+        <g class="plug-dangle"><rect class="plug loose" x="412" y="214" width="12" height="11" rx="2.5" transform="rotate(-38 418 220)"></rect></g>
+
+        <!-- phone -->
+        <g class="dev phone">
+          <rect x="422" y="30" width="88" height="158" rx="17" class="shell"></rect>
+          <rect x="428" y="36" width="76" height="146" rx="12" class="screen"></rect>
+          <rect x="452" y="42" width="28" height="8" rx="4" class="island"></rect>
+          <g class="glyph g-lock"><rect x="456" y="104" width="20" height="16" rx="3.5"></rect><path d="M459.5 104 V98.5 a6.5 6.5 0 0 1 13 0 V104" fill="none"></path></g>
+          <g class="glyph g-check"><circle cx="466" cy="108" r="13"></circle><path d="M459.5 108.5 L464 113 L472.5 103.5" fill="none"></path></g>
+          <g class="glyph g-wait"><circle cx="466" cy="108" r="11" fill="none"></circle></g>
+          <g class="glyph g-err"><path d="M466 96 L479 119 H453 Z" fill="none"></path><path d="M466 104 V111 M466 114.5 V115" fill="none"></path></g>
+        </g>
+      </svg>
+
+      <div id="link-title">Connect your iPhone</div>
+      <div id="link-sub">Plug it into this Mac with a USB cable.</div>
+
+      <div id="link-steps">
+        <div class="lstep" id="ls-plug"><i></i>Plugged in</div>
+        <div class="lstep" id="ls-unlock"><i></i>Unlocked</div>
+        <div class="lstep" id="ls-ready"><i></i>Ready</div>
+      </div>
+
+      <button id="link-skip" onclick="leaveLink()">Continue without phone</button>
+    </div>
+  </div>
+
   <div id="crt"></div>
   <div id="vignette"></div>
   <div id="flicker"></div>
