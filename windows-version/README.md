@@ -1,23 +1,29 @@
-# vida-360 on Windows
+# vida-360 — Windows version
 
-The original setup. All the real code (`spoof.py`, `tools/`, `backend/`, `data/routes/`) is
-shared at the repo root — this folder only has the Windows launchers.
+Everything you run on Windows. The engine itself is shared in `..\core\`.
 
 ## First time
 
 1. Install the **Apple Devices** app (Microsoft Store) or **iTunes** — Windows needs it for the
-   Apple Mobile Device Service (usbmuxd), otherwise `usbmux list` fails with a socket error.
-2. From the repo root: `uv venv --python 3.12` then `uv pip install -r requirements.txt`
-   (3.12 or 3.13, not 3.14 — see docs/BUILD_PLAN.md).
+   Apple Mobile Device Service (usbmuxd), otherwise the phone isn't found.
+2. Install [uv](https://docs.astral.sh/uv/), then run `windows-version\setup.cmd` (or
+   double-click it). Builds `.venv` on Python 3.12 and installs `pymobiledevice3`.
 3. Plug in the iPhone, unlock it, trust the computer, Developer Mode on.
 
 ## Running
 
+All commands from the repo root.
+
 | What | Command |
 |---|---|
-| "Where do you want to go?" menu | double-click `windows\spoof.cmd` |
-| Play a route / hold a preset | `windows\spoof.cmd miami` · `windows\spoof.cmd eiffel` |
-| Explicit coordinate | `windows\spoof.cmd 48.8584 2.2945` |
-| Clear the spoof | `windows\spoof.cmd clear` |
-| List flights / run one | `windows\fly.cmd` · `windows\fly.cmd nyc` |
-| Any other tool | `.venv\Scripts\python.exe tools\observe.py --watch` |
+| "Where do you want to go?" menu | double-click `windows-version\spoof.cmd` |
+| Play a route / hold a preset | `windows-version\spoof.cmd miami-cruise` · `windows-version\spoof.cmd eiffel` |
+| Explicit coordinate | `windows-version\spoof.cmd 48.8584 2.2945` |
+| Clear the spoof | `windows-version\spoof.cmd clear` |
+| List flights / run one | `windows-version\fly.cmd` · `windows-version\fly.cmd nyc` |
+| Life360 Observer | `.venv\Scripts\python.exe core\tools\observe.py --watch` |
+
+## What Windows can't do yet
+
+**Real speed (mph + the car icon on Life360) is Mac-only for now.** It comes from Xcode's
+`devicectl`, which doesn't exist on Windows. Spoofed drives here show 0 mph on Life360.
