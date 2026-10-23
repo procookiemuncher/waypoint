@@ -62,6 +62,13 @@ class DriveEngine:
                "--device", self._device(), "--route-file", prepared["route_file"]]
         return Job(_dry(["", "", *cmd], True) if DRY_RUN else cmd, log, "drive")
 
+    def hold(self, lat: float, lon: float, log):
+        """Park the phone on one point (places / dropped pins). Used instead of pmd3's hold on the
+        Mac — pmd3 9.33.1 can't mount the DDI on iOS 27, devicectl uses Xcode's."""
+        cmd = ["xcrun", "devicectl", "device", "simulate", "location", "coordinate",
+               "--device", self._device(), "--latitude", str(lat), "--longitude", str(lon)]
+        return Job(_dry(["", "", *cmd], True) if DRY_RUN else cmd, log, "hold")
+
     def clear(self, log) -> bool:
         cmd = ["xcrun", "devicectl", "device", "simulate", "location", "clear", "--device", self._device()]
         return run(_dry(["", "", *cmd], False) if DRY_RUN else cmd, log, timeout=30)
