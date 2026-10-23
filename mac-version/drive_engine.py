@@ -8,6 +8,7 @@ import json
 import os
 import shutil
 import sys
+import threading
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # devicectl_route
 
@@ -38,15 +39,23 @@ class DriveEngine:
         return self.udid
 
     def prepare(self, path: str, mph, log) -> dict:
+        """A typed mph = one steady devicectl call (the setup proven on the phone). Otherwise the
+        speed changes along the route: a chain of calls from dc.plan_chunks."""
         out = io.StringIO()
         try:
             with contextlib.redirect_stdout(out):
-                route_file = dc.build_route_file(path, mph)
+                if mph:
+                    route_file = dc.build_route_file(path, mph)
+                else:
+                    name, chunks = dc.plan_chunks(path)
+                    dc.write_chunks(name, chunks)
         except SystemExit as e:              # devicectl_route reports problems via sys.exit
             raise RouteError(str(e.code))
         finally:
             for line in out.getvalue().splitlines():
                 log(line)
+        if not mph:
+            return {"chunks": chunks, "timeline": thin(chunk_timeline(chunks)), "mph": None}
         with open(route_file, encoding="utf-8") as f:
             data = json.load(f)
         # devicectl holds one speed for the whole list, so the timeline is just distance / speed.
@@ -58,6 +67,9 @@ class DriveEngine:
         return {"route_file": route_file, "timeline": thin(timeline), "mph": data["speed"] / dc.MPH}
 
     def start(self, prepared: dict, log):
+        if "chunks" in prepared:
+            wrap = (lambda cmd: _dry(["", "", *cmd], False)) if DRY_RUN else (lambda cmd: cmd)
+            return ChainJob(prepared["chunks"], self._device(), log, wrap)
         cmd = ["xcrun", "devicectl", "device", "simulate", "location", "route",
                "--device", self._device(), "--route-file", prepared["route_file"]]
         return Job(_dry(["", "", *cmd], True) if DRY_RUN else cmd, log, "drive")
@@ -72,3 +84,50 @@ class DriveEngine:
     def clear(self, log) -> bool:
         cmd = ["xcrun", "devicectl", "device", "simulate", "location", "clear", "--device", self._device()]
         return run(_dry(["", "", *cmd], False) if DRY_RUN else cmd, log, timeout=30)
+
+
+def chunk_timeline(chunks) -> list:
+    """[t, lat, lon] for the app's moving pin, timed the way play_chunks will play them."""
+    t, out = 0.0, []
+    for c in chunks:
+        if c["kind"] == "stop":
+            out += [[round(t, 1), *c["at"]], [round(t + c["secs"], 1), *c["at"]]]
+            t += c["secs"]
+            continue
+        pts = c["waypoints"]
+        out.append([round(t, 1), *pts[0]])
+        for a, b in zip(pts, pts[1:]):
+            t += haversine(a, b) / c["speed"]
+            out.append([round(t, 1), *b])
+    return out
+
+
+class ChainJob:
+    """Plays a varying-speed drive (dc.play_chunks) on a thread. Same shape as backend.device.Job
+    for the Session: stop() and poll(). stop() waits for the thread, so no chunk can start after
+    the Session's clear."""
+
+    def __init__(self, chunks, device, log, wrap):
+        self.label = "drive"
+        self.cancel = threading.Event()
+        self.ok = None
+        self.thread = threading.Thread(target=self._run, args=(chunks, device, log, wrap), daemon=True)
+        self.thread.start()
+
+    def _run(self, chunks, device, log, wrap):
+        try:
+            self.ok = dc.play_chunks(chunks, device, self.cancel, log, wrap)
+        except Exception as e:   # a hung or missing xcrun shouldn't vanish silently
+            log(f"drive stopped: {e}")
+            self.ok = False
+
+    @property
+    def running(self) -> bool:
+        return self.thread.is_alive()
+
+    def poll(self):
+        return None if self.running else (0 if self.ok else 1)
+
+    def stop(self):
+        self.cancel.set()
+        self.thread.join(timeout=35)   # at most one devicectl call in flight (30s timeout)

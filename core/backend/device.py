@@ -59,6 +59,9 @@ class Job:
     def running(self) -> bool:
         return self.proc.poll() is None
 
+    def poll(self):
+        return self.proc.poll()
+
     def stop(self):
         if not self.running:
             return
