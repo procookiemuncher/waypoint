@@ -64,6 +64,7 @@ class Session:
         self.mounted = False
         self.readiness = ("checking", "")  # last mount attempt's verdict, for the connect screen
         self._probe_at, self._probing = 0.0, False
+        self.readiness_check = None        # optional (udid) -> (state, message); see use_readiness()
         self.logs = deque(maxlen=400)
         self.seq = 0
         self._devices, self._devices_at = [], 0.0
@@ -72,6 +73,12 @@ class Session:
     def register(self, engine):
         self.engines[engine.id] = engine
         self.services[engine.service] = engine.clear
+
+    def use_readiness(self, check):
+        """Swap the connect screen's mount-based unlock check for a platform one (the Mac app
+        uses devicectl's real lock state). `check(udid)` returns (state, message), state being
+        "ready", "locked" or "error". It must be cheap — it's polled every couple of seconds."""
+        self.readiness_check = check
 
     def log(self, text: str, level: str = "sys"):
         self.seq += 1
@@ -89,21 +96,38 @@ class Session:
         return self._devices
 
     def phone(self) -> dict:
-        """Is the phone plugged in and unlocked? Unlocked = the DDI mounted (it won't on a locked
-        phone). The mount runs in the background so polling stays fast. Once mounted we don't
-        notice the phone re-locking — this is a one-time gate, not a live lock indicator."""
+        """Is the phone plugged in and unlocked? By default unlocked = the DDI mounted (it won't on
+        a locked phone), and once mounted we don't notice the phone re-locking. A platform
+        readiness_check replaces that with a live answer. Either way the check runs in the
+        background so polling stays fast."""
         if not self.devices():
             self.readiness = ("checking", "")
             return {"state": "none", "message": ""}
-        if self.mounted:
+        if self.mounted and not self.readiness_check:
             return {"state": "ready", "message": ""}
-        if not self._probing and time.time() - self._probe_at > 4:
+        if not self._probing and time.time() - self._probe_at > (2 if self.readiness_check else 4):
             self._probing = True
             threading.Thread(target=self._probe, daemon=True).start()
         state, message = self.readiness
         return {"state": state, "message": message}
 
     def _probe(self):
+        if self.readiness_check:
+            devices = self._devices
+            try:
+                state, message = self.readiness_check(devices[0]["udid"]) if devices else ("checking", "")
+            except Exception as e:
+                state, message = "error", f"{type(e).__name__}: {e}"
+            if state != self.readiness[0]:
+                if state == "locked":
+                    self.log("phone is locked — unlock it to continue", "warn")
+                elif state == "ready":
+                    self.log("phone unlocked and ready", "ok")
+                elif state == "error":
+                    self.log(f"phone not ready: {message}", "warn")
+            self.readiness = (state, message)
+            self._probe_at, self._probing = time.time(), False
+            return
         try:
             if not self.lock.acquire(blocking=False):
                 return   # an action is running; it mounts on its own
