@@ -7,6 +7,32 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-22 — Repo reorganized: mac-version/ + windows-version/ over a shared core/
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wanted a clear two-folder "Mac version / Windows
+version" layout. Picked (with the owner) two version folders over one shared engine, so fixes
+still happen once:
+
+- `core/` — spoof.py, routes/ (was data/routes), backend/, tools/, tests/, map-visualizer.html
+  (was "Waypoint Map Visualizer/export/Waypoint.html"), build/.
+- `mac-version/` — spoof/fly/setup + new **drive.command** and `devicectl_route.py` (moved from
+  tools/, Mac-only real-speed path; now takes a route name like `emoji-test`).
+- `windows-version/` — spoof/fly + new **setup.cmd** (uv venv, same as the Mac one).
+- `.venv`, `.env`, requirements.txt stay at the root. observe.py's default `--env` still points at
+  the root `.env`.
+
+READMEs rewritten (root picks a version; core/README explains the engine; Windows README says
+real speed is Mac-only). Live docs + script headers repointed; old plans/specs/research left as
+historical.
+
+**Verified (no phone):** 7 tests pass, spoof lists all 7 routes from core/routes, fly lists trips,
+drive builds route files by name (also when run from another directory), all .command files parse.
+Windows launchers not run (no Windows box here) — only path edits, same pattern as before.
+
+**Next:** unchanged — variable-speed drive (chain segments), then the >100 mph flight-detection test.
+
+---
+
 ## 2026-10-22 — Life360 shows real mph: Xcode's devicectl location sim carries speed
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner confirmed the Mac spoof works on-device, then asked
