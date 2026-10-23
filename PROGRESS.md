@@ -7,6 +7,32 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-22 — Life360 shows real mph: Xcode's devicectl location sim carries speed
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner confirmed the Mac spoof works on-device, then asked
+about the 0 mph problem. pmd3's DVT injection is lat/lon only, so `CLLocation.speed` is -1 and Life360
+shows 0. But Xcode on this Mac ships `xcrun devicectl device simulate location route`, which takes a
+`--speed` in m/s — a different (CoreDevice) service the research had never looked at.
+
+**Test:** cleared the pmd3 spoof, then played the snapped emoji-test route (353 points, Dolphin
+Expressway) through devicectl at 15.6 m/s, interval mode 1 s. **Life360 showed 35 mph** on another
+circle member's phone. First time the spoof has ever produced a nonzero speed.
+
+**Added** `tools/devicectl_route.py` — turns a route JSON into devicectl's route file (snapped
+waypoints, one speed) and plays it; `--mph` override, `--clear`. Docs updated (AGENTS.md,
+ROADMAP.md, activity-emoji brief, mac/README).
+
+**Not known yet:** whether the car icon / isDriving flips with this path; whether devicectl
+`route` blocks until done.
+
+**Next:**
+1. Variable speed — chain one devicectl call per segment so it slows for corners and stops.
+2. Flight detection: the >100 mph gate was never actually reachable before (speed was -1). Now it
+   is, so altitude is the only unknown left. Try a >45 m/s leg near MIA before the airplane-mode gap.
+3. Still pending: airplane-mode tunnel gate (now for devicectl too), save the hotel Place, `fly nyc`.
+
+---
+
 ## 2026-10-22 — Mac support: split launchers into windows/ and mac/
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner picked the project back up on a Mac and wanted a
