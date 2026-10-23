@@ -7,7 +7,7 @@
 ## Verify offline (no phone)
 
 ```
-py tools/build_route.py data/routes/demo-drive.json
+py core/tools/build_route.py core/routes/demo-drive.json
 ```
 Loads a route → renders the trajectory → validates it → writes a cached GPX. This is the gate
 that must pass before anything is played on the device.
@@ -20,22 +20,22 @@ that must pass before anything is played on the device.
   `uv venv --python 3.12 && uv pip install -r requirements.txt`.
 - **Apple Mobile Device Service** (usbmuxd) must be installed on Windows — via the **Apple
   Devices** app (Microsoft Store) or **iTunes** — or `usbmux list` fails with a socket error.
-- Play a built route on the phone: `.venv\Scripts\python.exe tools\play_route.py <gpx>`.
+- Play a built route on the phone: `.venv\Scripts\python.exe core\tools\play_route.py <gpx>`.
 
 ## Build order
 
 Each increment is independently verifiable **offline**. Phone-gated items are called out.
 
 ### Increment 1 — offline core  ✅ DONE (2026-07-08)
-- [x] `backend/movement/model.py` — `route.json` schema → `Route`/`Segment`/`LocationFix`,
+- [x] `core/backend/movement/model.py` — `route.json` schema → `Route`/`Segment`/`LocationFix`,
   loader + input validation, per-mode default speeds / speed ceilings / accel.
-- [x] `backend/movement/renderer.py` — `RouteRenderer`: straight-line interpolation
+- [x] `core/backend/movement/renderer.py` — `RouteRenderer`: straight-line interpolation
   (no-network fallback), per-segment speed with accel/decel ramps into stops, bounded
   random-walk GPS jitter, GPX output.
-- [x] `backend/movement/validator.py` — strictly-increasing time + per-mode / global speed
+- [x] `core/backend/movement/validator.py` — strictly-increasing time + per-mode / global speed
   ceilings (rejects impossible speeds & teleports before they reach the device).
-- [x] `tools/build_route.py` — CLI: load → render → validate → write GPX.
-- [x] `data/routes/demo-drive.json` — smoke-test route. Verified: 256 fixes, 5.0 min,
+- [x] `core/tools/build_route.py` — CLI: load → render → validate → write GPX.
+- [x] `core/routes/demo-drive.json` — smoke-test route. Verified: 256 fixes, 5.0 min,
   max 14.6 m/s, validation OK.
 
 ### Increment 1.5 — research-backed realism  ✅ DONE (2026-07-08)
@@ -52,8 +52,8 @@ Folded docs/research/ findings into the core:
 ### Increment 2 — Valhalla road-snapping (build time)  🟡 GEOMETRY DONE (2026-07-08)
 - [x] Snap each segment's waypoints to a road-following polyline via the FOSSGIS public
   Valhalla (`pedestrian`/`auto` costing per mode) *before* the renderer runs.
-  `backend/movement/snapper.py` — `/route` + polyline6 decode (1e6), opt-in per segment via
-  `"snap": true`. Wired into `tools/build_route.py` and `spoof.py` (`snap_route`).
+  `core/backend/movement/snapper.py` — `/route` + polyline6 decode (1e6), opt-in per segment via
+  `"snap": true`. Wired into `core/tools/build_route.py` and `spoof.py` (`snap_route`).
 - [x] Keep the straight-line path as the offline/no-network fallback (per-segment `SnapError`
   → keep hand-authored waypoints + warn).
 - [x] Cache the snapped result (`build/snap-cache/<hash>.json`, keyed on waypoints+costing) so a

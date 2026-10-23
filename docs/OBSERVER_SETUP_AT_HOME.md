@@ -1,6 +1,6 @@
 # Life360 Observer — setup runbook (do this at home)
 
-> **Goal:** get the Observer (`tools/observe.py`) to print your live Life360 data. Your account is
+> **Goal:** get the Observer (`core/tools/observe.py`) to print your live Life360 data. Your account is
 > **passwordless** (phone + SMS, no password), so we can't log in with a password — instead we grab a
 > **bearer token** once from a session you control and paste it into `.env`. No new SMS codes are
 > requested, so there's **no 24-hour lockout risk.**
@@ -29,7 +29,7 @@ nothing. If it works, you can skip the whole token dance.
    (Leave `LIFE360_TOKEN` blank.)
 2. Run:
    ```
-   .venv\Scripts\python.exe tools\observe.py
+   .venv\Scripts\python.exe core\tools\observe.py
    ```
 3. **If it prints your location → you're done.** Skip to "Confirm it works" at the bottom.
    **If it says `403 Invalid login and password` → your account is passwordless.** Continue to Step 1.
@@ -118,12 +118,12 @@ Leave `LIFE360_USER` / `LIFE360_PASS` blank.
 
 1. Sanity-check what `.env` loaded (nothing secret is printed — password/token show only as a length):
    ```
-   .venv\Scripts\python.exe tools\observe.py --check
+   .venv\Scripts\python.exe core\tools\observe.py --check
    ```
    You want to see `LIFE360_TOKEN: <NNN chars> (present ...)`.
 2. Run the real thing:
    ```
-   .venv\Scripts\python.exe tools\observe.py
+   .venv\Scripts\python.exe core\tools\observe.py
    ```
    You should see something like:
    ```
@@ -132,7 +132,7 @@ Leave `LIFE360_USER` / `LIFE360_PASS` blank.
      Circle: Family
       - Juan | 25.79031,-80.25010 | speed 0.0 | driving=no | batt 82% | wifi on | acc 10m
    ```
-3. To watch just yourself: `.venv\Scripts\python.exe tools\observe.py --member Juan`
+3. To watch just yourself: `.venv\Scripts\python.exe core\tools\observe.py --member Juan`
 
 ---
 

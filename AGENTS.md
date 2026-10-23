@@ -65,7 +65,7 @@ purely spatial / speed-independent (docs/research/life360-geofence-arrival-mecha
 **✅ Speed workaround found (2026-10-22, on-device, Mac):** Xcode's CoreDevice location sim —
 `xcrun devicectl device simulate location route --speed <m/s>` — is a *different* service from pmd3's
 DVT one and it carries a real speed. The emoji-test route played this way at 15.6 m/s showed **35 mph**
-on Life360 (seen on another circle member's phone). Tool: `tools/devicectl_route.py`. Limits: Mac +
+on Life360 (seen on another circle member's phone). Tool: `mac-version/devicectl_route.py`. Limits: Mac +
 Xcode only (breaks the same-code-both-platforms rule — fine while it's the only speed path), one
 constant speed per call (no corner slowdowns or dwell yet), no altitude. **The car icon showed up
 too** — the driving emoji, dead since July, works on this path.
@@ -98,9 +98,11 @@ too** — the driving emoji, dead since July, works on this path.
 
 ## Environment (fixed facts)
 
-- **Host:** Windows (original) and macOS (added 2026-10-22). Same Python code on both; only the
-  launchers differ — `windows/*.cmd` and `mac/*.command`. Don't fork the code per platform.
-- **Target:** iPhone on **iOS 26.6** → RemoteXPC tunnel path only.
+- **Host:** Windows (original) and macOS (added 2026-10-22). Two version folders —
+  `mac-version/` and `windows-version/` — over one shared `core/`. Don't copy code between the
+  versions: if it works on both, it goes in `core/`; only OS-specific stuff (launchers, the
+  Mac-only `devicectl_route.py`) lives in a version folder.
+- **Target:** iPhone, now on **iOS 27.0.1** (was 26.6) → RemoteXPC tunnel path only.
 - **Language:** Python end-to-end. No JS, no Swift.
 - **Transport lib:** `pymobiledevice3` — the only maintained cross-platform library that
   speaks the iOS 17+ tunnel on Windows.
@@ -138,25 +140,33 @@ API** for the frequent set/clear/route calls against the RSD that tunneld expose
 | Hybrid `tunneld` daemon + library API | CLI-stable transport, library-level control for frequent calls. |
 | All transport glue in one adapter module | Version resilience against Apple's transport churn. |
 
-## Repo layout (planned — created as M2/M3 land)
+## Repo layout (reorganized 2026-10-22)
 
-- `backend/` — FastAPI app + `LocationBackend` + pymobiledevice3 adapter
-- `web/` — static Leaflet UI
-- `data/` — landmark presets + saved locations (JSON)
-- `windows/`, `mac/` — per-platform launchers (the only platform-specific files)
+```
+mac-version/       Mac launchers (spoof, drive, fly, setup) + devicectl_route.py (Mac-only, real speed)
+windows-version/   Windows launchers (spoof, fly, setup)
+core/              shared engine — spoof.py, routes/, backend/ (movement, life360), tools/, tests/,
+                   map-visualizer.html, build/ (generated, ignored)
+docs/              design docs + research
+.venv  .env  requirements.txt   stay at the repo root
+```
+
+Planned (M2/M3): `core/backend/` grows the FastAPI app + `LocationBackend` + pmd3 adapter, and a
+static Leaflet UI lands under `core/web/`.
 
 ## Running it
 
-**Launchers live per platform:** `windows/` (`spoof.cmd`, `fly.cmd`) and `mac/` (`spoof.command`,
-`fly.command`, `setup.command`). Each folder has a README. Below, `spoof` / `fly` means whichever
-launcher matches your OS — e.g. `windows\spoof.cmd eiffel` or `./mac/spoof.command eiffel`.
+**Launchers live per platform:** `windows-version/` (`spoof.cmd`, `fly.cmd`, `setup.cmd`) and
+`mac-version/` (`spoof.command`, `drive.command`, `fly.command`, `setup.command`). **`drive` (Mac
+only) is the real-speed path** — Life360 shows mph + the car icon. Each folder has a README. Below, `spoof` / `fly` means whichever
+launcher matches your OS — e.g. `windows-version\spoof.cmd eiffel` or `./mac-version/spoof.command eiffel`.
 
 **Spoof launcher:** `spoof` (double-click) opens a **"where do you want to go?"** menu —
-pick a **route** (realistic movement, built by the movement engine from `data/routes/*.json`),
+pick a **route** (realistic movement, built by the movement engine from `core/routes/*.json`),
 a **static preset** (hold a fixed point), or **clear**. Direct args also work:
 `spoof miami` / `spoof eiffel` / `spoof 48.8584 2.2945` / `spoof clear`. Routes
 are rendered + validated into a GPX and replayed over the `--userspace` tunnel (no admin);
-presets/coords hold a point until you press ENTER. **Drop a new JSON in `data/routes/` and it
+presets/coords hold a point until you press ENTER. **Drop a new JSON in `core/routes/` and it
 appears in the menu automatically.** Needs the `.venv` (Python 3.12/3.13, see BUILD_PLAN.md),
 the Apple Mobile Device Service (Windows only — built into macOS), and the phone **unlocked** with Developer Mode on.
 

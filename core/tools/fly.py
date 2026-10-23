@@ -1,5 +1,5 @@
-"""vida-360 flight choreographer — double-click **windows/fly.cmd** / **mac/fly.command**
-(or run `python tools/fly.py`).
+"""vida-360 flight choreographer — double-click **windows-version/fly.cmd** / **mac-version/fly.command**
+(or run `python core/tools/fly.py`).
 
 Runs a believable *flight* between two cities so Life360 pushes "arrived at <destination>". It
 choreographs the spoof around a manual **airplane-mode** gap: the phone goes offline exactly like a
@@ -87,7 +87,7 @@ def run_trip(trip):
     print("\n  Reminders before we start:")
     print("   - Destination saved as a Life360 Place? (the arrival push needs it)")
     print("   - A 2nd circle member watching their phone for the push?")
-    print("   - Observer running?  tools/observe.py --watch --member \"<you>\" --log flight.jsonl")
+    print("   - Observer running?  core/tools/observe.py --watch --member \"<you>\" --log flight.jsonl")
     print("   - Phone unlocked, Developer Mode on.")
     input("\n  Press ENTER to begin the departure drive...")
 

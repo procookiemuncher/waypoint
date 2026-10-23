@@ -1,5 +1,5 @@
-"""vida-360 spoof launcher — double-click **windows/spoof.cmd** / **mac/spoof.command**
-(or run `python spoof.py`).
+"""vida-360 spoof launcher — double-click **windows-version/spoof.cmd** / **mac-version/spoof.command**
+(or run `python core/spoof.py`).
 
 Shows a "where do you want to go?" menu:
   - **Routes** (realistic movement) — every core/routes/*.json, built by the movement engine

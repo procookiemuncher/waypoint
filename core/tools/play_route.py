@@ -2,7 +2,7 @@
 
 Thin runner over pymobiledevice3's CLI (same approach as spoof.py): mounts the Developer Disk
 Image over the userspace tunnel (no admin), then replays the GPX with `simulate-location
-play`. The GPX comes from tools/build_route.py (authored + validated offline). This is the
+play`. The GPX comes from core/tools/build_route.py (authored + validated offline). This is the
 interim device path; the formal LocationBackend.play_route() lands in Increment 3 / M2.
 
 Run with the venv's python so pymobiledevice3 is importable:
@@ -25,7 +25,7 @@ def pmd(*args):
 
 def main():
     ap = argparse.ArgumentParser(description="Play a route GPX on the connected iPhone.")
-    ap.add_argument("gpx", help="path to a built .gpx (from tools/build_route.py)")
+    ap.add_argument("gpx", help="path to a built .gpx (from core/tools/build_route.py)")
     ap.add_argument("--noise", type=int, default=0,
                     help="+/- ms timing jitter added to each inter-point wait")
     args = ap.parse_args()

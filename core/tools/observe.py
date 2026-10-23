@@ -4,7 +4,7 @@ Read-only — it never writes anything to Life360. Modes:
   - one-shot (default): print each member's current state once and exit.
   - --watch:            poll on an interval and print a timestamped line per sample.
   - --log FILE:         also append every sample to FILE as JSONL (for offline correlation
-                        against a played route GPX — see tools/correlate.py, docs §7).
+                        against a played route GPX — see core/tools/correlate.py, docs §7).
 
     .venv\\Scripts\\python.exe tools\\observe.py                        # one-shot, all members
     .venv\\Scripts\\python.exe tools\\observe.py --member Juan           # one-shot, just Juan
