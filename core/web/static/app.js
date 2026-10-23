@@ -438,7 +438,7 @@ function resetView(){
   echoCommand('reset view');
   clearPreview();
   if(live && marker) map.flyTo(marker.getLatLng(), 14, { duration:1.2 });
-  else map.flyTo([25.7617,-80.1918], 13, { duration:1.2 });
+  else frameBrowse();
 }
 
 /* ============ PROMPT (typed commands) ============ */
@@ -519,8 +519,8 @@ promptIn.addEventListener('keydown', e=>{
 });
 $('promptline').addEventListener('mousedown', e=>{ if(e.target!==promptIn){ e.preventDefault(); promptIn.focus(); } });
 
-/* ============ COMMAND PANEL (tabs + hero + thumbs) ============ */
-let curTab='routes', selected=null, engineChoice=null;
+/* ============ COMMAND PANEL (hero + thumbs) ============ */
+let selected=null, engineChoice=null;
 
 function tileUrl(lat, lon, z){
   const n=2**z;
@@ -565,43 +565,178 @@ function countUp(el, target, decimals, suffix){
     if(k<1) requestAnimationFrame(step);
   })(t0);
 }
-function setTab(tab, keepSel){
-  curTab=tab;
-  $('tab-routes').classList.toggle('on', tab==='routes');
-  $('tab-places').classList.toggle('on', tab==='places');
-  $('tabglider').classList.toggle('right', tab==='places');
-  renderList();
-  if(!keepSel){
-    const first=(tab==='routes'?ROUTES:PLACES)[0];
-    if(first) selectItem({ type:tab==='routes'?'route':'place', def:first });
-  }
+/* ============ DESTINATIONS (city gallery → a city's places + route map cards) ============ */
+// Cities aren't stored anywhere: a place's region names its city, a route belongs to whichever
+// known city (or place region) its last point is nearest to, within NEAR_KM. Add a city here to
+// give it a flag + color; anything unknown still gets its own card, just with a pin and a palette color.
+const CITY_INFO = {
+  'Miami':       { country:'United States',        flag:'🇺🇸', color:'#ff5ecd', lat:25.775, lon:-80.21 },
+  'New York':    { country:'United States',        flag:'🇺🇸', color:'#5ea2ff', lat:40.73,  lon:-73.93 },
+  'Los Angeles': { country:'United States',        flag:'🇺🇸', color:'#ffb37a', lat:34.05,  lon:-118.25 },
+  'Paris':       { country:'France',               flag:'🇫🇷', color:'#ef3f4f', lat:48.86,  lon:2.35 },
+  'London':      { country:'United Kingdom',       flag:'🇬🇧', color:'#5ee6d0', lat:51.51,  lon:-0.13 },
+  'Dubai':       { country:'United Arab Emirates', flag:'🇦🇪', color:'#e8c25a', lat:25.2,   lon:55.27 },
+};
+const NEAR_KM = 100;
+let openCity=null;
+
+function cityOf(lat, lon){
+  const cands=[...Object.entries(CITY_INFO).map(([n,c])=>[n,c.lat,c.lon]),
+               ...PLACES.filter(p=>p.region).map(p=>[p.region,p.lat,p.lon])];
+  let best='Elsewhere', bd=NEAR_KM*1000;
+  for(const [n,la,lo] of cands){ const d=dist([lat,lon],[la,lo]); if(d<bd){ bd=d; best=n; } }
+  return best;
 }
-function renderList(){
-  const list=$('cmdlist');
-  list.innerHTML='';
-  const src = curTab==='routes'?ROUTES:PLACES;
-  if(!src.length){
-    list.innerHTML=`<div class="row" style="cursor:default"><div class="meta"><div class="sub">${curTab==='routes'?'no routes in core/routes/ yet':'no places in core/places.json yet'}</div></div></div>`;
+function cityInfo(name){
+  if(CITY_INFO[name]) return CITY_INFO[name];
+  const h=[...name].reduce((a,c)=>a+c.charCodeAt(0),0);
+  return { country:'', flag:'📍', color:PALETTE[h%PALETTE.length] };
+}
+const cityItems = c => [...ROUTES.filter(r=>r.city===c).map(def=>({ type:'route', def })),
+                        ...PLACES.filter(p=>p.city===c).map(def=>({ type:'place', def }))];
+function cityNames(){
+  const n=[...new Set([...ROUTES,...PLACES].map(x=>x.city))];
+  return n.sort((a,b)=> (a==='Elsewhere')-(b==='Elsewhere') || cityItems(b).length-cityItems(a).length || a.localeCompare(b));
+}
+const itemPoints = it => it.type==='route' ? it.def.line : [[it.def.lat, it.def.lon]];
+function cityCenter(c){
+  if(CITY_INFO[c]) return [CITY_INFO[c].lat, CITY_INFO[c].lon];
+  const pts=cityItems(c).flatMap(itemPoints);
+  return [pts.reduce((s,p)=>s+p[0],0)/pts.length, pts.reduce((s,p)=>s+p[1],0)/pts.length];
+}
+// 'jfk-to-hotel' → 'JFK → hotel'
+const ACRONYMS = new Set(['jfk','mia','cdg','dxb','lax','lhr','nyc','sfo']);
+function routeLabel(name){
+  const w=name.replace(/-to-/g,' → ').split(/[-_ ]+/).map(t=>ACRONYMS.has(t.toLowerCase()) ? t.toUpperCase() : t);
+  const s=w.join(' ');
+  return s.charAt(0).toUpperCase()+s.slice(1);
+}
+
+/* a static map: tiles framed to fit the items, with their routes drawn on top (w×h px) */
+function mercator(lat, lon, z){
+  const n=256*2**z, s=Math.sin(lat*Math.PI/180);
+  return [(lon+180)/360*n, (.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n];
+}
+function mapArt(items, w, h, color, pad=26){
+  const thin = line => { const st=Math.max(1, Math.floor(line.length/80)); return line.filter((_,i)=>i%st===0 || i===line.length-1); };
+  const pts=items.flatMap(itemPoints);
+  if(!pts.length) return '<div class="art"></div>';
+  let z=15;
+  for(; z>2; z--){
+    const px=pts.map(p=>mercator(p[0],p[1],z)), xs=px.map(p=>p[0]), ys=px.map(p=>p[1]);
+    if(Math.max(...xs)-Math.min(...xs)<=w-pad*2 && Math.max(...ys)-Math.min(...ys)<=h-pad*2) break;
+  }
+  const px=pts.map(p=>mercator(p[0],p[1],z)), xs=px.map(p=>p[0]), ys=px.map(p=>p[1]);
+  const x0=(Math.max(...xs)+Math.min(...xs))/2-w/2, y0=(Math.max(...ys)+Math.min(...ys))/2-h/2;
+  let tiles='';
+  for(let tx=Math.floor(x0/256); tx<=Math.floor((x0+w)/256); tx++)
+    for(let ty=Math.floor(y0/256); ty<=Math.floor((y0+h)/256); ty++)
+      tiles+=`<img src="${TILE_URL.replace('{z}',z).replace('{x}',tx).replace('{y}',ty).replace('{r}','@2x')}" style="left:${(tx*256-x0).toFixed(1)}px;top:${(ty*256-y0).toFixed(1)}px" alt="" draggable="false">`;
+  const P=(lat,lon)=>{ const [a,b]=mercator(lat,lon,z); return [(a-x0).toFixed(1), (b-y0).toFixed(1)]; };
+  let svg='';
+  for(const it of items){
+    if(it.type==='route' && it.def.line.length>1){
+      const line=thin(it.def.line), d='M'+line.map(p=>P(p[0],p[1]).join(' ')).join(' L');
+      const a=P(...line[0]), b=P(...line[line.length-1]);
+      svg+=`<path class="glow" d="${d}"/><path class="core" d="${d}"/><circle class="start" cx="${a[0]}" cy="${a[1]}" r="2.6"/><circle class="end" cx="${b[0]}" cy="${b[1]}" r="3.6"/>`;
+    } else if(it.type==='place'){
+      const [a,b]=P(it.def.lat, it.def.lon);
+      svg+=`<circle class="pl" cx="${a}" cy="${b}" r="4"/>`;
+    }
+  }
+  return `<div class="art" style="--t:${color}"><div class="stage" style="width:${w}px;height:${h}px;margin:${-h/2}px 0 0 ${-w/2}px">${tiles}<svg width="${w}" height="${h}">${svg}</svg></div></div>`;
+}
+
+const plural = (n, word) => `${n} ${word}${n===1?'':'s'}`;
+const liveBadge = '<span class="livebadge"><i></i>Live</span>';
+function galleryHtml(W){
+  const names=cityNames();
+  if(!names.length) return `<div class="bempty">no routes in core/routes/ or places in core/places.json yet</div>`;
+  return `<div class="bhead"><div><h2>Destinations</h2><div class="sub">${names.length===1 ? '1 city' : names.length+' cities'}, pick one</div></div>
+      <button id="resetview" onclick="resetView()" title="Reset view" aria-label="Reset view">${icon('rotate-ccw',15)}</button></div>`
+    + names.map(c=>{
+      const C=cityInfo(c), items=cityItems(c);
+      const r=items.filter(i=>i.type==='route').length, p=items.length-r;
+      const miles=items.reduce((s,i)=>s+(i.def.meters||0),0)/1609.34;
+      return `<button class="gcard" data-city="${esc(c)}" style="--t:${C.color}">
+        ${mapArt(items, W-28, 168, C.color, 36)}<div class="shade"></div>
+        <div class="top"><span class="flag">${C.flag}</span>${esc(C.country)} ${liveBadge}<span class="go">${icon('arrow-right',15)}</span></div>
+        <div class="bot"><div class="cn">${esc(c)}</div><div class="mchips">
+          ${r?`<span class="mchip">${icon('route',12)}${plural(r,'route')}</span>`:''}
+          ${p?`<span class="mchip">${icon('map-pin',12)}${plural(p,'place')}</span>`:''}
+          ${miles?`<span class="mchip">${miles.toFixed(miles<10?1:0)} mi</span>`:''}</div></div>
+      </button>`;
+    }).join('');
+}
+function cityHtml(W){
+  const c=openCity, C=cityInfo(c), items=cityItems(c);
+  const R=items.filter(i=>i.type==='route'), P=items.filter(i=>i.type==='place');
+  const miles=R.reduce((s,i)=>s+i.def.meters,0)/1609.34, secs=R.reduce((s,i)=>s+i.def.seconds,0);
+  const cardW=Math.floor((W-38)/2);
+  return `<div class="chero" style="--t:${C.color}">${mapArt(items, W, 200, C.color, 40)}<div class="shade"></div>
+      <button class="backb" data-back>${icon('chevron-left',16)}Destinations</button>
+      <div class="in"><div class="cn"><span class="flag">${C.flag}</span>${esc(c)}</div>${C.country?`<div class="cc">${esc(C.country)}</div>`:''}</div></div>
+    <div class="cstats"><div><b>${R.length}</b><span>${R.length===1?'route':'routes'}</span></div>
+      <div><b>${R.length?miles.toFixed(miles<10?1:0)+' mi':'—'}</b><span>of road</span></div>
+      <div><b>${R.length?Math.round(secs/60)+' min':'—'}</b><span>of driving</span></div></div>
+    ${P.length?`<div class="bsec">Places<span class="n">${P.length}</span></div>
+      <div class="pchips" style="--t:${C.color}">${P.map(({def})=>`<button class="pchip" data-id="${esc(def.id)}" data-kind="place"><span class="ic">${icon('map-pin',14)}</span>${esc(def.name)}</button>`).join('')}</div>`:''}
+    ${R.length?`<div class="bsec">Routes<span class="n">${R.length}</span></div>
+      <div class="mcards" style="--t:${C.color}">${R.map(it=>`<button class="mcard" data-id="${esc(it.def.id)}" data-kind="route">
+        <div class="pic">${mapArt([it], cardW, 104, C.color, 16)}${liveBadge}</div>
+        <div class="tx"><div class="nm">${esc(it.def.label)}</div><div class="sb">${esc(it.def.cardSub)}</div></div></button>`).join('')}</div>`:''}`;
+}
+function renderBrowse(animate){
+  const el=$('browse'), W=el.clientWidth || 400;
+  el.innerHTML = openCity && cityItems(openCity).length ? cityHtml(W) : galleryHtml(W);
+  if(animate){ el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); el.scrollTop=0; }
+  if(selected) el.querySelectorAll('[data-id]').forEach(b=>b.classList.toggle('sel', b.dataset.id===selected.def.id && b.dataset.kind===selected.type));
+  markLive();
+  drawBrowseMap();
+}
+function openCityPage(c){ openCity=c; renderBrowse(true); frameBrowse(); }
+$('browse').addEventListener('click', e=>{
+  const t=e.target.closest('[data-city],[data-back],[data-id]');
+  if(!t) return;
+  if(t.dataset.city) openCityPage(t.dataset.city);
+  else if(t.dataset.back!==undefined){ openCity=null; renderBrowse(true); frameBrowse(); }
+  else {
+    const def=(t.dataset.kind==='route'?ROUTES:PLACES).find(x=>x.id===t.dataset.id);
+    if(def) selectItem({ type:t.dataset.kind, def });
+  }
+});
+$('browse').addEventListener('dblclick', e=>{ if(e.target.closest('[data-id]')) runSelected(); });
+let browseResize;
+window.addEventListener('resize', ()=>{ clearTimeout(browseResize); browseResize=setTimeout(()=>renderBrowse(), 150); });
+
+// the map follows along: city tags on the world view, a city's routes faintly drawn inside it
+let browseLayer=null;
+function drawBrowseMap(){
+  if(!map) return;
+  if(!browseLayer) browseLayer=L.layerGroup().addTo(map);
+  browseLayer.clearLayers();
+  if(!openCity){
+    for(const c of cityNames()){
+      const C=cityInfo(c);
+      L.marker(cityCenter(c), { icon:L.divIcon({ className:'', iconSize:null,
+        html:`<div class="bub" style="--t:${C.color}"><span class="fl">${C.flag}</span>${esc(c)}<span class="n">${cityItems(c).length}</span></div>` }) })
+        .on('click', ()=>openCityPage(c)).addTo(browseLayer);
+    }
     return;
   }
-  src.forEach((def,i)=>{
-    const item={ type:curTab==='routes'?'route':'place', def };
-    const d=document.createElement('div');
-    d.className='row listfade'; d.tabIndex=0;
-    d.dataset.id=def.id;
-    d.style.animationDelay=(i*0.05)+'s';
-    d.style.setProperty('--d', (0.18+i*0.06)+'s');
-    d.innerHTML=`<div class="thumb">${thumbHtml(item,40)}</div>
-      <div class="meta"><div class="name">${esc(def.name)}</div><div class="sub">${esc(def.sub)}</div></div>
-      <span class="eq"><i></i><i></i><i></i></span><span class="sel-dot"></span>`;
-    const go=()=>selectItem(item);
-    d.addEventListener('click', go);
-    d.addEventListener('dblclick', ()=>{ selectItem(item); runSelected(); });
-    d.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); selectItem(item); runSelected(); } else if(e.key===' '){ e.preventDefault(); go(); }});
-    list.appendChild(d);
-  });
-  markLive();
+  const color=cityInfo(openCity).color;
+  for(const it of cityItems(openCity)){
+    if(it.type==='route') L.polyline(it.def.line, { color, weight:2.5, opacity:.35, interactive:false }).addTo(browseLayer);
+    else L.circleMarker([it.def.lat, it.def.lon], { radius:4, color, weight:2, fillColor:'#fff', fillOpacity:.9, interactive:false }).addTo(browseLayer);
+  }
 }
+function frameBrowse(){
+  if(live || !map) return;   // don't yank the map away from something that's playing
+  const pts = openCity ? cityItems(openCity).flatMap(itemPoints) : cityNames().map(cityCenter);
+  if(!pts.length) return;
+  map.flyToBounds(L.latLngBounds(pts).pad(openCity ? .15 : .35), { duration:1.1, maxZoom: openCity ? 14 : 4 });
+}
+
 function availableEngines(){ return ENGINES.length ? ENGINES : [{id:'spoof',label:'Spoof',real_speed:false}]; }
 function selEngine(){
   const ids=availableEngines().map(e=>e.id);
@@ -628,9 +763,10 @@ function updateRouteNote(){
 function selectItem(item){
   selected=item;
   setAccent(item.def.accent);
-  document.querySelectorAll('#cmdlist .row').forEach(r=>r.classList.toggle('sel', r.dataset.id===item.def.id));
+  document.querySelectorAll('#browse [data-id]').forEach(b=>b.classList.toggle('sel', b.dataset.id===item.def.id && b.dataset.kind===item.type));
+  $('hero').hidden=false;
   $('hero-thumb').innerHTML=thumbHtml(item,62);
-  $('hero-name').textContent=item.def.name;
+  $('hero-name').textContent=item.def.label || item.def.name;
   $('hero-sub').textContent=item.def.sub;
   const stats=$('hero-stats');
   $('hero-opts').hidden = item.type!=='route';
@@ -670,7 +806,7 @@ function dropPin(lat, lon){
   if(pinCandidate) map.removeLayer(pinCandidate);
   if(preview && !live){ map.removeLayer(preview); preview=null; }
   pinCandidate=L.circleMarker([lat,lon],{ radius:7, color:DEFAULT_ACCENT, weight:2, fillOpacity:.25 }).addTo(map);
-  document.querySelectorAll('#cmdlist .row').forEach(r=>r.classList.remove('sel'));
+  document.querySelectorAll('#browse [data-id]').forEach(b=>b.classList.remove('sel'));
   const def={ id:'pin', name:'Dropped pin', sub:`${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon, zoom:Math.round(map.getZoom()), accent:DEFAULT_ACCENT };
   const keep=pinCandidate; pinCandidate=null;   // selectItem clears selection layers
   selectItem({ type:'pin', def });
@@ -692,19 +828,24 @@ function runSelected(){
   else setPlace(selected.def);
 }
 function markLive(){
-  const id = !live ? null : live.kind==='route' ? live.label : (PLACES.find(p=>p.name===live.label)?.id);
-  document.querySelectorAll('#cmdlist .row').forEach(r=>r.classList.toggle('live', r.dataset.id===id));
+  const kind = live?.kind==='route' ? 'route' : 'place';
+  const def = !live ? null : kind==='route' ? ROUTES.find(r=>r.id===live.label) : PLACES.find(p=>p.name===live.label);
+  document.querySelectorAll('#browse [data-id]').forEach(b=>b.classList.toggle('live', !!def && b.dataset.id===def.id && b.dataset.kind===kind));
+  document.querySelectorAll('#browse [data-city]').forEach(b=>b.classList.toggle('live', !!def && b.dataset.city===def.city));
 }
 
 /* ============ DATA ============ */
 async function loadLibrary(){
   const [places, routes] = await Promise.all([api('/api/places'), api('/api/routes')]);
   PLACES = places.map(p=>({ ...p, sub:`${p.lat.toFixed(4)}, ${p.lon.toFixed(4)} · ${p.region||''}` }));
-  ROUTES = routes.map((r,i)=>({
-    ...r, accent: PALETTE[i%PALETTE.length],
-    sub: [r.speed_mps ? '~'+Math.round(r.speed_mps*MPS_TO_MPH)+' mph' : r.modes.join('/'),
-          (r.meters/1609.34).toFixed(1)+' mi', Math.round(r.seconds/60)+' min'].join(' · '),
-  }));
+  PLACES.forEach(p=>{ p.city = p.region || cityOf(p.lat, p.lon); p.accent = cityInfo(p.city).color; });
+  ROUTES = routes.map(r=>{
+    const city = r.line.length ? cityOf(...r.line[r.line.length-1]) : 'Elsewhere';
+    const mi = (r.meters/1609.34).toFixed(1)+' mi', min = Math.round(r.seconds/60)+' min';
+    return { ...r, city, accent: cityInfo(city).color, label: routeLabel(r.name),
+      sub: [r.speed_mps ? '~'+Math.round(r.speed_mps*MPS_TO_MPH)+' mph' : r.modes.join('/'), mi, min].join(' · '),
+      cardSub: [mi, min, r.modes.includes('drive') ? 'drive' : r.modes.includes('walk') ? 'walk' : ''].filter(Boolean).join(' · ') };
+  });
 }
 
 /* ============ BOOT SEQUENCE ============ */
@@ -764,7 +905,7 @@ async function boot(){
   $('panel').classList.add('reveal');
   map.invalidateSize();
   $('sweep').classList.add('go');
-  if(lib) setTab('routes');
+  if(lib){ renderBrowse(true); frameBrowse(); }
   if(!STATUS?.active) setMode('IDLE');
   await wait(250);
   if(STATUS?.dry_run) typeLine('dry run — commands are printed, the phone is not touched.','warn');
