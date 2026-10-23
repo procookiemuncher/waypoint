@@ -53,17 +53,8 @@
 
     <div id="panel">
       <div id="cmd">
-        <div id="cmdhead" style="--d:.05s">
-          <div id="tabs">
-            <div id="tabglider"></div>
-            <button class="tab on" id="tab-routes" onclick="setTab('routes')">ROUTES</button>
-            <button class="tab" id="tab-places" onclick="setTab('places')">PLACES</button>
-          </div>
-          <button id="resetview" onclick="resetView()" title="Reset view" aria-label="Reset view">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M11.5 7 A4.5 4.5 0 1 1 9.8 3.5 M9.8 3.5 L9.8 1.2 M9.8 3.5 L12 3.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"></path></svg>
-          </button>
-        </div>
-        <div id="hero" style="--d:.12s">
+        <div id="browse"></div>
+        <div id="hero" style="--d:.12s" hidden>
           <div class="tick"></div>
           <div class="hero-in">
             <div class="hero-top">
@@ -82,7 +73,6 @@
             <button id="hero-action" onclick="runSelected()">▸ PLAY</button>
           </div>
         </div>
-        <div id="cmdlist"></div>
       </div>
       <div id="nowplaying">
         <div id="np-head"><span style="color:var(--accent);font-size:11px">▸</span><span id="np-name">—</span><span id="np-time">t+00:00</span></div>
