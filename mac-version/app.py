@@ -28,6 +28,7 @@ from phone_check import DevicectlReadiness
 
 APP_NAME = "Waypoint"
 ICON = os.path.join(HERE, "app", "Waypoint.icns")
+QUIT_LIMIT = 45   # seconds; if clearing the phone takes longer than this, quit anyway
 
 
 def look_like_an_app():
@@ -50,12 +51,13 @@ class WindowApi:
 
     def __init__(self):
         self._window = None   # underscore: pywebview doesn't expose private attrs to JS
+        self._quit = None
 
     def minimize(self):
         self._window.minimize()
 
     def close(self):
-        self._window.destroy()
+        self._quit()
 
 
 def on_sigterm(cleanup):
@@ -85,18 +87,48 @@ def main():
             break
         time.sleep(0.05)
 
-    done = threading.Event()
+    started, finished, quitting = threading.Event(), threading.Event(), threading.Event()
 
     def cleanup():
-        if done.is_set():
+        """Stop the job + clear every sim we touched, then let the server go. Blocks for seconds,
+        so never on Cocoa's main thread. A second caller waits for the first instead of skipping."""
+        if started.is_set():
+            finished.wait(QUIT_LIMIT)
             return
-        done.set()
+        started.set()
         try:
-            window.hide()           # clearing takes a few seconds; don't look frozen meanwhile
-        except Exception:
-            pass
-        session.shutdown()          # stop the job + clear every sim we touched
-        server.should_exit = True
+            session.shutdown()
+        finally:
+            server.should_exit = True
+            finished.set()
+
+    def give_up():
+        print(f"still clearing after {QUIT_LIMIT}s, quitting anyway", flush=True)
+        os._exit(1)
+
+    def quit_soon():
+        """Hide now, clear in the background, then close the window for real (which ends
+        webview.start). Clearing used to run inside the close handler on the main thread and
+        macOS flagged the app as hung on every quit."""
+        if quitting.is_set():
+            return
+        quitting.set()
+        window.hide()
+        deadline = threading.Timer(QUIT_LIMIT, give_up)
+        deadline.daemon = True
+        deadline.start()
+
+        def clear_then_close():
+            cleanup()
+            window.destroy()
+        threading.Thread(target=clear_then_close, daemon=True).start()
+
+    def on_closing():
+        # red button, Cmd+W, Cmd+Q and Dock > Quit all land here, on the main thread
+        if finished.is_set():
+            return True
+        quit_soon()
+        return False   # cancel for now; clear_then_close closes it once the phone is clear
 
     atexit.register(cleanup)
     threading.Thread(target=on_sigterm, args=(cleanup,), daemon=True).start()
@@ -105,8 +137,8 @@ def main():
         APP_NAME, f"http://127.0.0.1:{port}/", js_api=api,
         width=1320, height=840, min_size=(920, 620),
         frameless=True, easy_drag=False, background_color="#050609")
-    api._window = window
-    window.events.closing += cleanup
+    api._window, api._quit = window, quit_soon
+    window.events.closing += on_closing
     webview.start()
     cleanup()
 
