@@ -41,8 +41,13 @@ built for pywebview — frameless titlebar, `window.pywebview.api` hooks — jus
 
 **Verified (no phone moved)**: every endpoint in dry run; spoof→drive→place switching clears the
 other service; headless-Chrome screenshots of idle + mid-drive; the built app launches from
-LaunchServices and quits cleanly via `quit app "Waypoint"`. Phone was unplugged by then, and the app
-correctly showed "not found".
+LaunchServices; with a dry-run hold/drive active, both `quit app "Waypoint"` and SIGTERM log the
+clear for every sim touched (SIGTERM needed a sigwait thread — Python handlers never run under the
+Cocoa loop). A failed clear now stays dirty + warns instead of claiming "cleared". Not tested: the
+titlebar ✕ (can't click it from here; it calls destroy(), and cleanup also runs after
+webview.start() returns), window drag/resize (no screen access), Windows. Phone was unplugged by
+the end, and the app correctly showed "not found". Force-quit leaves the pmd3 child holding → recover
+with `spoof clear` / `drive --clear`.
 
 **Next**
 - **First real run from the app, with the owner watching**: place → stop, then a short Drive route.
