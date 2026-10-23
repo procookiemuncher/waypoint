@@ -12,3 +12,6 @@ pmd-pytcp==0.0.5
 pmd-net-addr==0.0.2
 pmd-net-proto==0.0.2
 construct-typing==0.7.0
+
+# Native window for the Mac app (mac-version/app.py). Uses the Mac's own WebKit via pyobjc.
+pywebview==6.2.1; sys_platform == "darwin"
