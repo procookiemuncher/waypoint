@@ -7,6 +7,32 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-23 — Connect screen on the real phone: pmd3 can't mount on iOS 27, switched the Mac to devicectl
+
+**Model: Claude Opus 5.5 (Claude Code).** First try of the connect screen with the real phone.
+
+**Found (on-device)**
+- At first the Mac didn't see the phone at all (usbmux empty, devicectl "unavailable"); after a
+  re-plug it showed up as iPhone (3), iOS 27.0.1, iPhone19,3, "available (paired)".
+- **pmd3 9.33.1 `mounter auto-mount --userspace` crashes on iOS 27.0.1**: `MissingManifestError` →
+  `KeyError: 'ApBoardID'` in `get_manifest_from_tss`. The 2026-10-22 warning ("DDI build newer than
+  pmd3 knows") came true. Not upgrading pmd3 in this pass (past upgrades broke deps).
+- **My mount check said "ready" anyway**: pmd3's rich traceback quotes its own source, which contains
+  "DeveloperDiskImage mounted successfully". Fixed — boxed traceback lines are ignored (4bbbdf1).
+  So yesterday's "mount-based unlock detection" is **refuted on this device**: it can't work on iOS 27.
+- `devicectl device info lockState` answers in ~0.6s (`passcodeRequired`, `unlockedSinceBoot`);
+  `ddiServices` says Xcode's cryptex DDI is on the phone, `isUsable: true` (~5s, first call ~14s).
+
+**Changed**: `Session.use_readiness(check)` lets a platform swap in its own unlock check (polled
+every 2s, live — notices re-locking). `mac-version/phone_check.py` = devicectl lockState + one-time
+ddiServices check; app.py registers it (not in dry run). Windows keeps the pmd3-mount check.
+
+**Not verified yet**: that `passcodeRequired` flips to true when the phone locks (needs the owner to
+lock it). Whether pmd3's DVT location sim (Spoof engine) works on iOS 27 with Xcode's DDI already
+mounted — that's a real pin move, owner watching.
+
+---
+
 ## 2026-10-22 — Waypoint: connect screen (plug in + unlock) with a rainbow wire
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wanted a modern screen after the terminal boot log
