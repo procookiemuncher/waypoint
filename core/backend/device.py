@@ -5,7 +5,8 @@ Everything goes through the pmd3 CLI as a subprocess, same commands spoof.py has
 bools and Job handles.
 
 Set VIDA_DRY_RUN=1 to swap every phone command for a harmless stand-in — handy for working on
-the app without moving your pin in front of the whole circle.
+the app without moving your pin in front of the whole circle. Add VIDA_DRY_PHONE=slow to fake a
+phone that shows up a few seconds in, locked, then gets unlocked (for the connect screen).
 """
 import json
 import os
@@ -13,9 +14,12 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 
 DRY_RUN = os.environ.get("VIDA_DRY_RUN") == "1"
+DRY_SLOW = DRY_RUN and os.environ.get("VIDA_DRY_PHONE") == "slow"
 WINDOWS = sys.platform == "win32"
+_T0 = time.time()
 
 
 def _pmd(*args) -> list[str]:
@@ -87,6 +91,8 @@ class Pmd3:
     def list_devices(self) -> list[dict]:
         """Connected phones as {name, udid, ios, connection}. Empty list if none / no usbmuxd."""
         if DRY_RUN:
+            if DRY_SLOW and time.time() - _T0 < 12:
+                return []
             return [{"name": "Dry-run iPhone", "udid": "dry-run", "ios": "27.0", "connection": "USB"}]
         try:
             p = subprocess.run(_pmd("usbmux", "list"), capture_output=True, text=True, timeout=15)
@@ -97,13 +103,23 @@ class Pmd3:
                  "ios": d.get("ProductVersion"), "connection": d.get("ConnectionType")}
                 for d in devices]
 
-    def mount(self, log) -> bool:
-        """Mount the Developer Disk Image. Needs the phone unlocked; harmless if already mounted."""
+    def mount(self, log) -> tuple[str, str]:
+        """Mount the Developer Disk Image, which only works on an unlocked phone — so this doubles
+        as the unlock check. Returns (state, message), state being "ready", "locked" or "error".
+        auto-mount exits 0 on most failures too, so go by what it prints."""
         cmd = _pmd("mounter", "auto-mount", "--userspace")
-        ok = run(_dry(cmd, False) if DRY_RUN else cmd, log)
-        if not ok:
-            log("  (ignore if already mounted; if it says DeviceLocked, unlock the phone and retry)")
-        return ok
+        if DRY_SLOW and time.time() - _T0 < 20:
+            cmd = _pmd("mounter", "auto-mount", "--userspace", "# pretend: DeviceLocked")
+        lines = []
+        ok = run(_dry(cmd, False) if DRY_RUN else cmd, lambda line: (lines.append(line), log(line)))
+        out = "\n".join(lines)
+        if "DeviceLocked" in out or "PasswordProtected" in out:
+            return "locked", "unlock your iPhone"
+        if "Developer Mode is disabled" in out:
+            return "error", "turn on Developer Mode (Settings → Privacy & Security)"
+        if "already mounted" in out or "mounted successfully" in out or (DRY_RUN and ok):
+            return "ready", ""
+        return "error", (lines[-1].strip() if lines else "couldn't reach the phone")[:140]
 
     def hold(self, lat: float, lon: float, log) -> Job:
         cmd = _pmd("developer", "dvt", "simulate-location", "set", "--userspace", "--", str(lat), str(lon))
