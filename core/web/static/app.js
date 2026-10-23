@@ -291,13 +291,7 @@ async function pollStatus(){
       typeLine('phone disconnected — plug it back in + unlock it.','warn');
       linkPhone();
     }
-    const pp=$('pill-phone');
-    pp.classList.toggle('ok', !!dev); pp.classList.toggle('bad', !dev);
     $('sb-phone').textContent = dev ? `${dev.name} · iOS ${dev.ios}` : 'not found';
-    const pl=$('pill-live');
-    pl.classList.toggle('ok', !!st.active && st.active.state!=='failed');
-    pl.classList.toggle('bad', st.active?.state==='failed');
-    $('pill-map').classList.toggle('ok', tilesReady);
     $('drybadge').hidden = !st.dry_run;
     if(st.busy) setMode(st.busy.toUpperCase()+'…');
     syncLive(st.active);
@@ -305,7 +299,117 @@ async function pollStatus(){
   }catch(e){
     if(++statusFails===3) logLine('lost the local server — restart the app','warn');
   }
+  renderDevice();
 }
+
+/* ============ DEVICE PILL + STATUS DROPDOWN ============ */
+// every thing the app leans on, each ok / warn / err / off. The pill sums them up, the dropdown lists them.
+let devOpen=false, lastDevice=null;
+const ST_RANK={ ok:0, off:1, warn:2, err:3 };
+const worstSt=(...sts)=> sts.reduce((a,b)=> ST_RANK[b]>ST_RANK[a] ? b : a, 'ok');
+function deviceChecks(){
+  const dev=STATUS?.devices?.[0], ph=STATUS?.phone?.state || (dev ? 'checking' : 'none');
+  const act=STATUS?.active, online=navigator.onLine;
+  const lock = !dev ? ['off','—']
+    : ph==='ready' ? ['ok','Unlocked']
+    : ph==='locked' ? ['warn','Locked','Unlock your iPhone to continue.']
+    : ph==='error' ? ['err','Not ready', STATUS.phone.message || 'Unplug it and plug it back in.']
+    : ['off','Checking…'];
+  let loc;
+  if(!act) loc=['off','Real GPS'];
+  else if(act.state==='failed') loc=['err','Command failed','Check the console, then stop and try again.'];
+  else if(act.kind==='place') loc=['ok','Holding · '+act.label];
+  else loc=['ok',(live?.arrived ? 'Arrived · ' : 'En route · ')+(ROUTES.find(r=>r.id===act.route)?.name || act.route)];
+  const C=(id, group, label, ic, [st, text, fix])=>({ id, group, label, icon:ic, st, text, fix });
+  return [
+    C('usb','iPhone','USB','cable', dev ? ['ok', dev.connection==='Network' ? 'Connected · Wi-Fi' : 'Connected'] : ['off','Unplugged']),
+    C('lock','iPhone','Screen lock','lock-keyhole-open', lock),
+    C('server','Connection','Local server','server', statusFails>=3 ? ['err','Not responding','Restart the app.'] : ['ok','Running']),
+    C('speed','Connection','Speed engine','gauge', ENGINES.some(e=>e.id==='drive') ? ['ok','Real speed'] : ['off','Mac + Xcode only']),
+    C('loc','Waypoint','Location','navigation', loc),
+    C('map','Waypoint','Map','map', tilesReady ? ['ok','Tiles loaded'] : online ? ['off','Loading…'] : ['err','Tiles failed','Map tiles need internet. Spoofing still works.']),
+    C('net','Waypoint','Internet','globe', online ? ['ok','Online'] : ['err','Offline','Check your Wi-Fi.']),
+  ];
+}
+function deviceSummary(by, checks){
+  const errs=checks.filter(c=>c.st==='err').length, warns=checks.filter(c=>c.st==='warn').length;
+  if(errs) return ['err', errs===1 ? '1 problem' : errs+' problems'];
+  if(by.usb.st==='off') return ['off','Not connected'];
+  if(warns) return ['warn','Needs attention'];
+  return ['ok', by.loc.st==='ok' ? 'Live' : 'Ready'];
+}
+function glassPhone(h, st, pulse){
+  return `<svg class="gp${pulse ? ' live' : ''}" data-st="${st}" width="${h*.6}" height="${h}" viewBox="0 0 30 50" aria-hidden="true">
+    <rect class="body" x=".75" y=".75" width="28.5" height="48.5" rx="7.5" stroke-width="1"></rect>
+    <rect class="inner" x="2.8" y="2.8" width="24.4" height="44.4" rx="5.4" stroke-width=".6"></rect>
+    <path class="sheen" d="M3 3 H17 L3 30 Z"></path>
+    <rect class="island" x="11" y="5.4" width="8" height="2.6" rx="1.3"></rect>
+    <circle class="halo" cx="15" cy="27" r="4"></circle>
+    <circle class="core" cx="15" cy="27" r="3.4"></circle>
+  </svg>`;
+}
+function renderDevice(){
+  const checks=deviceChecks(), by=Object.fromEntries(checks.map(c=>[c.id,c]));
+  const [sumSt, sumText]=deviceSummary(by, checks);
+  const dev=STATUS?.devices?.[0];
+  if(dev) lastDevice=dev;
+  const phoneSt = dev ? worstSt(by.usb.st, by.lock.st, by.server.st) : 'off';
+  const pulse = by.loc.st==='ok';
+  const name = esc(lastDevice?.name || 'iPhone');
+  const mini=(ic, st, title)=>`<span class="ico" data-st="${st}" title="${esc(title)}">${icon(ic,14)}<span class="dot"></span></span>`;
+
+  const pill=$('devpill');
+  const pillHtml = glassPhone(22, phoneSt, pulse)
+    + `<span class="name">${name}</span>`
+    + `<span class="stat" data-st="${sumSt}"><i></i>${sumText}</span>`
+    + `<span class="mini">${mini('map', worstSt(by.map.st, by.net.st), 'Map: '+by.map.text)}${mini('radio', by.loc.st, 'Location: '+by.loc.text)}`
+    + `${mini('link', by.lock.st, 'Phone: '+(dev ? by.lock.text : 'not connected'))}${mini('gauge', by.speed.st, 'Speed engine: '+by.speed.text)}</span>`
+    + `<span class="chev">${icon('chevron-down',14)}</span>`;
+  if(pill.innerHTML!==pillHtml) pill.innerHTML=pillHtml;
+  pill.setAttribute('aria-expanded', devOpen);
+
+  const dd=$('devdd');
+  dd.classList.toggle('open', devOpen);
+  if(!devOpen) return;
+  const alerts = checks.filter(c=>c.fix).map(c=>`<div class="alert" data-st="${c.st}">
+      ${icon(c.st==='err' ? 'circle-alert' : 'triangle-alert', 16)}
+      <div><div class="at">${esc(c.label)} · ${esc(c.text)}</div><div class="ah">${esc(c.fix)}</div></div>
+    </div>`).join('');
+  const tile = c=>`<div class="tile" data-st="${c.st}" title="${esc(c.label+': '+c.text)}">
+      <div class="ti">${icon(c.icon,16)}${c.st!=='ok' ? '<span class="dot"></span>' : ''}</div>
+      <div><div class="tl">${esc(c.label)}</div><div class="ts">${esc(c.text)}</div></div>
+    </div>`;
+  const groups=[...new Set(checks.map(c=>c.group))];
+  const ddHtml = `<div class="head">
+      ${glassPhone(56, phoneSt, pulse)}
+      <div class="who">
+        <div class="n">${name}</div>
+        <div class="m">${dev ? `iOS ${esc(dev.ios)} · ${esc(dev.connection || 'USB')}` : lastDevice ? 'Not connected' : 'No phone yet — plug it in'}</div>
+        <span class="badge" data-st="${sumSt}"><i></i>${sumText}</span>
+      </div>
+    </div>
+    ${alerts ? `<div class="alerts">${alerts}</div>` : ''}
+    ${groups.map(g=>`<div class="sec"><h4>${g}</h4><div class="grid">${checks.filter(c=>c.group===g).map(tile).join('')}</div></div>`).join('')}
+    <div class="foot">
+      <span class="note">${STATUS?.dry_run ? 'Dry run' : ''}</span>
+      <button class="btn" onclick="pollStatus()">${icon('refresh-cw',13)}Check again</button>
+      ${STATUS?.active ? `<button class="btn primary" onclick="stopAll(); toggleDevice()">${icon('locate-fixed',13)}Back to real GPS</button>` : ''}
+    </div>`;
+  if(dd.innerHTML!==ddHtml) dd.innerHTML=ddHtml;
+}
+function toggleDevice(e, open=!devOpen){
+  e?.stopPropagation();
+  devOpen=open;
+  renderDevice();
+}
+// capture phase: a click outside just closes the dropdown, it shouldn't also drop a pin on the map
+document.addEventListener('click', e=>{
+  if(!devOpen || e.target.closest('#devdd')) return;
+  e.stopPropagation();
+  toggleDevice(null, false);
+}, true);
+window.addEventListener('online', renderDevice);
+window.addEventListener('offline', renderDevice);
 
 /* ============ COMMANDS ============ */
 function setMode(m){ $('sb-mode-v').textContent=m; }
@@ -637,7 +741,7 @@ async function boot(){
   bootLine('');
   await bootStep('starting map engine', async()=>{
     for(let i=0;i<20 && !tilesReady;i++) await wait(100);
-    $('pill-map').classList.toggle('ok', tilesReady);
+    renderDevice();
     return tilesReady ? { ok:true } : { ok:false, text:'[ OFFLINE ]' };
   });
   let lib;
@@ -733,10 +837,12 @@ function leaveLink(){
 
 /* ============ INIT ============ */
 initMap();
+renderDevice();
 setCoord(25.7617,-80.1918);
 window.addEventListener('resize', ()=> map && map.invalidateSize());
 document.addEventListener('keydown', e=>{
   if(e.target.tagName==='INPUT') return;
+  if(e.key==='Escape' && devOpen) return toggleDevice(null, false);   // close the dropdown, don't stop the spoof
   if(e.key==='Escape' && live) stopAll();
 });
 boot();
