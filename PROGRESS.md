@@ -7,6 +7,52 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-22 — Waypoint: a real Mac app (Dock icon, map UI) on top of the engine
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wanted something they can run from the Dock instead
+of .command files, starting from the existing `core/map-visualizer.html` design (it was already
+built for pywebview — frameless titlebar, `window.pywebview.api` hooks — just on mock data).
+
+**Changed**
+- Unbundled the design into `core/web/` (index.html, app.css, app.js, Leaflet 1.9.4 + Inter /
+  JetBrains Mono vendored). app.js rewritten onto the real API: routes/places from disk, Drive /
+  Spoof toggle + mph, click-the-map pin, status pills (map / phone / live), console fed by the
+  server log, pin animated on the **server's timeline in real time** (the mock's 20× clock is gone;
+  PAUSE is gone too — neither sim can pause — it's STOP & CLEAR now).
+- `core/backend/`: `server.py` (FastAPI, 127.0.0.1 only, cross-origin POSTs refused), `session.py`
+  (one job at a time; stop = SIGINT/ENTER the job, then clear every sim touched — pmd3 and devicectl
+  are separate services), `device.py` (pmd3 adapter, same CLI calls as spoof.py, `VIDA_DRY_RUN=1`),
+  `routes.py` (summary + GPX build, spoof.py now uses it), `places.py` + `core/places.json` (one
+  preset list for spoof.py and the app; added Miami).
+- `mac-version/`: `app.py` (pywebview window, clears the phone on close / Cmd+Q / SIGTERM),
+  `drive_engine.py` (devicectl engine, wraps devicectl_route.py), `app.command`, `make-app.command`
+  → `~/Applications/Waypoint.app` with an icon (`app/icon.svg` → icns via AppKit).
+- `pywebview==6.2.1` in requirements (darwin-only marker). pmd3 pins unchanged (checked).
+
+**Found**
+- **CARTO `dark_all` tiles now return "API KEY REQUIRED"** images. Switched to Stadia
+  `alidade_smooth_dark` — keyless when the Referer is localhost (401 without one).
+- **macOS 26 won't open a .app whose executable is a shell script** (`open` → -10669, even though
+  lsregister registers it). Fixed with a ~30-line C launcher (`app/launcher.c`) compiled by
+  make-app with the repo path baked in; it `exec`s the venv python → one process, LaunchServices
+  shows it as Waypoint / `local.vida360.waypoint` (checked with lsappinfo — no extra "Python" app).
+- pmd3 `simulate-location set/play` block in `wait_return()` (sigwait on Mac, `input()` on Windows)
+  — and `play` keeps holding the last point after the route ends. The Job class handles both.
+
+**Verified (no phone moved)**: every endpoint in dry run; spoof→drive→place switching clears the
+other service; headless-Chrome screenshots of idle + mid-drive; the built app launches from
+LaunchServices and quits cleanly via `quit app "Waypoint"`. Phone was unplugged by then, and the app
+correctly showed "not found".
+
+**Next**
+- **First real run from the app, with the owner watching**: place → stop, then a short Drive route.
+  Confirm stop really clears both sims and the pin goes back to real GPS.
+- Does devicectl's `simulate location route` return right away or block until the end? The app
+  handles both, but the console will show which.
+- Nice-to-haves: save a dropped pin as a place from the UI, flights (`fly`) in the app, DDI /
+  Developer-Mode detail in the status pills, phone-over-Wi-Fi (devicectl lists it as "available
+  (paired)" when unplugged).
+
 ## 2026-10-22 — Repo reorganized: mac-version/ + windows-version/ over a shared core/
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wanted a clear two-folder "Mac version / Windows

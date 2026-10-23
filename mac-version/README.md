@@ -14,7 +14,25 @@ Everything you run on the Mac. The engine itself is shared in `../core/`.
 
 No iTunes / Apple Devices install needed — macOS already has the Apple device service built in.
 
-## Running
+## The app (Waypoint)
+
+A real Mac app with a map: pick a route or a place, or click the map to drop a pin, and hit play.
+**Drive** = real mph (Life360 shows speed + the car icon), **Spoof** = follows the route's stops and
+slow-downs but shows 0 mph. The pin on the map moves on the same clock as the phone, so when it
+says *arrived*, the phone's there. Closing the window stops everything and puts the phone back on
+real GPS.
+
+| What | Command |
+|---|---|
+| Build the Dock app (once) | `./mac-version/make-app.command` → `~/Applications/Waypoint.app` |
+| Open the window from Terminal | `./mac-version/app.command` |
+| Play with the UI without touching the phone | `VIDA_DRY_RUN=1 ./mac-version/app.command` |
+
+After `make-app`, open Waypoint from Launchpad, then right-click its Dock icon → Options → Keep in
+Dock. The app has this repo's path baked in, so **if you move the repo, run `make-app` again**.
+Logs: `~/Library/Logs/Waypoint.log`.
+
+## Running from Terminal
 
 All commands from the repo root: `cd ~/Desktop/projects/vida-360`
 
