@@ -112,7 +112,10 @@ class Session:
             return {"state": "none", "message": ""}
         if self.mounted and not self.readiness_check:
             return {"state": "ready", "message": ""}
-        if not self._probing and time.time() - self._probe_at > (2 if self.readiness_check else 4):
+        every = 2 if self.readiness_check else 4
+        if self.active and self.active.get("kind") == "route":
+            every = 20   # keep devicectl quiet while a route plays, like the terminal drive.command
+        if not self._probing and time.time() - self._probe_at > every:
             self._probing = True
             threading.Thread(target=self._probe, daemon=True).start()
         state, message = self.readiness
