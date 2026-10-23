@@ -114,14 +114,17 @@ class Pmd3:
             cmd = _pmd("mounter", "auto-mount", "--userspace", "# pretend: DeviceLocked")
         lines = []
         ok = run(_dry(cmd, False) if DRY_RUN else cmd, lambda line: (lines.append(line), log(line)))
-        out = "\n".join(lines)
+        # pmd3's crash tracebacks quote its own source inside a box (│ ╭ ╰) — and that source
+        # contains "mounted successfully". Only trust lines outside the box.
+        said = [l for l in lines if l.strip()[:1] not in ("│", "╭", "╰")]
+        out = "\n".join(said)
         if "DeviceLocked" in out or "PasswordProtected" in out:
             return "locked", "unlock your iPhone"
         if "Developer Mode is disabled" in out:
             return "error", "turn on Developer Mode (Settings → Privacy & Security)"
         if "already mounted" in out or "mounted successfully" in out or (DRY_RUN and ok):
             return "ready", ""
-        return "error", (lines[-1].strip() if lines else "couldn't reach the phone")[:140]
+        return "error", (said[-1].strip() if said else "couldn't reach the phone")[:140]
 
     def hold(self, lat: float, lon: float, log) -> Job:
         cmd = _pmd("developer", "dvt", "simulate-location", "set", "--userspace", "--", str(lat), str(lon))
