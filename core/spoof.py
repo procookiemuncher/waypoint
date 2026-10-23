@@ -27,11 +27,10 @@ sys.path.insert(0, ROOT)                       # make `backend` importable
 ROUTES_DIR = os.path.join(ROOT, "routes")
 BUILD_DIR = os.path.join(ROOT, "build")
 
-# Static teleport presets: key -> (lat, lon, label). Just hold a fixed point.
-PRESETS = {
-    "eiffel": (48.8584, 2.2945, "Eiffel Tower, Paris"),
-    "dubai": (25.1972, 55.2744, "Burj Khalifa, Dubai"),
-}
+from backend.places import load_places
+
+# Static teleport presets: key -> (lat, lon, label). Just hold a fixed point. Lives in core/places.json.
+PRESETS = {k: (p["lat"], p["lon"], f'{p["name"]}, {p["region"]}') for k, p in load_places().items()}
 
 
 def pmd(*args):
