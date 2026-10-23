@@ -21,9 +21,10 @@
     <span class="wordmark">Waypoint</span>
     <div class="statuspill no-drag" id="pill">
       <span class="dot" id="pill-map"><i></i>map</span>
-      <span class="dot" id="pill-gps"><i></i>gps</span>
-      <span class="dot" id="pill-sync"><i></i>sync</span>
+      <span class="dot" id="pill-phone"><i></i>phone</span>
+      <span class="dot" id="pill-live"><i></i>live</span>
     </div>
+    <span class="drybadge" id="drybadge" hidden>DRY RUN</span>
     <div class="spacer"></div>
     <button class="winbtn no-drag" onclick="winMinimize()" title="Minimize" aria-label="Minimize">
       <svg width="11" height="11" viewBox="0 0 11 11"><line x1="1.5" y1="5.5" x2="9.5" y2="5.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></line></svg>
@@ -39,7 +40,7 @@
       <div id="map"></div>
       <div class="hud" id="hud-coord"><span class="lbl">POS</span><span class="val" id="v-coord">--.----, --.----</span></div>
       <div class="hud" id="hud-speed"><span class="lbl">SPD</span><span class="val" id="v-speed">0.0 mph</span><span class="lbl">HDG</span><span class="val" id="v-hdg">—</span></div>
-      <div class="hud" id="hud-leg"><span class="lbl">LEG</span><span class="val" id="v-leg">—</span></div>
+      <div class="hud" id="hud-leg"><span class="lbl">ETA</span><span class="val" id="v-leg">—</span></div>
       <div class="hud" id="hud-zoom"><span class="lbl">ZM</span><span class="val" id="v-zoom">13</span></div>
       <div id="sweep"></div>
       <div id="toast"><span>▸</span><span id="toast-msg">ARRIVED</span></div>
@@ -68,6 +69,11 @@
               </div>
             </div>
             <div class="hero-stats" id="hero-stats"></div>
+            <div id="hero-opts">
+              <div class="seg" id="engine-seg"></div>
+              <label class="mph" id="mph-wrap" title="Speed for Drive (blank = the route's own)"><span>MPH</span><input id="mph" type="number" min="1" max="200" step="1" placeholder="auto"></label>
+            </div>
+            <div class="hero-note" id="hero-note"></div>
             <button id="hero-action" onclick="runSelected()">▸ PLAY</button>
           </div>
         </div>
@@ -77,8 +83,8 @@
         <div id="np-head"><span style="color:var(--accent);font-size:11px">▸</span><span id="np-name">—</span><span id="np-time">t+00:00</span></div>
         <div id="np-bar"><div id="np-fill"></div></div>
         <div id="np-ctl">
-          <button class="ctlbtn primary" id="btn-play" onclick="togglePlay()">PAUSE</button>
-          <button class="ctlbtn" onclick="resetRoute()">RESET</button>
+          <button class="ctlbtn primary" id="btn-stop" onclick="stopAll()">■ STOP &amp; CLEAR</button>
+          <button class="ctlbtn on" id="btn-follow" onclick="toggleFollow()">FOLLOW</button>
         </div>
       </div>
       <div id="consolewrap">
@@ -92,6 +98,7 @@
   <!-- STATUS BAR -->
   <div id="statusbar">
     <span id="sb-mode">MODE <b id="sb-mode-v">BOOT</b></span>
+    <span>PHONE <b id="sb-phone">—</b></span>
     <span>POS <b id="sb-coord">—</b></span>
     <span>ELAPSED <b id="sb-elapsed">--:--</b></span>
     <span class="flex"></span>

@@ -441,3 +441,39 @@ path.glowcase { filter: blur(5px); }
   .cursor { animation: none; }
   #sweep.go { animation: none; opacity: 0; }
 }
+
+/* ============ APP ADDITIONS (live controls) ============ */
+.statuspill .dot.bad i { background: #f47c7c; box-shadow: 0 0 6px rgba(244,124,124,.6); animation: none; }
+.drybadge {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: .16em;
+  color: #e3b341; border: 1px solid rgba(227,179,65,.4); border-radius: 6px; padding: 3px 7px;
+}
+#hero-opts { display: flex; gap: 8px; margin: -2px 0 10px; }
+#hero-opts[hidden] { display: none; }
+.seg { flex: 1; display: flex; padding: 3px; gap: 3px; background: #0c0e13; border: 1px solid #1e2230; border-radius: 9px; }
+.seg button {
+  flex: 1; padding: 5px 0; border: 1px solid transparent; border-radius: 6px; cursor: pointer;
+  background: transparent; color: #6b7280;
+  font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 700; letter-spacing: .12em;
+  transition: all .18s;
+}
+.seg button:hover { color: #c9d1d9; }
+.seg button.on { background: #171a24; color: var(--accent); border-color: rgba(var(--accent-rgb),.3); }
+.mph {
+  flex: none; display: flex; align-items: center; gap: 6px; padding: 0 8px;
+  background: #0c0e13; border: 1px solid #1e2230; border-radius: 9px;
+  font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .14em; color: #6b7280;
+}
+.mph[hidden] { display: none; }
+.mph input {
+  width: 46px; background: transparent; border: none; outline: none; color: var(--accent);
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; text-align: right; user-select: text;
+}
+.mph input::placeholder { color: #4b5563; }
+.mph input::-webkit-inner-spin-button { opacity: .4; }
+.hero-note { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; color: #6b7280; margin: -4px 0 10px; line-height: 1.5; }
+.hero-note:empty { display: none; }
+#hero-action:disabled { opacity: .45; cursor: default; box-shadow: none; }
+.ctlbtn.on { color: var(--accent); border-color: rgba(var(--accent-rgb),.35); }
+#np-name small { color: #6b7280; font-weight: 400; font-size: 11px; margin-left: 6px; }
+#map.picking { cursor: crosshair; }

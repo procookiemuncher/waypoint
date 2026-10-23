@@ -1,26 +1,28 @@
 'use strict';
+/* Waypoint — the vida-360 front end. Talks to core/backend/server.py; everything that touches
+   the phone goes through /api. The map animation follows the server's timeline in real time,
+   so when the pin here arrives, the phone arrives. */
+
 /* ============ WINDOW CHROME ============ */
 function winMinimize(){ if(window.pywebview?.api) window.pywebview.api.minimize(); }
-function winClose(){ if(window.pywebview?.api) window.pywebview.api.close(); }
+function winClose(){ if(window.pywebview?.api) window.pywebview.api.close(); else window.close(); }
 
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-/* ============ MOCK DATA ============ */
-const PLACES = [
-  { id:'eiffel-tower', name:'Eiffel Tower', sub:'48.8584, 2.2945 · Paris', lat:48.8584, lon:2.2945, zoom:16, accent:'#ef3f4f' },
-  { id:'dubai',        name:'Dubai',        sub:'25.1972, 55.2744 · UAE',  lat:25.1972, lon:55.2744, zoom:12, accent:'#e8c25a' },
-  { id:'miami',        name:'Miami',        sub:'25.7617, -80.1918 · USA', lat:25.7617, lon:-80.1918, zoom:13, accent:'#ff5ecd' },
-];
-const ROUTES = [
-  { id:'miami-cruise', name:'Miami Cruise', sub:'~18 mph · downtown loop', cruise:18, legs:7, zoom:14, accent:'#ff5ecd',
-    pts:[[25.7745,-80.1865],[25.7702,-80.1880],[25.7659,-80.1893],[25.7616,-80.1907],[25.7573,-80.1921],[25.7570,-80.1958],[25.7599,-80.1966],[25.7641,-80.1959],[25.7663,-80.1988],[25.7706,-80.1977],[25.7744,-80.1966],[25.7752,-80.1918],[25.7757,-80.1884],[25.7745,-80.1865]] },
-  { id:'miami-drift',  name:'Miami Drift',  sub:'~80 mph · expressway',    cruise:80, legs:4, zoom:12, accent:'#5ea2ff',
-    pts:[[25.7623,-80.1932],[25.7702,-80.1965],[25.7789,-80.1993],[25.7906,-80.2007],[25.8045,-80.2003],[25.8203,-80.2049],[25.8361,-80.2077],[25.8524,-80.2087],[25.8687,-80.2079]] },
-  { id:'paris-arrival', name:'Paris Arrival', sub:'~35 mph · final approach', cruise:35, legs:3, zoom:13, accent:'#ef3f4f', arrivalMsg:'PARIS ARRIVAL COMPLETE — WELCOME TO ORLY',
-    pts:[[48.7620,2.3410],[48.7511,2.3532],[48.7420,2.3611],[48.7343,2.3656],[48.7286,2.3689],[48.7233,2.3719]] },
-];
-const TIMESCALE = 20; // simulated seconds per real second
+/* ============ API ============ */
+async function api(path, body){
+  const opts = body === undefined ? {} : { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) };
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(data.detail || ('HTTP '+r.status));
+  return data;
+}
+
+let PLACES = [], ROUTES = [], ENGINES = [], STATUS = null;
+const PALETTE = ['#ff5ecd','#5ea2ff','#ef3f4f','#7ee787','#e8c25a','#ffb37a','#b49aff','#5ee6d0'];
+const MPS_TO_MPH = 2.23694;
 
 /* ============ GEO HELPERS ============ */
 const R = 6371000;
@@ -38,7 +40,11 @@ function heading(a, b){
 }
 const COMPASS=['N','NE','E','SE','S','SW','W','NW'];
 const compass = h => COMPASS[Math.round(h/45)%8];
-const fmtT = s => { s=Math.max(0,Math.floor(s)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); };
+const fmtT = s => {
+  s=Math.max(0,Math.floor(s));
+  const h=Math.floor(s/3600), m=Math.floor(s%3600/60), ss=s%60;
+  return (h? h+':'+String(m).padStart(2,'0') : String(m).padStart(2,'0'))+':'+String(ss).padStart(2,'0');
+};
 
 /* ============ CONSOLE ============ */
 const consoleEl = $('console');
@@ -47,7 +53,7 @@ function logLine(text, cls='sys', html=false){
   d.className='ln '+cls;
   if(html) d.innerHTML=text; else d.textContent=text;
   consoleEl.appendChild(d);
-  while(consoleEl.children.length>140) consoleEl.removeChild(consoleEl.firstChild);
+  while(consoleEl.children.length>200) consoleEl.removeChild(consoleEl.firstChild);
   consoleEl.scrollTop=consoleEl.scrollHeight;
   return d;
 }
@@ -61,35 +67,34 @@ function typeLine(text, cls='sys'){
       d.textContent=text.slice(0,++i);
       consoleEl.scrollTop=consoleEl.scrollHeight;
       if(i>=text.length){ clearInterval(t); res(); }
-    }, 14);
+    }, 12);
   }));
   return typeChain;
 }
 function echoCommand(cmd){
   typeChain = typeChain.then(()=>new Promise(res=>{
     const typed=$('prompt-typed');
-    if(RM){
-      logLine('','cmd',true).innerHTML='<span class="ps">waypoint ›</span> '+cmd;
-      res(); return;
-    }
+    const done=()=>{ logLine('','cmd',true).innerHTML='<span class="ps">waypoint ›</span> '+esc(cmd); res(); };
+    if(RM){ done(); return; }
     let i=0;
     const t=setInterval(()=>{
       typed.textContent=cmd.slice(0,++i);
-      if(i>=cmd.length){
-        clearInterval(t);
-        setTimeout(()=>{
-          typed.textContent='';
-          logLine('','cmd',true).innerHTML='<span class="ps">waypoint ›</span> '+cmd;
-          res();
-        }, 160);
-      }
-    }, 26);
+      if(i>=cmd.length){ clearInterval(t); setTimeout(()=>{ typed.textContent=''; done(); }, 140); }
+    }, 22);
   }));
   return typeChain;
 }
+// server log feed
+let logSeq = 0;
+async function pollLogs(){
+  try{
+    const lines = await api('/api/logs?since='+logSeq);
+    for(const l of lines){ logSeq=Math.max(logSeq,l.n); typeChain=typeChain.then(()=>logLine(l.text, l.level)); }
+  }catch(e){ /* server gone — status poll reports it */ }
+}
 
 /* ============ ACCENT THEMING ============ */
-const DEFAULT_ACCENT='#b49aff'; // base app accent; destinations override with their own
+const DEFAULT_ACCENT='#b49aff';
 function rgbOf(hex){ return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)]; }
 function dimOf(hex){ const [r,g,b]=rgbOf(hex); return 'rgb('+(r*.55|0)+','+(g*.55|0)+','+(b*.55|0)+')'; }
 function setAccent(hex){
@@ -104,18 +109,22 @@ function setAccent(hex){
 }
 
 /* ============ MAP ============ */
-let map, marker=null, lineDim=null, lineGlow=null, lineDone=null;
+const TILE_URL='https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png';
+let map, tilesReady=false;
+let marker=null, lineDim=null, lineGlow=null, lineDone=null;   // live layers
+let preview=null, pinCandidate=null;                           // selection layers
 function initMap(){
   map = L.map('map', { zoomControl:false, attributionControl:true, zoomSnap:.5 })
     .setView([25.7617,-80.1918], 13);
   L.control.zoom({ position:'bottomright' }).addTo(map);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution:'© OpenStreetMap © CARTO', subdomains:'abcd', maxZoom:19,
+  // Stadia's dark style is keyless from localhost (CARTO wants an API key now)
+  const tiles = L.tileLayer(TILE_URL, {
+    attribution:'© Stadia Maps © OpenMapTiles © OpenStreetMap', maxZoom:20,
   }).addTo(map);
+  tiles.once('load', ()=>{ tilesReady=true; });
   map.on('zoomend', ()=> $('v-zoom').textContent = map.getZoom());
-  map.on('mousemove', e=>{
-    if(!route) setCoord(e.latlng.lat, e.latlng.lng);
-  });
+  map.on('mousemove', e=>{ if(!live) setCoord(e.latlng.lat, e.latlng.lng); });
+  map.on('click', e=> dropPin(e.latlng.lat, e.latlng.lng));
 }
 function setCoord(lat, lon){
   const s = lat.toFixed(4)+', '+lon.toFixed(4);
@@ -125,187 +134,202 @@ function setCoord(lat, lon){
 function makeMarker(latlng){
   return L.marker(latlng, { icon: L.divIcon({ className:'wp-marker', html:'<span class="ring"></span><span class="core"></span>', iconSize:[12,12] }), interactive:false }).addTo(map);
 }
+function clearPreview(){
+  [preview,pinCandidate].forEach(l=>{ if(l) map.removeLayer(l); });
+  preview=pinCandidate=null;
+}
+function clearLiveLayers(){
+  [marker,lineDim,lineGlow,lineDone].forEach(l=>{ if(l) map.removeLayer(l); });
+  marker=lineDim=lineGlow=lineDone=null;
+}
 
-/* ============ ROUTE ENGINE ============ */
-let route=null, playing=false, rafId=null, lastTs=0;
-function buildRoute(def){
-  const pts=def.pts;
-  const cum=[0], hdg=[];
-  for(let i=0;i<pts.length-1;i++){
-    cum.push(cum[i]+dist(pts[i],pts[i+1]));
-    hdg.push(heading(pts[i],pts[i+1]));
+/* ============ LIVE STATE (what the phone is doing) ============ */
+// live = { key, kind, label, started, timeline, cum, total, accent, arrived }
+let live=null, follow=true, clockOffset=0, rafId=null, lastLogAt=-99;
+
+function serverNow(){ return Date.now()/1000 + clockOffset; }
+
+function syncLive(active){
+  const key = active ? active.kind+':'+active.started : null;
+  if(key === (live && live.key)){
+    if(live && active.state==='failed' && !live.failed){
+      live.failed=true; setMode('FAILED');
+      logLine('the phone command exited — check the console above','warn');
+    }
+    return;
   }
-  const turn=pts.map((_,i)=>{
-    if(i===0||i===pts.length-1) return 0;
-    let d=Math.abs(hdg[i]-hdg[i-1]); if(d>180)d=360-d; return d;
-  });
-  return { def, pts, cum, hdg, turn, total:cum[cum.length-1], d:0, spd:0, sim:0, lastLog:-99, leg:0 };
-}
-function posAt(r, d){
-  d=Math.min(d, r.total);
-  let i=0; while(i<r.cum.length-2 && r.cum[i+1]<d) i++;
-  const segLen=r.cum[i+1]-r.cum[i], f=segLen>0?(d-r.cum[i])/segLen:0;
-  const a=r.pts[i], b=r.pts[i+1];
-  return { lat:a[0]+(b[0]-a[0])*f, lon:a[1]+(b[1]-a[1])*f, seg:i };
-}
-function targetSpeed(r){
-  const cruise=r.def.cruise*0.44704; // m/s
-  // ease-in at start, ease-out at end
-  if(r.d < 40) return Math.max(cruise*0.35, cruise*(r.d/40));
-  if(r.total-r.d < 70) return Math.max(2.2, cruise*((r.total-r.d)/70));
-  // slow for upcoming / current corners
-  const {seg}=posAt(r, r.d);
-  let f=1;
-  const toNext=r.cum[seg+1]-r.d, fromPrev=r.d-r.cum[seg];
-  const LOOK=55;
-  if(toNext<LOOK && r.turn[seg+1]>0){
-    const k=Math.min(r.turn[seg+1],110)/110;
-    f=Math.min(f, 1-k*0.72*(1-toNext/LOOK*0.4));
-  }
-  if(fromPrev<35 && r.turn[seg]>0){
-    const k=Math.min(r.turn[seg],110)/110;
-    f=Math.min(f, 1-k*0.6);
-  }
-  return cruise*Math.max(f,0.25);
-}
-function startRoute(def){
-  clearRoute();
-  const AC=def.accent||DEFAULT_ACCENT;
-  setAccent(AC);
-  route=buildRoute(def);
-  const latlngs=def.pts.map(p=>[p[0],p[1]]);
-  lineGlow=L.polyline(latlngs,{ color:AC, weight:9, opacity:.28, className:'glowcase' }).addTo(map);
-  lineDim=L.polyline(latlngs,{ color:dimOf(AC), weight:2.5, opacity:.55 }).addTo(map);
-  lineDone=L.polyline([latlngs[0]],{ color:AC, weight:3, opacity:.95 }).addTo(map);
-  marker=makeMarker(latlngs[0]);
-  map.flyToBounds(lineDim.getBounds().pad(.25), { duration:1.1 });
+  // something new (or nothing) is on the phone
+  cancelAnimationFrame(rafId);
+  clearLiveLayers();
+  live=null;
+  $('nowplaying').classList.remove('on');
+  $('v-leg').textContent='—'; $('v-hdg').textContent='—'; $('v-speed').textContent='0.0 mph';
+  $('sb-elapsed').textContent='--:--'; $('gauge-fill').style.width='0%';
+  if(!active){ setMode('IDLE'); markLive(); return; }
+
+  live = { key, kind:active.kind, label:active.label, started:active.started, engine:active.engine, mph:active.mph };
+  clearPreview();
   $('nowplaying').classList.add('on');
-  $('np-name').textContent=def.name;
-  $('btn-play').textContent='PAUSE';
-  $('v-leg').textContent='1/'+def.legs;
-  setMode('EN ROUTE');
+  if(active.kind==='place'){
+    const pl = PLACES.find(p=>p.name===active.label);
+    live.accent = pl?.accent || DEFAULT_ACCENT;
+    setAccent(live.accent);
+    marker = makeMarker([active.lat, active.lon]);
+    setCoord(active.lat, active.lon);
+    map.flyTo([active.lat, active.lon], Math.max(map.getZoom(), pl?.zoom || 15), { duration:1.2 });
+    $('np-name').innerHTML = esc(active.label)+'<small>holding</small>';
+    $('np-fill').style.width='100%';
+    setMode('HOLDING');
+  } else {
+    const rt = ROUTES.find(r=>r.id===active.route);
+    live.accent = rt?.accent || DEFAULT_ACCENT;
+    setAccent(live.accent);
+    const tl = active.timeline || [];
+    live.timeline = tl;
+    live.total = tl.length ? tl[tl.length-1][0] : 0;
+    const latlngs = tl.map(p=>[p[1],p[2]]);
+    lineGlow=L.polyline(latlngs,{ color:live.accent, weight:9, opacity:.28, className:'glowcase' }).addTo(map);
+    lineDim=L.polyline(latlngs,{ color:dimOf(live.accent), weight:2.5, opacity:.55 }).addTo(map);
+    lineDone=L.polyline([latlngs[0]],{ color:live.accent, weight:3, opacity:.95 }).addTo(map);
+    marker=makeMarker(latlngs[0]);
+    map.flyToBounds(lineDim.getBounds().pad(.25), { duration:1.1 });
+    const how = active.engine==='drive' ? `drive · ${Math.round(active.mph||0)} mph` : 'spoof';
+    $('np-name').innerHTML = esc(rt?.name || active.route)+'<small>'+esc(how)+'</small>';
+    setMode('EN ROUTE');
+    lastLogAt=-99;
+  }
   markLive();
-  playing=true; lastTs=0;
   rafId=requestAnimationFrame(tick);
 }
-function tick(ts){
-  if(!route||!playing) return;
-  if(!lastTs) lastTs=ts;
-  const dt=Math.min((ts-lastTs)/1000, .05); lastTs=ts;
-  const r=route, simDt=dt*TIMESCALE;
-  const tgt=targetSpeed(r);
-  r.spd += (tgt-r.spd)*(1-Math.exp(-simDt*0.9));
-  r.d += r.spd*simDt;
-  r.sim += simDt;
-  if(r.d>=r.total){ arrive(); return; }
-  const p=posAt(r, r.d);
-  const mph=r.spd*2.23694;
-  marker.setLatLng([p.lat,p.lon]);
-  // traveled trail
-  const done=r.pts.slice(0, p.seg+1).map(q=>[q[0],q[1]]); done.push([p.lat,p.lon]);
-  lineDone.setLatLngs(done);
-  if(!map.getBounds().pad(-.2).contains([p.lat,p.lon])) map.panTo([p.lat,p.lon]);
-  // readouts
-  setCoord(p.lat,p.lon);
-  $('v-speed').textContent=mph.toFixed(1)+' mph';
-  const h=r.hdg[p.seg];
-  $('v-hdg').textContent=Math.round(h)+'° '+compass(h);
-  const leg=Math.min(r.def.legs, Math.floor(r.d/r.total*r.def.legs)+1);
-  if(leg!==r.leg){ r.leg=leg; $('v-leg').textContent=leg+'/'+r.def.legs; }
-  $('np-time').textContent='t+'+fmtT(r.sim);
-  $('sb-elapsed').textContent=fmtT(r.sim);
-  $('np-fill').style.width=(r.d/r.total*100).toFixed(1)+'%';
-  $('gauge-fill').style.width=Math.min(100, mph/90*100)+'%';
-  // console ticker every ~20 simulated seconds
-  if(r.sim-r.lastLog>=20){
-    r.lastLog=r.sim;
-    logLine(`[t+${fmtT(r.sim)}] leg ${leg}/${r.def.legs} · ${p.lat.toFixed(4)},${p.lon.toFixed(4)} · ${mph.toFixed(1)}mph`,'dim');
+
+function sampleAt(tl, t){
+  // binary search the [t, lat, lon] timeline
+  let lo=0, hi=tl.length-1;
+  if(t<=tl[0][0]) return { lat:tl[0][1], lon:tl[0][2], i:0, spd:0, hdg:null };
+  if(t>=tl[hi][0]) return { lat:tl[hi][1], lon:tl[hi][2], i:hi, spd:0, hdg:null };
+  while(hi-lo>1){ const m=(lo+hi)>>1; if(tl[m][0]<=t) lo=m; else hi=m; }
+  const a=tl[lo], b=tl[hi], f=(t-a[0])/((b[0]-a[0])||1);
+  const pa=[a[1],a[2]], pb=[b[1],b[2]], d=dist(pa,pb);
+  return { lat:a[1]+(b[1]-a[1])*f, lon:a[2]+(b[2]-a[2])*f, i:lo,
+           spd: d/((b[0]-a[0])||1), hdg: d>0.5 ? heading(pa,pb) : null };
+}
+
+function tick(){
+  if(!live) return;
+  const el = serverNow() - live.started;
+  $('np-time').textContent='t+'+fmtT(el);
+  $('sb-elapsed').textContent=fmtT(el);
+  if(live.kind==='route' && live.timeline.length){
+    const tl=live.timeline, s=sampleAt(tl, el);
+    // drive mode holds one speed; spoof follows the route's own speeds
+    const mph = el>=live.total ? 0 : (live.engine==='drive' ? (live.mph||s.spd*MPS_TO_MPH) : s.spd*MPS_TO_MPH);
+    marker.setLatLng([s.lat,s.lon]);
+    const done=tl.slice(0, s.i+1).map(q=>[q[1],q[2]]); done.push([s.lat,s.lon]);
+    lineDone.setLatLngs(done);
+    if(follow && !map.getBounds().pad(-.2).contains([s.lat,s.lon])) map.panTo([s.lat,s.lon]);
+    setCoord(s.lat,s.lon);
+    $('v-speed').textContent=mph.toFixed(1)+' mph';
+    if(s.hdg!==null) $('v-hdg').textContent=Math.round(s.hdg)+'° '+compass(s.hdg);
+    $('v-leg').textContent = el>=live.total ? 'arrived' : fmtT(live.total-el);
+    $('np-fill').style.width=Math.min(100, el/live.total*100).toFixed(1)+'%';
+    $('gauge-fill').style.width=Math.min(100, mph/90*100)+'%';
+    if(el-lastLogAt>=30 && el<live.total){
+      lastLogAt=el;
+      logLine(`[t+${fmtT(el)}] ${s.lat.toFixed(4)},${s.lon.toFixed(4)} · ${mph.toFixed(1)}mph`,'dim');
+    }
+    if(el>=live.total && !live.arrived) arrive();
   }
   rafId=requestAnimationFrame(tick);
 }
 function arrive(){
-  const r=route;
-  const end=r.pts[r.pts.length-1];
-  marker.setLatLng(end); lineDone.setLatLngs(r.pts);
-  setCoord(end[0],end[1]);
-  $('v-speed').textContent='0.0 mph';
-  $('np-fill').style.width='100%';
-  $('gauge-fill').style.width='0%';
-  $('btn-play').textContent='REPLAY';
-  playing=false;
+  live.arrived=true;
   setMode('ARRIVED');
-  logLine(`[t+${fmtT(r.sim)}] ▸ ARRIVED — ${r.def.name.toLowerCase()} · ${(r.total/1609.34).toFixed(1)}mi in ${fmtT(r.sim)}`,'ok');
-  const toast=$('toast');
-  $('toast-msg').textContent=r.def.arrivalMsg || ('ARRIVED — '+r.def.name.toUpperCase()+' COMPLETE');
-  toast.classList.add('show');
-  setTimeout(()=>toast.classList.remove('show'), 4200);
+  const rt=ROUTES.find(r=>r.id===live.label);
+  const name=(rt?.name||live.label);
+  logLine(`▸ ARRIVED — ${name} · the phone holds the last point until you stop`,'ok');
+  toast('ARRIVED — '+name.toUpperCase());
 }
-function togglePlay(){
-  if(!route) return;
-  if(route.d>=route.total){ // replay
-    const def=route.def; startRoute(def);
-    typeLine('replaying '+def.id+' …','sys');
-    return;
+function toast(msg){
+  const t=$('toast');
+  $('toast-msg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), 4200);
+}
+function toggleFollow(){
+  follow=!follow;
+  $('btn-follow').classList.toggle('on', follow);
+}
+
+/* ============ STATUS POLL ============ */
+let statusFails=0;
+async function pollStatus(){
+  try{
+    const st = await api('/api/status');
+    statusFails=0;
+    STATUS=st;
+    clockOffset = st.now - Date.now()/1000;
+    ENGINES = st.engines;
+    const dev = st.devices[0];
+    const pp=$('pill-phone');
+    pp.classList.toggle('ok', !!dev); pp.classList.toggle('bad', !dev);
+    $('sb-phone').textContent = dev ? `${dev.name} · iOS ${dev.ios}` : 'not found';
+    const pl=$('pill-live');
+    pl.classList.toggle('ok', !!st.active && st.active.state!=='failed');
+    pl.classList.toggle('bad', st.active?.state==='failed');
+    $('pill-map').classList.toggle('ok', tilesReady);
+    $('drybadge').hidden = !st.dry_run;
+    if(st.busy) setMode(st.busy.toUpperCase()+'…');
+    syncLive(st.active);
+    refreshHeroButton();
+  }catch(e){
+    if(++statusFails===3) logLine('lost the local server — restart the app','warn');
   }
-  playing=!playing;
-  $('btn-play').textContent=playing?'PAUSE':'RESUME';
-  setMode(playing?'EN ROUTE':'PAUSED');
-  if(playing){ lastTs=0; rafId=requestAnimationFrame(tick); }
-  else { cancelAnimationFrame(rafId); logLine(`[t+${fmtT(route.sim)}] ⏸ paused`,'warn'); }
-}
-function clearRoute(){
-  playing=false; cancelAnimationFrame(rafId);
-  [marker,lineDim,lineGlow,lineDone].forEach(l=>{ if(l) map.removeLayer(l); });
-  marker=lineDim=lineGlow=lineDone=null; route=null;
-  $('nowplaying').classList.remove('on');
-  $('v-leg').textContent='—'; $('v-hdg').textContent='—';
-  $('v-speed').textContent='0.0 mph';
-  $('sb-elapsed').textContent='--:--';
-  $('gauge-fill').style.width='0%';
-  markLive();
-}
-function resetRoute(){
-  if(!route) return;
-  echoCommand('reset');
-  clearRoute();
-  setMode('IDLE');
-  typeLine('route cleared. view is yours.','sys');
 }
 
 /* ============ COMMANDS ============ */
 function setMode(m){ $('sb-mode-v').textContent=m; }
-function focusPlace(p){
-  echoCommand('focus '+p.id);
-  if(route) clearRoute();
-  setMode('FOCUSED');
-  map.flyTo([p.lat,p.lon], p.zoom, { duration:1.4 });
-  typeLine(`locked on ${p.name.toLowerCase()} · ${p.lat.toFixed(4)},${p.lon.toFixed(4)}`,'accent');
-  setCoord(p.lat,p.lon);
+async function send(cmd, path, body){
+  echoCommand(cmd);
+  try{ await api(path, body); }
+  catch(e){ typeLine('✗ '+e.message,'warn'); }
+  setTimeout(pollStatus, 250);
 }
-function playRoute(def){
-  echoCommand('play '+def.id);
-  typeLine(`route loaded: ${def.name.toLowerCase()} · ${def.legs} legs · cruise ${def.cruise}mph`,'sys');
-  startRoute(def);
+function setPlace(p){
+  send('set '+p.id, '/api/place', { key:p.id });
+}
+function setPoint(lat, lon){
+  send(`set ${lat.toFixed(5)} ${lon.toFixed(5)}`, '/api/place', { lat, lon, label:`Pin ${lat.toFixed(4)}, ${lon.toFixed(4)}` });
+}
+function playRoute(rt){
+  const engine = selEngine();
+  const mphRaw = parseFloat($('mph').value);
+  const mph = engine==='drive' && mphRaw>0 ? mphRaw : null;
+  send(`play ${rt.id} --${engine}`+(mph?` --mph ${mph}`:''), '/api/play', { route:rt.id, engine, mph });
+}
+function stopAll(){
+  send('stop', '/api/stop', {});
 }
 function resetView(){
   echoCommand('reset view');
-  if(route) clearRoute();
-  setMode('IDLE');
-  map.flyTo([25.7617,-80.1918], 13, { duration:1.4 });
-  typeLine('view reset to home.','sys');
+  clearPreview();
+  if(live && marker) map.flyTo(marker.getLatLng(), 14, { duration:1.2 });
+  else map.flyTo([25.7617,-80.1918], 13, { duration:1.2 });
 }
 
 /* ============ COMMAND PANEL (tabs + hero + thumbs) ============ */
-let curTab='routes', selected=null;
+let curTab='routes', selected=null, engineChoice=null;
 
 function tileUrl(lat, lon, z){
   const n=2**z;
   const x=Math.floor((lon+180)/360*n);
   const rad=lat*Math.PI/180;
   const y=Math.floor((1-Math.log(Math.tan(rad)+1/Math.cos(rad))/Math.PI)/2*n);
-  return `https://a.basemaps.cartocdn.com/dark_all/${z}/${x}/${y}.png`;
+  return TILE_URL.replace('{z}',z).replace('{x}',x).replace('{y}',y).replace('{r}','@2x');
 }
 function routeGlyph(pts, s){
+  if(pts.length<2) return '';
+  const step=Math.max(1, Math.floor(pts.length/60));
+  pts=pts.filter((_,i)=>i%step===0 || i===pts.length-1);
   const lats=pts.map(p=>p[0]), lons=pts.map(p=>p[1]);
   const mnLa=Math.min(...lats), mxLa=Math.max(...lats), mnLo=Math.min(...lons), mxLo=Math.max(...lons);
   const spanLa=mxLa-mnLa||1e-9, spanLo=mxLo-mnLo||1e-9, span=Math.max(spanLa,spanLo);
@@ -318,25 +342,22 @@ function routeGlyph(pts, s){
   const a=oxy[0], b=oxy[oxy.length-1];
   return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" fill="none">
     <polyline points="${d}" stroke="rgba(var(--accent-rgb),.18)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <polyline class="draw" points="${d}" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <polyline class="draw" points="${d}" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" pathLength="120"/>
     <circle cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="2" fill="var(--accent)"/>
     <circle cx="${b[0].toFixed(1)}" cy="${b[1].toFixed(1)}" r="2.2" stroke="var(--accent)" stroke-width="1.2" fill="none"/>
   </svg>`;
 }
 function thumbHtml(item, s){
-  if(item.type==='route') return routeGlyph(item.def.pts, s);
+  if(item.type==='route') return routeGlyph(item.def.line, s);
   const p=item.def;
-  return `<img src="${tileUrl(p.lat,p.lon,Math.max(3,p.zoom-2))}" alt="" draggable="false"><span class="pin"></span>`;
-}
-function routeStats(def){
-  let tot=0; for(let i=0;i<def.pts.length-1;i++) tot+=dist(def.pts[i],def.pts[i+1]);
-  return { mi: tot/1609.34, eta: (tot/(def.cruise*0.44704))/60 };
+  return `<img src="${tileUrl(p.lat,p.lon,Math.max(3,(p.zoom||14)-2))}" alt="" draggable="false"><span class="pin"></span>`;
 }
 function countUp(el, target, decimals, suffix){
   if(RM){ el.innerHTML=target.toFixed(decimals)+suffix; return; }
   const t0=performance.now(), dur=650;
+  setTimeout(()=>{ el.innerHTML=target.toFixed(decimals)+suffix; }, dur+80);   // land exactly, even if rAF stalls
   (function step(t){
-    const k=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-k,3);
+    const k=Math.min(1,Math.max(0,(t-t0)/dur)), e=1-Math.pow(1-k,3);
     el.innerHTML=(target*e).toFixed(decimals)+suffix;
     if(k<1) requestAnimationFrame(step);
   })(t0);
@@ -349,29 +370,54 @@ function setTab(tab, keepSel){
   renderList();
   if(!keepSel){
     const first=(tab==='routes'?ROUTES:PLACES)[0];
-    selectItem({ type:tab==='routes'?'route':'place', def:first });
+    if(first) selectItem({ type:tab==='routes'?'route':'place', def:first });
   }
 }
 function renderList(){
   const list=$('cmdlist');
   list.innerHTML='';
-  const items=(curTab==='routes'?ROUTES:PLACES).map(def=>({ type:curTab==='routes'?'route':'place', def }));
-  items.forEach((item,i)=>{
+  const src = curTab==='routes'?ROUTES:PLACES;
+  if(!src.length){
+    list.innerHTML=`<div class="row" style="cursor:default"><div class="meta"><div class="sub">${curTab==='routes'?'no routes in core/routes/ yet':'no places in core/places.json yet'}</div></div></div>`;
+    return;
+  }
+  src.forEach((def,i)=>{
+    const item={ type:curTab==='routes'?'route':'place', def };
     const d=document.createElement('div');
     d.className='row listfade'; d.tabIndex=0;
-    d.dataset.id=item.def.id;
-    d.style.animationDelay=(i*0.06)+'s';
-    d.style.setProperty('--d', (0.18+i*0.07)+'s');
+    d.dataset.id=def.id;
+    d.style.animationDelay=(i*0.05)+'s';
+    d.style.setProperty('--d', (0.18+i*0.06)+'s');
     d.innerHTML=`<div class="thumb">${thumbHtml(item,40)}</div>
-      <div class="meta"><div class="name">${item.def.name}</div><div class="sub">${item.def.sub}</div></div>
+      <div class="meta"><div class="name">${esc(def.name)}</div><div class="sub">${esc(def.sub)}</div></div>
       <span class="eq"><i></i><i></i><i></i></span><span class="sel-dot"></span>`;
     const go=()=>selectItem(item);
     d.addEventListener('click', go);
     d.addEventListener('dblclick', ()=>{ selectItem(item); runSelected(); });
-    d.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); }});
+    d.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); selectItem(item); runSelected(); } else if(e.key===' '){ e.preventDefault(); go(); }});
     list.appendChild(d);
   });
   markLive();
+}
+function availableEngines(){ return ENGINES.length ? ENGINES : [{id:'spoof',label:'Spoof',real_speed:false}]; }
+function selEngine(){
+  const ids=availableEngines().map(e=>e.id);
+  if(!ids.includes(engineChoice)) engineChoice = ids.includes('drive') ? 'drive' : ids[0];
+  return engineChoice;
+}
+function renderEngines(){
+  const seg=$('engine-seg'), cur=selEngine();
+  seg.innerHTML = availableEngines().map(e=>
+    `<button data-engine="${esc(e.id)}" class="${e.id===cur?'on':''}">${esc(e.label.toUpperCase())}${e.real_speed?' · MPH':''}</button>`).join('');
+  seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{ engineChoice=b.dataset.engine; renderEngines(); updateRouteNote(); });
+  $('mph-wrap').hidden = cur!=='drive';
+}
+function updateRouteNote(){
+  if(!selected || selected.type!=='route') return;
+  const note = selEngine()==='drive'
+    ? 'real speed — Life360 shows mph + the car icon. one steady speed, no stops.'
+    : 'position only — Life360 shows 0 mph, but follows the route\'s slow-downs and stops.';
+  $('hero-note').textContent = note;
 }
 function selectItem(item){
   selected=item;
@@ -381,39 +427,84 @@ function selectItem(item){
   $('hero-name').textContent=item.def.name;
   $('hero-sub').textContent=item.def.sub;
   const stats=$('hero-stats');
+  $('hero-opts').hidden = item.type!=='route';
+  $('hero-note').textContent='';
+  if(!live) clearPreview();
   if(item.type==='route'){
-    const s=routeStats(item.def);
+    const r=item.def;
     stats.innerHTML=`<div class="stat"><div class="k">CRUISE</div><div class="v" id="st-a"></div></div>
       <div class="stat"><div class="k">DIST</div><div class="v" id="st-b"></div></div>
-      <div class="stat"><div class="k">LEGS</div><div class="v" id="st-c"></div></div>`;
-    countUp($('st-a'), item.def.cruise, 0, '<small>mph</small>');
-    countUp($('st-b'), s.mi, 1, '<small>mi</small>');
-    countUp($('st-c'), item.def.legs, 0, '');
-    $('hero-action').textContent='▸ PLAY ROUTE';
+      <div class="stat"><div class="k">TIME</div><div class="v" id="st-c"></div></div>`;
+    countUp($('st-a'), (r.speed_mps||0)*MPS_TO_MPH, 0, '<small>mph</small>');
+    countUp($('st-b'), r.meters/1609.34, 1, '<small>mi</small>');
+    countUp($('st-c'), r.seconds/60, 0, '<small>min</small>');
+    renderEngines(); updateRouteNote();
+    if(!live && r.line.length>1){
+      preview=L.polyline(r.line,{ color:r.accent, weight:2.5, opacity:.6, dashArray:'4 6' }).addTo(map);
+      map.flyToBounds(preview.getBounds().pad(.25), { duration:.9 });
+    }
   } else {
+    const p=item.def;
     stats.innerHTML=`<div class="stat"><div class="k">LAT</div><div class="v" id="st-a"></div></div>
       <div class="stat"><div class="k">LON</div><div class="v" id="st-b"></div></div>
       <div class="stat"><div class="k">ZOOM</div><div class="v" id="st-c"></div></div>`;
-    countUp($('st-a'), item.def.lat, 2, '°');
-    countUp($('st-b'), item.def.lon, 2, '°');
-    countUp($('st-c'), item.def.zoom, 0, 'x');
-    $('hero-action').textContent='◉ FOCUS';
+    countUp($('st-a'), p.lat, 4, '°');
+    countUp($('st-b'), p.lon, 4, '°');
+    countUp($('st-c'), p.zoom||14, 0, 'x');
+    if(item.type==='pin'){
+      $('hero-note').textContent='click anywhere on the map to move the pin.';
+    } else if(!live){
+      pinCandidate=L.circleMarker([p.lat,p.lon],{ radius:7, color:p.accent, weight:2, fillOpacity:.25 }).addTo(map);
+      map.flyTo([p.lat,p.lon], p.zoom||14, { duration:1.1 });
+    }
   }
+  refreshHeroButton();
+}
+function dropPin(lat, lon){
+  if(pinCandidate) map.removeLayer(pinCandidate);
+  if(preview && !live){ map.removeLayer(preview); preview=null; }
+  pinCandidate=L.circleMarker([lat,lon],{ radius:7, color:DEFAULT_ACCENT, weight:2, fillOpacity:.25 }).addTo(map);
+  document.querySelectorAll('#cmdlist .row').forEach(r=>r.classList.remove('sel'));
+  const def={ id:'pin', name:'Dropped pin', sub:`${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon, zoom:Math.round(map.getZoom()), accent:DEFAULT_ACCENT };
+  const keep=pinCandidate; pinCandidate=null;   // selectItem clears selection layers
+  selectItem({ type:'pin', def });
+  pinCandidate=keep;
+}
+function refreshHeroButton(){
+  const b=$('hero-action');
+  if(!selected){ b.disabled=true; return; }
+  const noPhone = STATUS && !STATUS.devices.length;
+  b.disabled = !!(STATUS && STATUS.busy) || noPhone;
+  b.title = noPhone ? 'plug in + unlock the iPhone' : '';
+  if(selected.type==='route') b.textContent = noPhone ? 'NO PHONE' : '▸ PLAY ROUTE';
+  else b.textContent = noPhone ? 'NO PHONE' : (selected.type==='pin' ? '◉ SET LOCATION HERE' : '◉ SET LOCATION');
 }
 function runSelected(){
-  if(!selected) return;
+  if(!selected || $('hero-action').disabled) return;
   if(selected.type==='route') playRoute(selected.def);
-  else focusPlace(selected.def);
+  else if(selected.type==='pin') setPoint(selected.def.lat, selected.def.lon);
+  else setPlace(selected.def);
 }
 function markLive(){
-  const id=route?route.def.id:null;
+  const id = !live ? null : live.kind==='route' ? live.label : (PLACES.find(p=>p.name===live.label)?.id);
   document.querySelectorAll('#cmdlist .row').forEach(r=>r.classList.toggle('live', r.dataset.id===id));
 }
-function buildList(){ setTab('routes'); }
+
+/* ============ DATA ============ */
+async function loadLibrary(){
+  const [places, routes] = await Promise.all([api('/api/places'), api('/api/routes')]);
+  PLACES = places.map(p=>({ ...p, sub:`${p.lat.toFixed(4)}, ${p.lon.toFixed(4)} · ${p.region||''}` }));
+  ROUTES = routes.map((r,i)=>({
+    ...r, accent: PALETTE[i%PALETTE.length],
+    sub: [r.speed_mps ? '~'+Math.round(r.speed_mps*MPS_TO_MPH)+' mph' : r.modes.join('/'),
+          (r.meters/1609.34).toFixed(1)+' mi', Math.round(r.seconds/60)+' min'].join(' · '),
+  }));
+}
+
 /* ============ BOOT SEQUENCE ============ */
 const bootlog=$('bootlog');
 function bootLine(text, cls=''){
-  const d=document.createElement('div'); d.className='ln '+cls; bootlog.appendChild(d); return d;
+  const d=document.createElement('div'); d.className='ln '+cls; d.textContent=text; bootlog.appendChild(d); return d;
 }
 function typeInto(el, text, speed=13){
   return new Promise(res=>{
@@ -423,40 +514,64 @@ function typeInto(el, text, speed=13){
   });
 }
 const wait = ms => new Promise(r=>setTimeout(r, RM?0:ms));
-async function bootStep(label, pillId, ms){
+async function bootStep(label, work){
   const pad = label.padEnd(34,'.').replace(/\.+$/, m=>' '+'.'.repeat(m.length-1)+' ');
   const d=bootLine('');
   await typeInto(d, '  '+pad);
-  await wait(ms);
-  const ok=document.createElement('span'); ok.className='ok'; ok.textContent='[ OK ]';
-  d.appendChild(ok);
-  if(pillId) $(pillId).classList.add('ok');
+  let res;
+  try{ res = await work(); }catch(e){ res = { ok:false, text:'FAIL' }; }
+  const tag=document.createElement('span');
+  tag.className = res.ok ? 'ok' : 'warn';
+  tag.style.color = res.ok ? '' : '#e3b341';
+  tag.textContent = res.text || (res.ok ? '[ OK ]' : '[ -- ]');
+  d.appendChild(tag);
+  return res;
 }
 async function boot(){
-  await wait(350);
-  const h=bootLine('','accent'); await typeInto(h,'▸ waypoint v2.4.1 — route & map visualizer', 16);
-  const c=bootLine('','dim'); await typeInto(c,'  © frameless build · webview2', 10);
+  await wait(250);
+  const native = !!window.pywebview || navigator.userAgent.includes('Macintosh') && !navigator.userAgent.includes('Chrome');
+  const h=bootLine('','accent'); await typeInto(h,'▸ waypoint — vida-360 location console', 14);
+  const c=bootLine('','dim'); await typeInto(c, native ? '  native window · local server 127.0.0.1' : '  browser · local server 127.0.0.1', 8);
   bootLine('');
-  await bootStep('starting map engine', 'pill-map', 420);
-  await bootStep('loading dark_matter tiles', null, 520);
-  await bootStep('connecting location service', 'pill-gps', 460);
-  await bootStep('syncing route library (3 routes)', 'pill-sync', 480);
+  await bootStep('starting map engine', async()=>{
+    for(let i=0;i<20 && !tilesReady;i++) await wait(100);
+    $('pill-map').classList.toggle('ok', tilesReady);
+    return tilesReady ? { ok:true } : { ok:false, text:'[ OFFLINE ]' };
+  });
+  let lib;
+  await bootStep('loading route library', async()=>{
+    await loadLibrary(); lib=true;
+    return { ok:true, text:`[ ${ROUTES.length} ROUTES · ${PLACES.length} PLACES ]` };
+  });
+  await bootStep('looking for the iphone', async()=>{
+    await pollStatus();
+    const dev = STATUS?.devices?.[0];
+    return dev ? { ok:true, text:'[ '+dev.name.toUpperCase()+' ]' } : { ok:false, text:'[ NOT FOUND ]' };
+  });
   bootLine('');
-  const r=bootLine('','ok'); await typeInto(r,'  ready. welcome back.', 18);
-  await wait(500);
+  const dev = STATUS?.devices?.[0];
+  const r=bootLine('', dev?'ok':'dim');
+  await typeInto(r, dev ? '  ready.' : '  no phone yet — plug it in + unlock it, I\'ll keep looking.', 14);
+  await wait(450);
   $('boot').classList.add('gone');
   $('panel').classList.add('reveal');
   map.invalidateSize();
   $('sweep').classList.add('go');
-  setMode('IDLE');
-  await wait(300);
-  typeLine('systems nominal. select a destination or play a route.','sys');
-  typeLine('tip: routes stream live telemetry to this console.','dim');
+  if(lib) setTab('routes');
+  if(!STATUS?.active) setMode('IDLE');
+  await wait(250);
+  if(STATUS?.dry_run) typeLine('dry run — commands are printed, the phone is not touched.','warn');
+  typeLine('pick a route or place, or click the map to drop a pin.','sys');
+  setInterval(pollStatus, 2000);
+  setInterval(pollLogs, 1000);
 }
 
 /* ============ INIT ============ */
 initMap();
-buildList();
 setCoord(25.7617,-80.1918);
 window.addEventListener('resize', ()=> map && map.invalidateSize());
+document.addEventListener('keydown', e=>{
+  if(e.target.tagName==='INPUT') return;
+  if(e.key==='Escape' && live) stopAll();
+});
 boot();
