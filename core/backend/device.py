@@ -26,7 +26,7 @@ def _dry(cmd: list[str], hold: bool) -> list[str]:
     """Stand-in for a phone command: print what would have run, and stay alive if it's a hold."""
     code = f"print('[dry run] ' + {' '.join(cmd[2:])!r}, flush=True)"
     if hold:
-        code += "\nimport time\nwhile True: time.sleep(1)"
+        code += "\nimport time\ntry:\n    while True: time.sleep(1)\nexcept KeyboardInterrupt: pass"
     return [sys.executable, "-c", code]
 
 
@@ -115,4 +115,4 @@ class Pmd3:
 
     def clear(self, log) -> bool:
         cmd = _pmd("developer", "dvt", "simulate-location", "clear", "--userspace")
-        return run(_dry(cmd, False) if DRY_RUN else cmd, log)
+        return run(_dry(cmd, False) if DRY_RUN else cmd, log, timeout=30)
