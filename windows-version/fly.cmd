@@ -12,9 +12,8 @@ exit /b 0
 :noenv
 echo.
 echo Could not find the virtual environment at .venv
-echo Set it up first (see docs\BUILD_PLAN.md, section "Environment"):
-echo     uv venv --python 3.12
-echo     uv pip install -r requirements.txt
+echo Set it up first (see windows-version\README.md):
+echo     windows-version\setup.cmd
 echo.
 pause
 exit /b 1
