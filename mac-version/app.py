@@ -56,7 +56,16 @@ class WindowApi:
         self._window.destroy()
 
 
+def on_sigterm(cleanup):
+    """atexit skips SIGTERM, and a Python signal handler never runs while the main thread sits
+    in Cocoa's run loop — so block SIGTERM everywhere (main() does that first) and wait for it here."""
+    signal.sigwait([signal.SIGTERM])
+    cleanup()
+    os._exit(0)
+
+
 def main():
+    signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGTERM])   # before any thread exists
     look_like_an_app()
     session = Session()
     session.register(DriveEngine())
@@ -84,7 +93,7 @@ def main():
         server.should_exit = True
 
     atexit.register(cleanup)
-    signal.signal(signal.SIGTERM, lambda *_: (cleanup(), os._exit(0)))   # atexit skips SIGTERM
+    threading.Thread(target=on_sigterm, args=(cleanup,), daemon=True).start()
     api = WindowApi()
     window = webview.create_window(
         APP_NAME, f"http://127.0.0.1:{port}/", js_api=api,
