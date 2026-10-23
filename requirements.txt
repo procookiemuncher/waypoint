@@ -3,3 +3,12 @@
 # `remote tunneld` + `developer dvt simulate-location set/clear/play`.
 # Also pulls in fastapi, uvicorn, and gpxpy as dependencies (reused later for the UI + routes).
 pymobiledevice3==9.33.1
+
+# pmd3 9.33.1 doesn't cap its own deps, so a fresh install pulls newer ones that break it
+# (found 2026-10-22 setting up the Mac): pmd-pytcp 0.1+ made stack.start() async (tunnel never
+# comes up, "coroutine was never awaited"), construct-typing 0.8 crashes on import (AfcHeader).
+# These are what resolved before 2026-07-08, i.e. what the working Windows venv had.
+pmd-pytcp==0.0.5
+pmd-net-addr==0.0.2
+pmd-net-proto==0.0.2
+construct-typing==0.7.0
