@@ -53,6 +53,8 @@ correctly showed "not found".
   Developer-Mode detail in the status pills, phone-over-Wi-Fi (devicectl lists it as "available
   (paired)" when unplugged).
 
+---
+
 ## 2026-10-22 — Repo reorganized: mac-version/ + windows-version/ over a shared core/
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wanted a clear two-folder "Mac version / Windows
