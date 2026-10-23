@@ -66,7 +66,7 @@ class DriveEngine:
         """Park the phone on one point (places / dropped pins). Used instead of pmd3's hold on the
         Mac — pmd3 9.33.1 can't mount the DDI on iOS 27, devicectl uses Xcode's."""
         cmd = ["xcrun", "devicectl", "device", "simulate", "location", "coordinate",
-               "--device", self._device(), "--latitude", str(lat), "--longitude", str(lon)]
+               "--device", self._device(), f"--latitude={lat}", f"--longitude={lon}"]   # = so -80.19 isn't read as a flag
         return Job(_dry(["", "", *cmd], True) if DRY_RUN else cmd, log, "hold")
 
     def clear(self, log) -> bool:
