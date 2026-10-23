@@ -74,6 +74,7 @@ class Session:
     def log(self, text: str, level: str = "sys"):
         self.seq += 1
         self.logs.append({"n": self.seq, "level": level, "text": text})
+        print(f"[{time.strftime('%H:%M:%S')}] {text}", flush=True)   # → ~/Library/Logs/Waypoint.log
 
     def logs_since(self, n: int) -> list:
         return [l for l in self.logs if l["n"] > n]
@@ -81,7 +82,8 @@ class Session:
     def devices(self) -> list:
         if time.time() - self._devices_at > 4:
             self._devices, self._devices_at = self.pmd3.list_devices(), time.time()
-        return self._devices
+            if not self._devices:
+                self.mounted = False   # unplugged / rebooted → the DDI has to go back on        return self._devices
 
     def status(self) -> dict:
         active = dict(self.active) if self.active else None
@@ -91,6 +93,7 @@ class Session:
             # else exiting is a failure the UI should show.
             if code not in (None, 0):
                 active["state"] = "failed"
+                self.mounted = False   # most pmd3 failures are a missing/stale DDI — remount next time
         return {
             "devices": self.devices(),
             "active": active,
@@ -122,12 +125,22 @@ class Session:
             self.job.stop()
             self.job = None
 
-    def _clear_dirty(self, keep: str | None = None):
-        """Clear every service still holding a location, except `keep` (about to be reused)."""
+    def _clear_dirty(self, keep: str | None = None) -> bool:
+        """Clear every service still holding a location, except `keep` (about to be reused).
+        A service only counts as clean once its clear actually succeeds. True if all did."""
         for service in sorted(self.dirty - {keep}):
             self.log(f"clearing {service} location sim…", "dim")
-            self.services[service](lambda line: self.log(line, "dim"))
-            self.dirty.discard(service)
+            try:
+                ok = self.services[service](lambda line: self.log(line, "dim"))
+            except Exception as e:
+                self.log(f"{type(e).__name__}: {e}", "warn")
+                ok = False
+            if ok:
+                self.dirty.discard(service)
+        left = self.dirty - {keep}
+        if left:
+            self.log(f"couldn't clear {', '.join(sorted(left))} — unlock the phone and hit stop again", "warn")
+        return not left
 
     def _ensure_mounted(self):
         if not self.mounted:
@@ -172,8 +185,8 @@ class Session:
         def go():
             self._stop_job()
             self.active = None
-            self._clear_dirty()
-            self.log("cleared — phone is back on real GPS", "ok")
+            if self._clear_dirty():
+                self.log("cleared — phone is back on real GPS", "ok")
         self._in_background("clearing", go)
 
     def shutdown(self):
