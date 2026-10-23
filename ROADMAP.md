@@ -78,7 +78,7 @@ method: **docs/research/life360-notification-triggers.md**.
   `jfk-to-hotel` leg is the first instance; CDG → Paris hotel is a coord swap.)*
 - [ ] "Full Ride" — multi-hour: airport → hotel, then mixed walking / driving / stops.
 - [~] **Life360 shows real mph — CONFIRMED 2026-10-22** via `xcrun devicectl ... simulate location route
-  --speed` (tools/devicectl_route.py), 35 mph + the car icon on the emoji-test route. Next: variable
+  --speed` (mac-version/devicectl_route.py), 35 mph + the car icon on the emoji-test route. Next: variable
   speed (chain segments), and retry the >100 mph flight-detection gate with it.
 - [ ] Trigger Life360's **movement emoji** (walk / drive icon). ❌ **RESOLVED NO (2026-07-10,
   Phase A #1):** on-device testing (both Motion & Fitness ON and OFF, Observer-instrumented) shows

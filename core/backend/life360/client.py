@@ -1,7 +1,7 @@
 """Life360 HTTP client — the ONLY place that speaks Life360's (unofficial) API.
 
 Read-only. Auth + three JSON endpoints, over stdlib urllib (no new deps — same choice as
-backend/movement/snapper.py). Everything above this layer sees clean MemberState objects and a
+core/backend/movement/snapper.py). Everything above this layer sees clean MemberState objects and a
 single Life360Error; raw JSON, HTTP codes, and the bearer token never leak upward
 (AGENTS.md ground rule #5, by analogy). See docs/LIFE360_OBSERVER.md §3/§9.
 

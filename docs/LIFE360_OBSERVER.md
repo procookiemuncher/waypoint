@@ -43,9 +43,9 @@ stay just as cleanly quarantined (AGENTS.md ground rule #5, applied by analogy):
 
 ```
 ┌─────────────────────────────────────────────┐
-│  tools/observe.py     thin CLI runner         │  one-shot | watch | log-to-file
+│  core/tools/observe.py     thin CLI runner         │  one-shot | watch | log-to-file
 ├─────────────────────────────────────────────┤
-│  backend/life360/     Life360Client + models  │  login() / circles() / members()
+│  core/backend/life360/     Life360Client + models  │  login() / circles() / members()
 │  (the ONLY place that                         │  → clean Member dataclasses
 │   speaks the Life360 HTTP API)                │
 └─────────────────────────────────────────────┘
@@ -55,7 +55,7 @@ stay just as cleanly quarantined (AGENTS.md ground rule #5, applied by analogy):
   returns clean dataclasses and raises our own `Life360Error`, exactly like the movement engine hides
   pymobiledevice3. When Life360 changes its API (it will), it's a one-file fix.
 - **Strictly read-only.** The observer never writes to Life360 — no location posts, no circle edits.
-- It does **not** import from `backend/movement/` and vice-versa; correlation (§7) happens in the
+- It does **not** import from `core/backend/movement/` and vice-versa; correlation (§7) happens in the
   tool/analysis layer, not by coupling the two cores.
 
 ## 3. The Life360 API (and its fragility)
@@ -87,7 +87,7 @@ by the client, noted here for future research:**
 
 Both 200'd with the same `Authorization: Bearer …` token as `/v3/circles`, confirming the token is a
 general-purpose bearer credential (not scoped to just the circles/members endpoints). Neither is
-wired into `backend/life360/client.py` — add if a future research question needs account/plan info
+wired into `core/backend/life360/client.py` — add if a future research question needs account/plan info
 (e.g. does premium tier gate flight-detection or geofence features).
 
 **Passwordless (phone + SMS) accounts — CONFIRMED on the owner's account (2026-07-09).** The
@@ -132,7 +132,7 @@ added once confirmed.
 
 ## 5. Modes of operation
 
-`tools/observe.py`:
+`core/tools/observe.py`:
 - **one-shot** (default): print the current `MemberState` for the target member and exit.
 - **watch** (`--watch`): poll every `--interval` seconds, print one timestamped line per sample —
   a live tail you run in a second terminal while `spoof.cmd` plays.
@@ -180,7 +180,7 @@ not belong in the client. Keeps the read path clean.
 
 ## 9. Dependencies
 
-**None new.** Use stdlib `urllib.request` + `json` — exactly like `backend/movement/snapper.py`
+**None new.** Use stdlib `urllib.request` + `json` — exactly like `core/backend/movement/snapper.py`
 already does for Valhalla. No `requests`, no added wheels. Keeps the read path as light and
 portable as the offline core.
 
@@ -195,7 +195,7 @@ portable as the offline core.
 ## 10. Module layout
 
 ```
-backend/life360/
+core/backend/life360/
   __init__.py         # exports Life360Client, MemberState, Life360Error
   client.py           # auth + HTTP + JSON→dataclass (the quarantined layer)
   model.py            # MemberState dataclass
@@ -211,9 +211,9 @@ tools/
 - [x] `client.py`: `authenticate()` → bearer token; `circles()`; `members(circle_id)`. Host/token/
       endpoints cribbed from pnbruckner/life360; all HTTP/JSON quarantined; own `Life360Error`.
 - [x] `model.py`: `MemberState` + `oneline()`; JSON→dataclass mapping lives in the client.
-- [x] `tools/observe.py` one-shot: `.env` loader (stdlib), auth, list circles, print each member;
+- [x] `core/tools/observe.py` one-shot: `.env` loader (stdlib), auth, list circles, print each member;
       `--member` filter. Verified offline: imports, `--help`, and the no-creds path all work.
-- [ ] **Verify on-device (owner):** create `.env` from `.env.example`, run `tools/observe.py`,
+- [ ] **Verify on-device (owner):** create `.env` from `.env.example`, run `core/tools/observe.py`,
       confirm it prints your real location — and **confirm the speed unit is MPH** (as the `life360`
       package documents) against a known-speed leg.
 - **Exit criteria:** one command prints a correct, current `MemberState` for you. *(Code ready;
@@ -241,7 +241,7 @@ tools/
       `activity-emoji-coremotion.md` accordingly.
 
 ### Increment 4 — correlation analysis (offline)  ✅ DONE (2026-07-09)
-- [x] `tools/correlate.py`: load a JSONL + the played GPX, print emitted-vs-observed speed (+ a
+- [x] `core/tools/correlate.py`: load a JSONL + the played GPX, print emitted-vs-observed speed (+ a
       **unit guess** and under-read %), the `is_driving` timeline (did it flip, and how far in), and
       the server update interval (the stutter). Read-only, stdlib.
 - [x] **Aligns by position, not timestamp** — the GPX uses a synthetic 2020 epoch while the observer
