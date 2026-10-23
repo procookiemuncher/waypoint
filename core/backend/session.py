@@ -164,7 +164,7 @@ class Session:
             self.dirty.add(engine.service)
             self.active = {"kind": "route", "route": route_id, "engine": engine.id,
                            "label": route_id, "started": time.time(), "state": "running",
-                           "timeline": prepared["timeline"]}
+                           "timeline": prepared["timeline"], "mph": prepared.get("mph")}
             self.log(f"playing {route_id} via {engine.label.lower()} — keep the phone unlocked", "accent")
         self._in_background(f"starting {route_id}", go)
 
