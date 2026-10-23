@@ -1,0 +1,130 @@
+"""Local HTTP API + the Waypoint page (core/web). Binds to 127.0.0.1 only — this thing moves
+your phone, nothing off this machine should be able to reach it.
+
+Run it bare (any OS) with `python core/backend/server.py` and open the printed URL, or let the
+Mac app (mac-version/app.py) wrap it in a native window.
+"""
+import os
+import socket
+import sys
+
+if __name__ == "__main__":   # run as a script: make `backend` importable
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+from backend.places import load_places
+from backend.routes import RouteError, route_files, summary
+from backend.session import Session
+
+WEB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
+
+
+class PlaceReq(BaseModel):
+    key: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    label: str | None = None
+
+
+class PlayReq(BaseModel):
+    route: str
+    engine: str = "spoof"
+    mph: float | None = None
+
+
+def create_app(session: Session) -> FastAPI:
+    app = FastAPI(title="vida-360", docs_url=None, redoc_url=None)
+    app.mount("/static", StaticFiles(directory=os.path.join(WEB, "static")), name="static")
+    route_cache = {}   # path -> (mtime, summary)
+
+    @app.middleware("http")
+    async def same_origin_only(request: Request, call_next):
+        # A random web page could otherwise POST to localhost and move the phone.
+        origin = request.headers.get("origin")
+        if request.method != "GET" and origin and origin != f"http://{request.headers.get('host')}":
+            return JSONResponse({"detail": "cross-origin request refused"}, status_code=403)
+        return await call_next(request)
+
+    @app.get("/")
+    def index():
+        return FileResponse(os.path.join(WEB, "index.html"), headers={"Cache-Control": "no-store"})
+
+    @app.get("/api/status")
+    def status():
+        return session.status()
+
+    @app.get("/api/logs")
+    def logs(since: int = 0):
+        return session.logs_since(since)
+
+    @app.get("/api/places")
+    def places():
+        return [{"id": k, **p} for k, p in load_places().items()]
+
+    @app.get("/api/routes")
+    def routes():
+        out = []
+        for path in route_files():
+            mtime = os.path.getmtime(path)
+            cached = route_cache.get(path)
+            if not cached or cached[0] != mtime:
+                try:
+                    cached = route_cache[path] = (mtime, summary(path))
+                except (ValueError, OSError) as e:
+                    session.log(f"skipping {os.path.basename(path)}: {e}", "warn")
+                    continue
+            out.append(cached[1])
+        return out
+
+    @app.post("/api/place")
+    def place(req: PlaceReq):
+        if req.key:
+            p = load_places().get(req.key)
+            if not p:
+                raise HTTPException(404, f"no place called '{req.key}'")
+            session.set_location(p["lat"], p["lon"], p["name"])
+        elif req.lat is not None and req.lon is not None:
+            if not (-90 <= req.lat <= 90 and -180 <= req.lon <= 180):
+                raise HTTPException(400, "coordinate out of range")
+            session.set_location(req.lat, req.lon, req.label or f"{req.lat:.4f}, {req.lon:.4f}")
+        else:
+            raise HTTPException(400, "give a place key or lat + lon")
+        return {"ok": True}
+
+    @app.post("/api/play")
+    def play(req: PlayReq):
+        if req.mph is not None and not (1 <= req.mph <= 200):
+            raise HTTPException(400, "mph should be between 1 and 200")
+        try:
+            session.play(req.route, req.engine, req.mph)
+        except RouteError as e:
+            raise HTTPException(400, str(e))
+        return {"ok": True}
+
+    @app.post("/api/stop")
+    def stop():
+        session.stop()
+        return {"ok": True}
+
+    return app
+
+
+def free_port() -> int:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("VIDA_PORT") or free_port())
+    session = Session()
+    print(f"vida-360 → http://127.0.0.1:{port}")
+    try:
+        uvicorn.run(create_app(session), host="127.0.0.1", port=port, log_level="warning")
+    finally:
+        session.shutdown()
