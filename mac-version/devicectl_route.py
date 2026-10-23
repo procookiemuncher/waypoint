@@ -7,10 +7,10 @@ route at 15.6 m/s read as 35 mph on another member's phone (2026-10-22).
 devicectl takes ONE constant speed per call, so this flattens the route's moving segments into a
 single waypoint list at one speed (the first moving segment's, or --mph). No dwell, no corner slowdowns.
 
-    .venv/bin/python tools/devicectl_route.py data/routes/emoji-test.json            # write + play
-    .venv/bin/python tools/devicectl_route.py data/routes/miami-cruise.json --mph 25
-    .venv/bin/python tools/devicectl_route.py data/routes/emoji-test.json --write-only
-    .venv/bin/python tools/devicectl_route.py --clear
+    ./mac-version/drive.command emoji-test              # write + play (route name or path)
+    ./mac-version/drive.command miami-cruise --mph 25
+    ./mac-version/drive.command emoji-test --write-only
+    ./mac-version/drive.command --clear
 """
 import argparse
 import json
@@ -19,9 +19,10 @@ import subprocess
 import sys
 import tempfile
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, ROOT)                       # make `backend` importable
-BUILD_DIR = os.path.join(ROOT, "build")
+CORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "core")
+sys.path.insert(0, CORE)                       # make `backend` importable
+ROUTES_DIR = os.path.join(CORE, "routes")
+BUILD_DIR = os.path.join(CORE, "build")
 
 MPH = 0.44704   # m/s per mph
 
@@ -48,6 +49,18 @@ def find_device():
            d.get("deviceProperties", {}).get("bootState") == "booted":
             return d.get("hardwareProperties", {}).get("udid") or d.get("identifier")
     return devices[0].get("hardwareProperties", {}).get("udid") if devices else None
+
+
+def resolve_route(arg):
+    """A route path, or a name like `emoji-test` / `miami` matched against core/routes/."""
+    if os.path.isfile(arg):
+        return arg
+    names = sorted(f for f in os.listdir(ROUTES_DIR) if f.endswith(".json"))
+    exact = [f for f in names if f[:-5] == arg]
+    hits = exact or [f for f in names if arg.lower() in f.lower()]
+    if len(hits) != 1:
+        sys.exit(f"no single route matches '{arg}' — have: {', '.join(n[:-5] for n in names)}")
+    return os.path.join(ROUTES_DIR, hits[0])
 
 
 def build_route_file(route_path, mph=None, interval=1.0):
@@ -77,7 +90,7 @@ def build_route_file(route_path, mph=None, interval=1.0):
 
 def main():
     ap = argparse.ArgumentParser(description="Play a route via xcrun devicectl (real speed).")
-    ap.add_argument("route", nargs="?", help="path to a route .json")
+    ap.add_argument("route", nargs="?", help="route name (e.g. emoji-test) or path to a .json")
     ap.add_argument("--mph", type=float, help="override the speed (default: the route's)")
     ap.add_argument("--device", help="device UDID (default: first connected device)")
     ap.add_argument("--write-only", action="store_true", help="just write the route file")
@@ -86,7 +99,7 @@ def main():
 
     if not args.clear and not args.route:
         ap.error("give a route, or --clear")
-    route_file = None if args.clear else build_route_file(args.route, args.mph)
+    route_file = None if args.clear else build_route_file(resolve_route(args.route), args.mph)
     if args.write_only:
         return
 
@@ -96,8 +109,7 @@ def main():
     if args.clear:
         devicectl("device", "simulate", "location", "clear", "--device", device)
         return
-    print("> Playing. Keep the phone unlocked. Stop it with:  "
-          ".venv/bin/python tools/devicectl_route.py --clear")
+    print("> Playing. Keep the phone unlocked. Stop it with:  ./mac-version/drive.command --clear")
     devicectl("device", "simulate", "location", "route", "--device", device,
               "--route-file", route_file)
 
