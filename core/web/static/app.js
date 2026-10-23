@@ -204,7 +204,7 @@ function syncLive(active){
     lineDone=L.polyline([latlngs[0]],{ color:live.accent, weight:3, opacity:.95 }).addTo(map);
     marker=makeMarker(latlngs[0]);
     map.flyToBounds(lineDim.getBounds().pad(.25), { duration:1.1 });
-    const how = active.engine==='drive' ? `drive · ${Math.round(active.mph||0)} mph` : 'spoof';
+    const how = active.engine==='drive' ? (active.mph ? `drive · ${Math.round(active.mph)} mph` : 'drive · varying') : 'spoof';
     $('np-name').innerHTML = esc(rt?.name || active.route)+'<small>'+esc(how)+'</small>';
     setMode('EN ROUTE');
     lastLogAt=-99;
@@ -509,7 +509,8 @@ function renderEngines(){
 function updateRouteNote(){
   if(!selected || selected.type!=='route') return;
   const note = selEngine()==='drive'
-    ? 'real speed — Life360 shows mph + the car icon. one steady speed, no stops.'
+    ? ($('mph').value ? 'real speed, held steady at the mph you typed. no stops.'
+                       : 'real speed — Life360 shows mph + the car icon. speeds up, slows for bends, stops. type an mph to hold one steady speed.')
     : 'position only — Life360 shows 0 mph, but follows the route\'s slow-downs and stops.';
   $('hero-note').textContent = note;
 }
@@ -729,3 +730,4 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Escape' && live) stopAll();
 });
 boot();
+$('mph').addEventListener('input', updateRouteNote);
