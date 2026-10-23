@@ -7,6 +7,30 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-22 — Mac support: split launchers into windows/ and mac/
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner picked the project back up on a Mac and wanted a
+Windows version and a Mac version. Kept **one shared codebase** (all the Python was already
+platform-neutral — it calls pmd3 via `sys.executable`, paths are relative to `__file__`) and split
+only the launchers:
+
+- `windows/` — `spoof.cmd`, `fly.cmd` (moved from the root, paths now `%~dp0..\`), + README.
+- `mac/` — `spoof.command`, `fly.command`, `setup.command` (uv venv on 3.12), + README.
+  `.command` so they double-click in Finder like the `.cmd` ones.
+- AGENTS.md / README / spoof.py + fly.py headers point at the new launchers.
+
+**Verified on the Mac (no phone attached):** `setup.command` builds the venv, `usbmux list` talks to
+usbmuxd (returns `[]`, no socket error — macOS has it built in, no iTunes needed), offline route
+build OK, all 7 movement tests pass, `fly.command` lists trips.
+
+**Note:** Mac's built-in python3 is 3.9 — always use `.venv/bin/python`.
+
+**Next (owner, on-device, on the Mac):**
+1. First Mac device run: plug in + unlock, `./mac/spoof.command eiffel`, confirm in Maps.
+2. Then pick up where 2026-07-10 left off — Step 0 airplane-mode tunnel gate, then `fly nyc`.
+
+---
+
 ## 2026-07-10 — Built the flight-arrival spoofer (Miami -> NYC): choreographer + routes + Observer arrival signal
 
 **Model: Claude Sonnet 5 (Claude Code).** Pivoted from the (dead) emoji goal to the real north star —
