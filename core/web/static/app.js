@@ -130,7 +130,7 @@ function initMap(){
     attribution:'© Stadia Maps © OpenMapTiles © OpenStreetMap', maxZoom:20,
   }).addTo(map);
   tiles.once('load', ()=>{ tilesReady=true; });
-  // the spinning halo + frosted HUDs repaint every frame; pause them while the map moves
+  // the border light + frosted HUDs repaint every frame; pause them while the map moves
   map.on('movestart', ()=> document.body.classList.add('panning'));
   map.on('moveend', ()=> document.body.classList.remove('panning'));
   map.on('zoomend', ()=> $('v-zoom').textContent = map.getZoom());
