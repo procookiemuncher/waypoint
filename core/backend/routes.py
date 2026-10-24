@@ -62,6 +62,8 @@ def summary(path: str, snap: bool = True) -> dict:
         "speed_mps": speed,
         "seconds": round(secs),
         "modes": sorted({s.mode for s in route.segments}),
+        "label": route.label,
+        "city": route.city,
     }
 
 
