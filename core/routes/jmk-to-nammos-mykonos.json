@@ -1,0 +1,58 @@
+{
+  "name": "jmk-to-nammos-mykonos",
+  "label": "JMK → Nammos",
+  "city": "Mykonos",
+  "generated": true,
+  "description": "Mykonos to Nammos, 3.3 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          37.43399,
+          25.34626
+        ],
+        [
+          37.43409,
+          25.346553
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 11.0,
+      "snap": true,
+      "waypoints": [
+        [
+          37.43399,
+          25.34626
+        ],
+        [
+          37.41558,
+          25.33694
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          37.415786,
+          25.336767
+        ],
+        [
+          37.41558,
+          25.33694
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        37.41558,
+        25.33694
+      ]
+    }
+  ]
+}

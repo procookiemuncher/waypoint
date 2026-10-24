@@ -1,0 +1,58 @@
+{
+  "name": "smv-to-badrutts-palace",
+  "label": "SMV → Badrutt's Palace",
+  "city": "St. Moritz",
+  "generated": true,
+  "description": "Engadin (Samedan) to Badrutt's Palace, 7.8 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          46.53395,
+          9.88399
+        ],
+        [
+          46.534447,
+          9.882678
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 11.0,
+      "snap": true,
+      "waypoints": [
+        [
+          46.53395,
+          9.88399
+        ],
+        [
+          46.49725,
+          9.84076
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          46.497589,
+          9.840575
+        ],
+        [
+          46.49725,
+          9.84076
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        46.49725,
+        9.84076
+      ]
+    }
+  ]
+}

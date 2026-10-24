@@ -1,0 +1,58 @@
+{
+  "name": "mia-to-faena-miami",
+  "label": "MIA → Faena Hotel",
+  "city": "Miami",
+  "generated": true,
+  "description": "Miami International to Faena Hotel, 18.3 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          25.79524,
+          -80.28015
+        ],
+        [
+          25.795256,
+          -80.278567
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          25.79524,
+          -80.28015
+        ],
+        [
+          25.80738,
+          -80.12314
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          25.807607,
+          -80.123279
+        ],
+        [
+          25.80738,
+          -80.12314
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        25.80738,
+        -80.12314
+      ]
+    }
+  ]
+}

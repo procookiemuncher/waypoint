@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from backend.destinations import city_info
 from backend.places import load_places
 from backend.routes import RouteError, route_files, summary
 from backend.session import Session
@@ -64,6 +65,10 @@ def create_app(session: Session) -> FastAPI:
     @app.get("/api/places")
     def places():
         return [{"id": k, **p} for k, p in load_places().items()]
+
+    @app.get("/api/cities")
+    def cities():
+        return city_info()
 
     @app.get("/api/routes")
     def routes():

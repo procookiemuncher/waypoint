@@ -1,0 +1,45 @@
+{
+  "name": "lhr-to-the-dorchester",
+  "label": "LHR → The Dorchester",
+  "city": "London",
+  "generated": true,
+  "description": "Heathrow Terminal 5 to The Dorchester, 31.5 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          51.4709,
+          -0.48958
+        ],
+        [
+          51.5073,
+          -0.15236
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          51.507111,
+          -0.152793
+        ],
+        [
+          51.5073,
+          -0.15236
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        51.5073,
+        -0.15236
+      ]
+    }
+  ]
+}

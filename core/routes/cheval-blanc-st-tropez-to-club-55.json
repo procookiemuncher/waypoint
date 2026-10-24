@@ -1,0 +1,45 @@
+{
+  "name": "cheval-blanc-st-tropez-to-club-55",
+  "label": "Cheval Blanc St-Tropez → Club 55",
+  "city": "Saint-Tropez",
+  "generated": true,
+  "description": "Cheval Blanc St-Tropez to Club 55, 5.8 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 11.0,
+      "snap": true,
+      "waypoints": [
+        [
+          43.26648,
+          6.62657
+        ],
+        [
+          43.22789,
+          6.66219
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          43.228049,
+          6.661249
+        ],
+        [
+          43.22789,
+          6.66219
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        43.22789,
+        6.66219
+      ]
+    }
+  ]
+}

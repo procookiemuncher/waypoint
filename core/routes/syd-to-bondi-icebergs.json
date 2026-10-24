@@ -1,0 +1,28 @@
+{
+  "name": "syd-to-bondi-icebergs",
+  "label": "SYD → Icebergs Dining Room",
+  "city": "Sydney",
+  "generated": true,
+  "description": "Sydney T1 International to Icebergs Dining Room, 20.0 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          -33.93734,
+          151.16703
+        ],
+        [
+          -33.89527,
+          151.27441
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}

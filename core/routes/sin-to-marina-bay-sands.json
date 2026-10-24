@@ -1,0 +1,58 @@
+{
+  "name": "sin-to-marina-bay-sands",
+  "label": "SIN → Marina Bay Sands",
+  "city": "Singapore",
+  "generated": true,
+  "description": "Changi Terminal 3 to Marina Bay Sands, 20.9 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          1.35461,
+          103.98508
+        ],
+        [
+          1.354431,
+          103.985555
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          1.35461,
+          103.98508
+        ],
+        [
+          1.2837,
+          103.86072
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          1.283897,
+          103.860396
+        ],
+        [
+          1.2837,
+          103.86072
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        1.2837,
+        103.86072
+      ]
+    }
+  ]
+}

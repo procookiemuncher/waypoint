@@ -1,0 +1,58 @@
+{
+  "name": "las-to-wynn-las-vegas",
+  "label": "LAS → Wynn",
+  "city": "Las Vegas",
+  "generated": true,
+  "description": "Harry Reid Terminal 3 to Wynn, 8.7 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          36.08612,
+          -115.13687
+        ],
+        [
+          36.08671,
+          -115.136866
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 11.0,
+      "snap": true,
+      "waypoints": [
+        [
+          36.08612,
+          -115.13687
+        ],
+        [
+          36.12662,
+          -115.1654
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          36.127655,
+          -115.165513
+        ],
+        [
+          36.12662,
+          -115.1654
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        36.12662,
+        -115.1654
+      ]
+    }
+  ]
+}

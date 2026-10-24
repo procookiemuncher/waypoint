@@ -1,0 +1,41 @@
+{
+  "name": "rak-to-royal-mansour",
+  "label": "RAK → Royal Mansour",
+  "city": "Marrakech",
+  "generated": true,
+  "description": "Marrakesh Menara Terminal 1 to Royal Mansour, 5.9 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          31.60204,
+          -8.02686
+        ],
+        [
+          31.602175,
+          -8.027718
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 11.0,
+      "snap": true,
+      "waypoints": [
+        [
+          31.60204,
+          -8.02686
+        ],
+        [
+          31.62527,
+          -7.9983
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}

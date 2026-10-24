@@ -1,0 +1,27 @@
+{
+  "name": "wynn-las-vegas-to-xs-las-vegas",
+  "label": "Wynn → XS Nightclub",
+  "city": "Las Vegas",
+  "generated": true,
+  "description": "Walk from Wynn to XS Nightclub, 225 m, then 10 min there. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "snap": true,
+      "waypoints": [
+        [
+          36.12662,
+          -115.1654
+        ],
+        [
+          36.12817,
+          -115.16487
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}
