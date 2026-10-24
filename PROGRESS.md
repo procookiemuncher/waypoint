@@ -19,6 +19,11 @@ a forged file. Details in docs/research/life360-flight-detection.md.
 a Mac path (2 min, probably errors). Then run §5 without altitude. That test still decides whether the
 "landed" push is reachable at all.
 
+Later the same day: added a plan (§5b) so a "no push" result actually tells us something. It has a
+positive-control checklist, a realistic MIA→MCO timeline, checkpoints (mph / plane icon / history /
+push), a Shortcut that reads the phone's reported altitude and speed, and a vacuum-canister barometer
+A/B as the one real altitude experiment.
+
 ---
 
 ## 2026-10-24 — Airplane mode from the Mac works (Shortcuts via devicectl openURL)
