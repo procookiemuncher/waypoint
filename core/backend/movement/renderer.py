@@ -109,7 +109,7 @@ def _corner_speed(a, b, c, cruise):
     return max(CORNER_MIN_SPEED_MPS, min(cruise, v))
 
 
-_BRAKE_MARGIN = 0.5   # fraction of DEFAULT_ACCEL the speed plan brakes at (see plan_speeds)
+_BRAKE_MARGIN = 0.5   # fraction of DEFAULT_ACCEL the plan brakes at into the final stop (see plan_speeds)
 
 
 def plan_speeds(polyline, cruise, v_entry, v_exit):
@@ -134,11 +134,15 @@ def plan_speeds(polyline, cruise, v_entry, v_exit):
     v[-1] = min(v[-1], v_exit)
 
     a_lon = DEFAULT_ACCEL_MPS2["drive"]
-    # plan braking softer than the car can brake: the jerk-limited tracker takes a couple of
-    # seconds to reach full decel, so a plan at full a_lon arrives at stops still rolling
-    a_brake = a_lon * _BRAKE_MARGIN
     for i in range(n - 2, -1, -1):                          # backward: decel into what's ahead
-        v[i] = min(v[i], math.sqrt(v[i + 1] ** 2 + 2 * a_brake * gap[i + 1]))
+        v[i] = min(v[i], math.sqrt(v[i + 1] ** 2 + 2 * a_lon * gap[i + 1]))
+    # the final stop gets a softer ramp: the jerk-limited tracker takes a couple of seconds to
+    # reach full decel, so a full-a_lon plan arrives at the end still rolling (a velocity step
+    # into the next segment). Corners keep full a_lon, a car does brake harder for those.
+    a_brake, to_end = a_lon * _BRAKE_MARGIN, 0.0
+    for i in range(n - 2, -1, -1):
+        to_end += gap[i + 1]
+        v[i] = min(v[i], math.sqrt(v[-1] ** 2 + 2 * a_brake * to_end))
     for i in range(1, n):                                   # forward: accel out, cap at cruise
         v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * a_lon * gap[i]))
     return v
