@@ -7,6 +7,35 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-24 — Airplane mode from the Mac works (Shortcuts via devicectl openURL)
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wants a hands-free flight: get to the departure airport
+(drive or quick teleport), wait ~2 min, airplane on, fly at plane speed, airplane off at the destination,
+aiming for the real "landed at" push.
+
+**Found:** devicectl has no airplane-mode setting (`settings` only does appearance/audio/biometrics/reset/
+standby/voiceover; `simulate statusBar` is just the icon). But `devicectl device process openURL
+"shortcuts://run-shortcut?name=..."` runs an iOS Shortcut. Owner made `vida-airplane-on` (Airplane On, Wi-Fi
+Off) and `vida-airplane-off` (Airplane Off, Wi-Fi On).
+
+**Verified on the phone** (iPhone19,3, iOS 27.0.1, cable):
+- the phone was paired over Wi-Fi before (`Transport Type: localNetwork`). Has to be the cable (`wired`) or
+  the Mac loses it the moment airplane mode is on
+- ON link runs with no prompt, airplane + Wi-Fi off
+- Mac still reaches the phone in airplane mode; OFF link works from there
+- a devicectl `coordinate` set while offline holds (Maps dot moved to the Publix up the road), clear works
+- phone has to be unlocked or the link doesn't run
+
+**Still open:** does Life360's "landed" push fire with no altitude? That's the §5 test in
+life360-flight-detection.md, now cheap to repeat.
+
+**Next:** one short real flight (JFK→BOS at real jet speed, ~45 min, Logan saved as a Place as a fallback,
+2nd circle member watching). Then mock the flight UI (phase stepper + airplane chip + drive-in / quick
+teleport) and build it as a Mac-only engine next to drive_engine.py. Stop/kill has to fire the OFF
+shortcut too. Open questions for the owner: real-time vs short test flights, teleport vs drive to the airport.
+
+---
+
 ## 2026-10-24 — Destinations grouped by country
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wanted the cities organized by country. Mocked 4 layouts in a

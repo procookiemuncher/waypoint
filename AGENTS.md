@@ -70,6 +70,14 @@ Xcode only (breaks the same-code-both-platforms rule — fine while it's the onl
 constant speed per call (no corner slowdowns or dwell yet), no altitude. **The car icon showed up
 too** — the driving emoji, dead since July, works on this path.
 
+**✅ Airplane mode is automatable (2026-10-24, on-device, Mac):** devicectl can't toggle it directly, but
+`xcrun devicectl device process openURL "shortcuts://run-shortcut?name=vida-airplane-on"` runs an iOS
+Shortcut on the phone (owner made two once: `vida-airplane-on` = Airplane On + Wi-Fi Off,
+`vida-airplane-off` = Airplane Off + Wi-Fi On). Runs silently, no confirmation prompt. Over the **cable**
+(`Transport Type: wired`) the Mac keeps reaching the phone in airplane mode, so the OFF link works too, and a
+devicectl `coordinate` set while offline holds (blue dot moved in Maps). Over Wi-Fi pairing none of this
+works. Phone must be unlocked. Still unknown: whether Life360's "landed" push fires without altitude.
+
 ## Detection surface & landscape (research 2026-07-08 — details in `docs/research/`)
 
 - **⚠ `isSimulatedBySoftware` is an unresolved, decisive risk.** iOS 15+ apps can read
