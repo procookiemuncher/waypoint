@@ -38,8 +38,13 @@ of a_lon); corners keep full a_lon (a blanket margin broke the corner unit test)
 hard-fails → 2. Those 2 are a Tokyo highway-ramp corner at 2.92 vs 2.85, on non-default seeds only.
 Builds use seed 0, which passes. Corner tracking has the same lag, open if it ever bites.
 
-**Verified:** all 33 generated routes + the 7 hand-made ones pass validation; unit tests green; dry-run app
-in headless Chrome (gallery, Miami + Ibiza city pages with hours/local time, clustered map at z1/z5).
+**Verified:** all 33 generated routes + the 7 hand-made ones pass validation (that's the Spoof/GPX path,
+seed 0). **Drive path too:** dry-run `DriveEngine().prepare()` on all 33, 0 failures, each ends in its 601 s
+stop, walk-only ones play at ~3 mph. Note Drive picks a *random* seed every play (`plan_chunks`), so it
+never sees the validator's seed 0. emoji-test, same seed, old vs new: start/cruise identical, only the
+end changes (old reached the stop at 5-6 m/s, new eases to ~1.7). Unit tests green, + one that fails on the
+old brake plan. Dry-run app in headless Chrome (gallery, Miami + Ibiza city pages with hours/local time,
+clustered map at z1/z5). The two "Sexy Fish" are now "Sexy Fish Miami/London" (live place is matched by name).
 **Not done:** nothing played on the phone. Opening hours are approximate (from listings), seasonal spots have
 a `note` but no warning in the UI yet.
 
