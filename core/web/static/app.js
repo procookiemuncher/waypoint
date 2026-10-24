@@ -463,7 +463,8 @@ const COMMANDS = {
     clearConsole();
     if(STATUS?.active || STATUS?.busy) stopAll();
     clearPreview();
-    map.flyTo([25.7617,-80.1918], 13, { duration:1.2 });
+    if(openCity){ openCity=null; renderBrowse(true); }
+    frameBrowse(true);   // same whole-world view as on load
     setAccent(DEFAULT_ACCENT);
     if(!STATUS?.active) typeLine('phone is on real GPS.','ok');
   },
@@ -778,8 +779,8 @@ function drawBrowseMap(){
     else L.circleMarker([it.def.lat, it.def.lon], { radius:4, color, weight:2, fillColor:'#fff', fillOpacity:.9, interactive:false }).addTo(browseLayer);
   }
 }
-function frameBrowse(){
-  if(live || !map) return;   // don't yank the map away from something that's playing
+function frameBrowse(force){
+  if((live && !force) || !map) return;   // don't yank the map away from something that's playing
   const pts = openCity ? cityItems(openCity).flatMap(itemPoints) : cityNames().map(cityCenter);
   if(!pts.length) return;
   map.flyToBounds(L.latLngBounds(pts).pad(openCity ? .15 : .35), { duration:1.1, maxZoom: openCity ? 14 : 4 });
