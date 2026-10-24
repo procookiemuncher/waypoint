@@ -24,6 +24,15 @@ positive-control checklist, a realistic MIA→MCO timeline, checkpoints (mph / p
 push), a Shortcut that reads the phone's reported altitude and speed, and a vacuum-canister barometer
 A/B as the one real altitude experiment.
 
+**Owner's first fake-flight result (reported, not instrumented):** airplane mode toggled fine. Life360
+drew the trail line straight across the ocean and showed the **car / driving** status. No plane icon, no
+"landed" push. So the fast leg reached Life360 as continuous points, and its drive classifier took it (no
+water/geography check). That doesn't settle altitude yet. A real flight shows Life360 an airport, a
+blackout, then the other airport. Our run fed it a live, continuous fast track, which looks like a drive.
+Next variant: hold inside the departure airport long enough to register (several minutes, not 2),
+airplane on, **teleport** to the arrival airport while offline (no route), hold for about the real flight
+time, airplane off.
+
 ---
 
 ## 2026-10-24 — Airplane mode from the Mac works (Shortcuts via devicectl openURL)
