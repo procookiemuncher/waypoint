@@ -53,6 +53,15 @@ Life360 "arrived" push the spot must be a saved Place, check the plan's Place li
 the flight flow: every city's routes start at its arrival airport, so the airport + the `<code>-to-...` route
 are exactly a trip's `arrive_hold` / `arrive_route`. A "home → spot" route needs the owner's start point.
 
+---
+
+## 2026-10-24 — `reset` now goes to the whole-world view
+
+- **Changed:** the console `reset` command used to fly the map to Miami. It now backs out of any open city page and frames every city tag (same `frameBrowse` view as on load). `frameBrowse(force)` skips the "something's playing" guard because `reset` calls it right after `stop`, before the status poll clears `live`.
+- **Not tested on a device** (UI only, checked syntax with `node --check`).
+
+---
+
 ## 2026-10-24 — Researched altitude spoofing tools (none found)
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner asked for a tool that spoofs altitude for the "landed" push.
@@ -64,6 +73,20 @@ a forged file. Details in docs/research/life360-flight-detection.md.
 **Next:** with the phone plugged in, run `devicectl device simulate location list` and try `scenario` with
 a Mac path (2 min, probably errors). Then run §5 without altitude. That test still decides whether the
 "landed" push is reachable at all.
+
+Later the same day: added a plan (§5b) so a "no push" result actually tells us something. It has a
+positive-control checklist, a realistic MIA→MCO timeline, checkpoints (mph / plane icon / history /
+push), a Shortcut that reads the phone's reported altitude and speed, and a vacuum-canister barometer
+A/B as the one real altitude experiment.
+
+**Owner's first fake-flight result (reported, not instrumented):** airplane mode toggled fine. Life360
+drew the trail line straight across the ocean and showed the **car / driving** status. No plane icon, no
+"landed" push. So the fast leg reached Life360 as continuous points, and its drive classifier took it (no
+water/geography check). That doesn't settle altitude yet. A real flight shows Life360 an airport, a
+blackout, then the other airport. Our run fed it a live, continuous fast track, which looks like a drive.
+Next variant: hold inside the departure airport long enough to register (several minutes, not 2),
+airplane on, **teleport** to the arrival airport while offline (no route), hold for about the real flight
+time, airplane off.
 
 ---
 
