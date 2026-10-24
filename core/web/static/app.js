@@ -133,7 +133,7 @@ function initMap(){
   // the border light + frosted HUDs repaint every frame; pause them while the map moves
   map.on('movestart', ()=> document.body.classList.add('panning'));
   map.on('moveend', ()=> document.body.classList.remove('panning'));
-  map.on('zoomend', ()=> $('v-zoom').textContent = map.getZoom());
+  map.on('zoomend', ()=>{ $('v-zoom').textContent = map.getZoom(); if(!openCity) drawBrowseMap(); });
   map.on('mousemove', e=>{ if(!live) setCoord(e.latlng.lat, e.latlng.lng); });
   map.on('click', e=> dropPin(e.latlng.lat, e.latlng.lng));
 }
@@ -746,16 +746,29 @@ window.addEventListener('resize', ()=>{ clearTimeout(browseResize); browseResize
 
 // the map follows along: city tags on the world view, a city's routes faintly drawn inside it
 let browseLayer=null;
+// world view: cities whose tags would overlap at this zoom share one tag (the biggest city's,
+// "+N"); clicking it zooms in until they split. Redone on every zoom.
+function cityClusters(){
+  const out=[];
+  for(const c of cityNames()){
+    const p=map.latLngToLayerPoint(cityCenter(c));
+    const hit=out.find(k=>Math.abs(k.p.x-p.x)<130 && Math.abs(k.p.y-p.y)<34);
+    if(hit) hit.cities.push(c); else out.push({ p, cities:[c] });
+  }
+  return out;
+}
 function drawBrowseMap(){
   if(!map) return;
   if(!browseLayer) browseLayer=L.layerGroup().addTo(map);
   browseLayer.clearLayers();
   if(!openCity){
-    for(const c of cityNames()){
-      const C=cityInfo(c);
+    for(const k of cityClusters()){
+      const c=k.cities[0], C=cityInfo(c), more=k.cities.length-1;
+      const n=k.cities.reduce((s,x)=>s+cityItems(x).length, 0);
       L.marker(cityCenter(c), { icon:L.divIcon({ className:'', iconSize:null,
-        html:`<div class="bub" style="--t:${C.color}"><span class="fl">${C.flag}</span>${esc(c)}<span class="n">${cityItems(c).length}</span></div>` }) })
-        .on('click', ()=>openCityPage(c)).addTo(browseLayer);
+        html:`<div class="bub" style="--t:${C.color}"><span class="fl">${C.flag}</span>${esc(c)}${more?`<span class="more">+${more}</span>`:''}<span class="n">${n}</span></div>` }) })
+        .on('click', ()=> more ? map.flyToBounds(L.latLngBounds(k.cities.map(cityCenter)).pad(.4), { duration:.9, maxZoom:9 }) : openCityPage(c))
+        .addTo(browseLayer);
     }
     return;
   }

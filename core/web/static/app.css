@@ -386,6 +386,7 @@ path.glowcase { filter: blur(5px); }
 }
 .bub .fl { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; background: color-mix(in srgb, var(--t) 25%, transparent); }
 .bub .n { color: var(--t); }
+.bub .more { color: #a1a1aa; font-weight: 500; margin-left: -2px; }
 .bub:hover { transform: translate(-50%, -50%) scale(1.08); }
 
 /* hero card */
