@@ -62,7 +62,8 @@ def make_route(rid, label, city, start, end, end_name, from_name):
                  "waypoints": [list(start), list(end)]})
     if in_m > WALK_MIN_M:
         segs.append({"mode": "walk", "waypoints": [[round(x, 6) for x in poly[-1]], list(end)]})
-    segs.append({"mode": "stop", "at": list(end), "dwell_s": DWELL_S})
+    # no walk-in = park where the drive ends; an `at` a few meters off would be a jump
+    segs.append({"mode": "stop", "dwell_s": DWELL_S, **({"at": list(end)} if in_m > WALK_MIN_M else {})})
     for what, m in (("walk out", out_m), ("walk in", in_m)):
         if m > WALK_WARN_M:
             notes.append(f"{what} is {m:.0f} m — check the coordinate")
