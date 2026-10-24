@@ -109,6 +109,9 @@ def _corner_speed(a, b, c, cruise):
     return max(CORNER_MIN_SPEED_MPS, min(cruise, v))
 
 
+_BRAKE_MARGIN = 0.5   # fraction of DEFAULT_ACCEL the speed plan brakes at (see plan_speeds)
+
+
 def plan_speeds(polyline, cruise, v_entry, v_exit):
     """Per-vertex target speed that slows for corners and is feasible under longitudinal accel.
     (1) corner speed limit per interior vertex, (2) backward pass to brake *before* corners,
@@ -131,8 +134,11 @@ def plan_speeds(polyline, cruise, v_entry, v_exit):
     v[-1] = min(v[-1], v_exit)
 
     a_lon = DEFAULT_ACCEL_MPS2["drive"]
+    # plan braking softer than the car can brake: the jerk-limited tracker takes a couple of
+    # seconds to reach full decel, so a plan at full a_lon arrives at stops still rolling
+    a_brake = a_lon * _BRAKE_MARGIN
     for i in range(n - 2, -1, -1):                          # backward: decel into what's ahead
-        v[i] = min(v[i], math.sqrt(v[i + 1] ** 2 + 2 * a_lon * gap[i + 1]))
+        v[i] = min(v[i], math.sqrt(v[i + 1] ** 2 + 2 * a_brake * gap[i + 1]))
     for i in range(1, n):                                   # forward: accel out, cap at cruise
         v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * a_lon * gap[i]))
     return v
