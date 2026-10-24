@@ -1,0 +1,28 @@
+{
+  "name": "nce-to-hotel-de-paris-monte-carlo",
+  "label": "NCE → Hôtel de Paris Monte-Carlo",
+  "city": "Monaco",
+  "generated": true,
+  "description": "Nice Terminal 2 to Hôtel de Paris Monte-Carlo, 31.8 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          43.65921,
+          7.20452
+        ],
+        [
+          43.73901,
+          7.42747
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}
