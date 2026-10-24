@@ -77,6 +77,16 @@ class TestRenderWithPlan(unittest.TestCase):
         self.assertLess(corner, 6.0)         # genuinely slowed FOR THE CORNER
         self.assertGreater(cruising, 7.0)    # and was cruising on the straight before it
 
+    def test_fast_drive_comes_to_rest_before_a_stop(self):
+        # short fast drives into a dwell used to arrive still rolling (the jerk-limited tracker
+        # lags a full-accel braking plan) -> a velocity step into the stop, validator hard-fail
+        for pts, spacing in ((8, 20.0), (40, 10.0), (15, 20.0)):
+            segs = [Segment(mode="drive", waypoints=_east(pts, spacing), speed_mps=17.0 if pts != 15 else 24.0),
+                    Segment(mode="stop", dwell_s=60)]
+            res = validate(RouteRenderer(seed=1).render(Route(name="t", segments=segs)))
+            self.assertTrue(res.ok, (pts, spacing, res.errors))
+            self.assertLess(res.max_accel, 2.0)
+
     def test_straight_route_reaches_cruise(self):
         fixes = self._render(_east(60))
         res = validate(fixes)
