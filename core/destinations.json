@@ -8,7 +8,7 @@
       "base": "faena-miami",
       "spots": [
         {"id": "faena-miami", "name": "Faena Hotel", "kind": "hotel", "at": [25.80738, -80.12314], "hours": null},
-        {"id": "sexy-fish-miami", "name": "Sexy Fish", "kind": "restaurant", "at": [25.76368, -80.18942], "hours": [12, 1]},
+        {"id": "sexy-fish-miami", "name": "Sexy Fish Miami", "kind": "restaurant", "at": [25.76368, -80.18942], "hours": [12, 1]},
         {"id": "liv-miami", "name": "LIV", "kind": "club", "at": [25.81808, -80.12204], "hours": [23, 5], "note": "Wed–Sun"}
       ]
     },
@@ -99,7 +99,7 @@
       "base": "the-dorchester",
       "spots": [
         {"id": "the-dorchester", "name": "The Dorchester", "kind": "hotel", "at": [51.50730, -0.15236], "hours": null},
-        {"id": "sexy-fish-london", "name": "Sexy Fish", "kind": "restaurant", "at": [51.50937, -0.14432], "hours": [12, 2]}
+        {"id": "sexy-fish-london", "name": "Sexy Fish London", "kind": "restaurant", "at": [51.50937, -0.14432], "hours": [12, 2]}
       ]
     },
     "Mykonos": {

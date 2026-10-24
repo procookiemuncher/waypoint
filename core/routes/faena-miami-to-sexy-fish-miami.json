@@ -1,9 +1,9 @@
 {
   "name": "faena-miami-to-sexy-fish-miami",
-  "label": "Faena Hotel → Sexy Fish",
+  "label": "Faena Hotel → Sexy Fish Miami",
   "city": "Miami",
   "generated": true,
-  "description": "Faena Hotel to Sexy Fish, 15.4 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "description": "Faena Hotel to Sexy Fish Miami, 15.4 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
   "segments": [
     {
       "mode": "walk",
