@@ -1,0 +1,58 @@
+{
+  "name": "hnd-to-aman-tokyo",
+  "label": "HND → Aman Tokyo",
+  "city": "Tokyo",
+  "generated": true,
+  "description": "Haneda Terminal 3 to Aman Tokyo, 27.6 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          35.54577,
+          139.76902
+        ],
+        [
+          35.545953,
+          139.769414
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          35.54577,
+          139.76902
+        ],
+        [
+          35.68559,
+          139.76539
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          35.6855,
+          139.765949
+        ],
+        [
+          35.68559,
+          139.76539
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        35.68559,
+        139.76539
+      ]
+    }
+  ]
+}

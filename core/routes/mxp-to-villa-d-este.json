@@ -1,0 +1,45 @@
+{
+  "name": "mxp-to-villa-d-este",
+  "label": "MXP → Villa d'Este",
+  "city": "Lake Como",
+  "generated": true,
+  "description": "Malpensa Terminal 1 to Villa d'Este, 56.7 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          45.62775,
+          8.7143
+        ],
+        [
+          45.84493,
+          9.07982
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          45.844935,
+          9.07927
+        ],
+        [
+          45.84493,
+          9.07982
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        45.84493,
+        9.07982
+      ]
+    }
+  ]
+}

@@ -7,10 +7,60 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-24 — Destinations catalog: 35 LARP spots, every continent but Antarctica
+
+**Model: Claude Opus 5.5 (Claude Code), in the `larp` worktree (another agent was on main).** Owner wants
+way more routes: the top 20-30 exclusive places to be seen at, worldwide (e.g. Sexy Fish Miami).
+
+**Built a system, not 90 hand-written files**
+- `core/destinations.json`: 28 cities / 35 spots. NA: Miami (Faena, Sexy Fish, LIV), NYC (Plaza, Polo Bar),
+  LA (Beverly Hills Hotel, Nobu Malibu), Vegas (Wynn, XS), Aspen, Los Cabos, St. Barths (Nikki Beach).
+  Europe: Monaco, Saint-Tropez (Cheval Blanc, Club 55), Ritz Paris, London (Dorchester, Sexy Fish), Nammos
+  Mykonos, Pacha Ibiza, Villa d'Este, Le Sirenuse, Les Airelles, Badrutt's. Dubai (Burj Al Arab), Aman Tokyo,
+  Marina Bay Sands, Bulgari Bali, Royal Mansour, The Silo, Copacabana Palace, La Huella, Bondi Icebergs.
+  Maldives (Soneva Jani) + Bora Bora (Four Seasons) are `access: boat` = pin only, no road from the airport.
+  St. Moritz / Courchevel use the private-jet airports (Samedan, the altiport), way shorter than Zurich/Geneva.
+- Every coordinate is from OSM (Nominatim), airports moved from the runway centroid to the passenger terminal
+  (Overpass). Sexy Fish Miami isn't in OSM, used its street address (1001 S Miami Ave).
+- `core/tools/gen_destinations.py`: airport → base hotel → each spot (or airport → spot when no base).
+  Walk out to the road, Valhalla drive, walk in, 10 min dwell. Under 1 km straight line = walk only.
+  Snaps + renders + validates before writing; failures are listed, never written. Rerun prunes stale files.
+- Spots are pin presets too (`spoof sexy-fish-miami`), `/api/cities` replaces the hardcoded CITY_INFO,
+  routes carry `label` + `city`.
+- App: city page says the local time there, place chips say "open now" / "opens 11pm". World map merges
+  overlapping city tags ("London +6"), click zooms in till they split. That was the Europe pile-up the
+  last entry warned about.
+
+**Fixed (renderer):** drives were reaching their final stop at 6-12 m/s (the jerk-limited tracker can't
+follow a full-a_lon braking plan) and the next segment started at 0, a hard-fail velocity step. 5 of the new
+routes failed on it, existing ones passed by luck. The final stop now gets a softer ramp (`_BRAKE_MARGIN` 0.5
+of a_lon); corners keep full a_lon (a blanket margin broke the corner unit test). 40 routes x 3 seeds: 17
+hard-fails → 2. Those 2 are a Tokyo highway-ramp corner at 2.92 vs 2.85, on non-default seeds only.
+Builds use seed 0, which passes. Corner tracking has the same lag, open if it ever bites.
+
+**Verified:** all 33 generated routes + the 7 hand-made ones pass validation (that's the Spoof/GPX path,
+seed 0). **Drive path too:** dry-run `DriveEngine().prepare()` on all 33, 0 failures, each ends in its 601 s
+stop, walk-only ones play at ~3 mph. Note Drive picks a *random* seed every play (`plan_chunks`), so it
+never sees the validator's seed 0. emoji-test, same seed, old vs new: start/cruise identical, only the
+end changes (old reached the stop at 5-6 m/s, new eases to ~1.7). Unit tests green, + one that fails on the
+old brake plan. Dry-run app in headless Chrome (gallery, Miami + Ibiza city pages with hours/local time,
+clustered map at z1/z5). The two "Sexy Fish" are now "Sexy Fish Miami/London" (live place is matched by name).
+**Not done:** nothing played on the phone. Opening hours are approximate (from listings), seasonal spots have
+a `note` but no warning in the UI yet.
+
+**Next:** play one for real (`mia-to-faena-miami` / `faena-miami-to-sexy-fish-miami`, Drive engine). For a
+Life360 "arrived" push the spot must be a saved Place, check the plan's Place limit. Hook the catalog into
+the flight flow: every city's routes start at its arrival airport, so the airport + the `<code>-to-...` route
+are exactly a trip's `arrive_hold` / `arrive_route`. A "home → spot" route needs the owner's start point.
+
+---
+
 ## 2026-10-24 — `reset` now goes to the whole-world view
 
 - **Changed:** the console `reset` command used to fly the map to Miami. It now backs out of any open city page and frames every city tag (same `frameBrowse` view as on load). `frameBrowse(force)` skips the "something's playing" guard because `reset` calls it right after `stop`, before the status poll clears `live`.
 - **Not tested on a device** (UI only, checked syntax with `node --check`).
+
+---
 
 ## 2026-10-24 — Researched altitude spoofing tools (none found)
 

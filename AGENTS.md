@@ -181,7 +181,17 @@ a **static preset** (hold a fixed point), or **clear**. Direct args also work:
 `spoof miami` / `spoof eiffel` / `spoof 48.8584 2.2945` / `spoof clear`. Routes
 are rendered + validated into a GPX and replayed over the `--userspace` tunnel (no admin);
 presets/coords hold a point until you press ENTER. **Drop a new JSON in `core/routes/` and it
-appears in the menu automatically.** Needs the `.venv` (Python 3.12/3.13, see BUILD_PLAN.md),
+appears in the menu automatically.**
+
+**Destinations catalog (2026-10-24):** `core/destinations.json` holds the LARP spots, 35 in 28 cities
+across every continent but Antarctica (Sexy Fish, LIV, Club 55, Burj Al Arab, Aman Tokyo...). Each city has
+an arrival airport (passenger-terminal coords), optionally a base hotel, its spots with local opening hours,
+and a timezone. `core/tools/gen_destinations.py` turns it into routes (airport → hotel → spot, walk out,
+snapped drive, walk in, 10 min dwell; anything under 1 km is walked) and **refuses to write a route that
+fails validation**. Generated routes carry `"generated": true` + `label` + `city`. Don't hand-edit them:
+edit the catalog and rerun. Every spot is also a pin preset (`spoof sexy-fish-miami`), and the app reads
+city/country/flag/tz from `/api/cities`. Coordinates come from OSM (Nominatim/Overpass), not memory.
+`"access": "boat"` spots (Maldives, Bora Bora) are pin-only. Needs the `.venv` (Python 3.12/3.13, see BUILD_PLAN.md),
 the Apple Mobile Device Service (Windows only — built into macOS), and the phone **unlocked** with Developer Mode on.
 
 **Flight choreographer:** `fly <trip>` (e.g. `fly nyc`) runs a believable **flight** that

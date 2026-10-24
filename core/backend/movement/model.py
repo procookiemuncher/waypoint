@@ -83,6 +83,8 @@ class Route:
     name: str
     description: str = ""
     segments: list[Segment] = field(default_factory=list)
+    label: str = ""          # display name ("MIA → Faena Hotel"); the app derives one when empty
+    city: str = ""           # city it belongs to; the app guesses from the end point when empty
 
 
 def _coord(v) -> Coord:
@@ -130,7 +132,8 @@ def parse_route(data: dict) -> Route:
                 snap=bool(s.get("snap", False)),
             ))
 
-    return Route(name=name, description=data.get("description", ""), segments=segments)
+    return Route(name=name, description=data.get("description", ""), segments=segments,
+                 label=data.get("label", ""), city=data.get("city", ""))
 
 
 def load_route(path) -> Route:

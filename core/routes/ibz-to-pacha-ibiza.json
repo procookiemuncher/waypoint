@@ -1,0 +1,45 @@
+{
+  "name": "ibz-to-pacha-ibiza",
+  "label": "IBZ → Pacha",
+  "city": "Ibiza",
+  "generated": true,
+  "description": "Ibiza to Pacha, 10.8 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 11.0,
+      "snap": true,
+      "waypoints": [
+        [
+          38.87618,
+          1.36804
+        ],
+        [
+          38.91844,
+          1.44332
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          38.918764,
+          1.443355
+        ],
+        [
+          38.91844,
+          1.44332
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        38.91844,
+        1.44332
+      ]
+    }
+  ]
+}

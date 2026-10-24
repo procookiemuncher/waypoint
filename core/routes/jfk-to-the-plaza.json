@@ -1,0 +1,58 @@
+{
+  "name": "jfk-to-the-plaza",
+  "label": "JFK → The Plaza",
+  "city": "New York",
+  "generated": true,
+  "description": "JFK Terminal 4 to The Plaza, 30.2 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          40.6407,
+          -73.78214
+        ],
+        [
+          40.643507,
+          -73.784054
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          40.6407,
+          -73.78214
+        ],
+        [
+          40.7644,
+          -73.9744
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          40.764122,
+          -73.974603
+        ],
+        [
+          40.7644,
+          -73.9744
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        40.7644,
+        -73.9744
+      ]
+    }
+  ]
+}

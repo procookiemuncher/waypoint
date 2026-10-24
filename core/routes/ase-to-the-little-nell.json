@@ -1,0 +1,41 @@
+{
+  "name": "ase-to-the-little-nell",
+  "label": "ASE → The Little Nell",
+  "city": "Aspen",
+  "generated": true,
+  "description": "Aspen/Pitkin County to The Little Nell, 6.7 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          39.2196,
+          -106.86442
+        ],
+        [
+          39.219862,
+          -106.864041
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 11.0,
+      "snap": true,
+      "waypoints": [
+        [
+          39.2196,
+          -106.86442
+        ],
+        [
+          39.18645,
+          -106.81737
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}

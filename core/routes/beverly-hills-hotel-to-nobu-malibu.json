@@ -1,0 +1,41 @@
+{
+  "name": "beverly-hills-hotel-to-nobu-malibu",
+  "label": "The Beverly Hills Hotel → Nobu Malibu",
+  "city": "Los Angeles",
+  "generated": true,
+  "description": "The Beverly Hills Hotel to Nobu Malibu, 35.9 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          34.08171,
+          -118.4138
+        ],
+        [
+          34.081422,
+          -118.413609
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          34.08171,
+          -118.4138
+        ],
+        [
+          34.03896,
+          -118.6696
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}

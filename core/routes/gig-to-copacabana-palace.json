@@ -1,0 +1,45 @@
+{
+  "name": "gig-to-copacabana-palace",
+  "label": "GIG → Copacabana Palace",
+  "city": "Rio de Janeiro",
+  "generated": true,
+  "description": "Galeão Terminal 2 to Copacabana Palace, 26.8 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          -22.81445,
+          -43.24594
+        ],
+        [
+          -22.96701,
+          -43.17918
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          -22.967254,
+          -43.178792
+        ],
+        [
+          -22.96701,
+          -43.17918
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600,
+      "at": [
+        -22.96701,
+        -43.17918
+      ]
+    }
+  ]
+}

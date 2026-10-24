@@ -1,0 +1,28 @@
+{
+  "name": "sbh-to-nikki-beach-st-barth",
+  "label": "SBH → Nikki Beach",
+  "city": "St. Barths",
+  "generated": true,
+  "description": "St. Barths (Rémy de Haenen) to Nikki Beach, 1.1 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 11.0,
+      "snap": true,
+      "waypoints": [
+        [
+          17.90352,
+          -62.84504
+        ],
+        [
+          17.9025,
+          -62.83519
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}
