@@ -1,8 +1,8 @@
 ---
 title: Life360 Flight Detection / Landing Notifications — how it works, has anyone spoofed it, and can we?
 status: research                # research | device-verified | superseded
-last_verified: 2026-07-09
-device_verified: none           # mechanism is well-sourced; the "can we trigger it" verdict is UNTESTED — that's the gate
+last_verified: 2026-10-24
+device_verified: partial        # 2026-10-24: airplane toggle automated, sim holds offline, tunnel survives (cable); the push itself is still UNTESTED
 open_gates: [flight-push-manual-toggle, flight-altitude-hard-gate, isSimulatedBySoftware]
 depends_on: [life360-notification-triggers, coremotion-injection-feasibility]
 source_tier: mixed              # PRIMARY (Life360 support/press/blog, Apple docs, 3 independent API reverse-engineerings) + third-party (spoof-scene blogs, forums)
@@ -22,6 +22,12 @@ recheck_if: [Life360 app update changes flight-detection triggers or gating, iOS
 > flagged **PRIMARY** (Life360 official docs/press, Apple docs, reverse-engineered API source) or
 > **THIRD-PARTY** (blogs/forums). A separate axis — *tested on our own phone* — is `device_verified:
 > none` for everything here; the decisive experiment (§5) is an **open gate**, not a result.
+
+> **Update 2026-10-24 (on-device, Mac):** the airplane-mode gates no longer need hands. A devicectl
+> `openURL` to `shortcuts://run-shortcut?name=vida-airplane-on|off` toggles airplane mode + Wi-Fi with no
+> prompt; over the cable the Mac still reaches the phone while offline, and a location set offline holds.
+> devicectl also carries a real speed now (the >100 mph gate was doubtful under pmd3's `speed = -1`).
+> Altitude is still missing, so §5 is still the deciding test. See AGENTS.md.
 
 ## Bottom line (read this first)
 
