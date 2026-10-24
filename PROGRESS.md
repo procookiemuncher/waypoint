@@ -7,6 +7,30 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-23 — Window border: rainbow ring on the edge + a comet light
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wanted the rainbow border more defined and actually fitting
+the window edge, with one brighter light going round in the same colours. Mocked it in the throwaway
+playground (not in the repo); owner tuned the Comet preset and sent the exact numbers.
+
+**Why the old one didn't fit:** the ring sat 4px in (radius 20) and the frame 9px in (radius 16), so a 3px
+dark gap, a black band outside, corners not concentric, and a 22px blurred halo smearing over all of it.
+
+**Changed**
+- `static/ring.js` (new): a canvas over the whole window draws the turning rainbow on the edge (4px, 14px
+  corners) plus a comet that runs round it at an even speed. The comet strokes with the same conic gradient,
+  so it's always the colour of the ring under it; white-hot head, fading tail, soft bloom. Settings are the
+  `S` object at the top (speed 0.35, rainbow turn 5s, lap 13s, tail 12%, light 0.4, base 0.55, glow 16).
+- `#halo` / the CSS `#ring` are gone. Body padding 9px → 4px and `#frame` radius 16 → 10, so the frame
+  sits right inside the ring with the same centre. `--ang` + `spin` stay for the hero card's tick.
+- Freezes while the map pans (`body.panning`, as before); reduced motion draws one still frame.
+
+**Verified** (dry run, headless Chrome, 2x): ring on the edge, corners concentric, no console errors.
+Not looked at in the real pywebview window yet. Window is still square, so the corners outside the
+14px curve show the #050609 background; `transparent=True` in pywebview would drop those.
+
+---
+
 ## 2026-10-23 — Routes/places panel → Destinations
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner found the routes/places tabs messy. Mocked 3 ideas
