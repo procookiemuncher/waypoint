@@ -294,6 +294,35 @@ fire." The push itself must be observed on a circle member's device.
   null result there wouldn't distinguish "barometer required" from "any altitude required." The single test
   above is the decisive one.
 
+### §5b — Making a "no push" result mean something (added 2026-10-24)
+
+A single null run can't tell "altitude is a hard gate" from "we botched another gate" — the car icon
+failed for months because speed was −1 (pmd3), not because driving was unreachable. So:
+
+1. **Positive control first.** Confirm the owner's real trip push came from this same account and phone,
+   Flight Detection is ON on the spoofing phone, and the watcher has notifications on for that member. If
+   any of these is off, a null result means nothing.
+2. **Feed every signal we *can* supply, realistically:** a real ~1 h route (e.g. MIA→MCO), not a
+   teleport. The offline gap should last about as long as the real flight, with 20–40 min of airport dwell
+   before and after. Takeoff and landing legs go through devicectl `route` with real speed (taxi ~8 m/s,
+   runway roll to ~75 m/s, climb leg >100 mph while still online). Then airplane on. The pin rests on the
+   arrival airport *before* airplane off, and the phone stays there 10+ min after reconnecting.
+3. **Checkpoints, so a failure says *where* it broke.** (a) Before the gap, does the watcher see >100 mph,
+   or a **plane icon** (the press release says one exists)? (b) After reconnect, does the pin land at the
+   arrival airport, and does the member's history show the trip? (c) Push. A plane icon with no altitude
+   ⟹ takeoff detection doesn't need altitude. If (a) fails, change only takeoff inputs and rerun.
+4. **Check what the phone actually reports.** Make a Shortcut (Get Current Location → Get Details →
+   Altitude / Speed → show or log it) and run it via devicectl openURL during the spoof. That confirms
+   the speed is really there and shows what altitude the phone reports under simulation.
+5. **Altitude A/B with the barometer.** We can't inject GPS altitude, but a vacuum food canister can
+   lower the phone's air pressure to cabin level. Stay at ≥75 kPa (≈8,000 ft, same as a real flight); a
+   hand pump is enough. Use the step-4 Shortcut to check whether this changes `CLLocation.altitude` under
+   simulation. Then run the same flight twice, canister vs. no canister. A push only with the canister ⟹
+   barometric altitude is the gate, and the canister *is* the workaround. The cable has to pass through the
+   lid, sealed with putty, or the route has to keep playing on the phone after unplugging (untested).
+6. **Limit runs.** At most a couple of fake flights a week, for account safety (see
+   `life360-account-safety-detection.md`).
+
 > **Why the Observer can't shortcut this** `[HIGH · PRIMARY, 3 independent API reverse-engineerings]`: the
 > Life360 member-location object exposes **no altitude, no `isFlying`, no flight/landing field** (the schema
 > ends at `isDriving`, plus `inTransit`/`tripId`/`userActivity` — none plane-related), and there is **no
