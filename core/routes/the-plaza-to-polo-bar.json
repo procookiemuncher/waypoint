@@ -1,0 +1,27 @@
+{
+  "name": "the-plaza-to-polo-bar",
+  "label": "The Plaza → The Polo Bar",
+  "city": "New York",
+  "generated": true,
+  "description": "Walk from The Plaza to The Polo Bar, 409 m, then 10 min there. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "snap": true,
+      "waypoints": [
+        [
+          40.7644,
+          -73.9744
+        ],
+        [
+          40.76152,
+          -73.97431
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}
