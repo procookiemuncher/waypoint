@@ -29,6 +29,30 @@ recheck_if: [Life360 app update changes flight-detection triggers or gating, iOS
 > devicectl also carries a real speed now (the >100 mph gate was doubtful under pmd3's `speed = -1`).
 > Altitude is still missing, so §5 is still the deciding test. See AGENTS.md.
 
+> **Update 2026-10-24 — altitude tool search (Mac, Xcode 27.1, phone not plugged in):** still no tool
+> that injects altitude on non-jailbroken iOS 26. Checked:
+> - **pmd3 DVT** — only `simulateLocationWithLatitude:longitude:`. Unchanged.
+> - **devicectl `simulate location coordinate` / `route`** — lat/lon (+ speed for route). Route JSON
+>   waypoints are `{latitude, longitude}` only; the string "altitude" appears nowhere in devicectl or the
+>   CoreDevice frameworks.
+> - **devicectl `simulate location scenario`** — the one real lead. Apple's scenario files
+>   (`/System/Library/Frameworks/CoreLocation.framework/Versions/A/Support/SimulationScenarios/*.plist`,
+>   also shipped on the phone) are arrays of keyed-archived **full CLLocations** — Altitude,
+>   VerticalAccuracy, Speed, Course, Timestamp. Stock ones have Altitude 0 / VerticalAccuracy −1 (invalid).
+>   A forged plist with a 0→11 km climb would be exactly what we need **if** devicectl could ship it. But
+>   the help says the file must be "a path to a file inside of the simulator runtime", and CoreDevice only
+>   sends `scenarioName` / `scenarioFile` (a path string, not contents). On a physical phone that
+>   probably means a path on the device, which we can't write to. **Likely dead.** A cheap check once the
+>   phone is plugged in: `simulate location list`, then `scenario /abs/mac/path.plist` to see if it errors.
+> - **Commercial spoofers (AnyGo, MockGo, iMyFone AnyTo…)** — all lat/lon over the same Apple service.
+>   "Fake GPS (LocSim)" takes altitude but is a TrollStore IPA for iOS 15.0–15.4.1. Not usable.
+> - **Physical routes** — a vacuum/degassing chamber can drop the **barometer** to cabin-pressure levels
+>   (~75 kPa ≈ 8,000 ft), but it doesn't touch GPS altitude. RF GPS simulation (HackRF + gps-sdr-sim) would
+>   supply real GNSS altitude, but transmitting GPS is illegal outside a shielded enclosure. Not pursued.
+>
+> Net: §5 (fly with no altitude, airplane toggle automated) is still the only cheap way to learn if
+> altitude is a hard gate.
+
 ## Bottom line (read this first)
 
 1. **How it works — a sensor-fusion + airport-geofence + airplane-mode heuristic, not a flight-API
