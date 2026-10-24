@@ -7,6 +7,29 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-24 — Destinations grouped by country
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wanted the cities organized by country. Mocked 4 layouts in a
+throwaway localhost playground (grouped gallery, country → city drill-down, flag filter chips, compact
+accordion), with a "+ sample cities" toggle to see them with more data. Owner picked **grouped gallery**.
+
+**Changed**
+- Gallery home: a header per country (flag, name, "N cities · N routes", chevron), click it to collapse.
+  A country with one city keeps the full-width card; 2+ cities go in a 2-up grid of smaller cards.
+  The flag/country line is gone from the cards themselves since the header says it.
+- Countries come from `CITY_INFO[...].country`; cities with none (unknown regions, "Elsewhere") land in a
+  "🌐 Other places" group at the end. Countries sort by item count, like cities.
+- Live badge also shows on the country header, so a collapsed group still tells you something's playing.
+- Collapsed groups are only remembered for the session (in memory).
+
+**Verified** (dry run, headless Chrome): US group with Miami + New York half cards, France and UAE full cards.
+Collapse + live badge on the header not clicked through in the real app yet.
+
+**Not done**: world map still has one bubble per city. They'll pile up over Europe if there are lots of
+cities there; one bubble per country (as in the playground's option 2) is the fix if that happens.
+
+---
+
 ## 2026-10-23 — Window border: rainbow ring on the edge + a comet light
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wanted the rainbow border more defined and actually fitting
