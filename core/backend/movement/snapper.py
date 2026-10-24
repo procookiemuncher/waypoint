@@ -127,4 +127,5 @@ def snap_route(route: Route, base_url: str | None = None) -> tuple[Route, list[s
         except SnapError as e:
             warnings.append(f"segment {i} ({seg.mode}): snapping failed, using straight line — {e}")
             new_segments.append(seg)
-    return Route(name=route.name, description=route.description, segments=new_segments), warnings
+    return Route(name=route.name, description=route.description, segments=new_segments,
+                 label=route.label, city=route.city), warnings
