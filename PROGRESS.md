@@ -7,6 +7,20 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-24 — Researched altitude spoofing tools (none found)
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner asked for a tool that spoofs altitude for the "landed" push.
+Nothing works on non-jailbroken iOS 26. pmd3 and devicectl `coordinate`/`route` are lat/lon only. The one
+lead is devicectl `simulate location scenario`: Apple's scenario plists hold full CLLocations, altitude
+included. devicectl seems to take only a scenario name or an on-device path, though, so we can't feed it
+a forged file. Details in docs/research/life360-flight-detection.md.
+
+**Next:** with the phone plugged in, run `devicectl device simulate location list` and try `scenario` with
+a Mac path (2 min, probably errors). Then run §5 without altitude. That test still decides whether the
+"landed" push is reachable at all.
+
+---
+
 ## 2026-10-24 — Airplane mode from the Mac works (Shortcuts via devicectl openURL)
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wants a hands-free flight: get to the departure airport
