@@ -15,7 +15,7 @@
     "New York": {
       "country": "United States", "flag": "🇺🇸", "continent": "North America", "tz": "America/New_York",
       "color": "#5ea2ff", "center": [40.73, -73.93],
-      "airport": {"code": "JFK", "name": "JFK", "at": [40.64295, -73.77937]},
+      "airport": {"code": "JFK", "name": "JFK Terminal 4", "at": [40.64070, -73.78214]},
       "base": "the-plaza",
       "spots": [
         {"id": "the-plaza", "name": "The Plaza", "kind": "hotel", "at": [40.7644, -73.9744], "hours": null},
@@ -25,7 +25,7 @@
     "Los Angeles": {
       "country": "United States", "flag": "🇺🇸", "continent": "North America", "tz": "America/Los_Angeles",
       "color": "#ffb37a", "center": [34.05, -118.25],
-      "airport": {"code": "LAX", "name": "LAX", "at": [33.94283, -118.40967]},
+      "airport": {"code": "LAX", "name": "LAX Tom Bradley International", "at": [33.94283, -118.40967]},
       "base": "beverly-hills-hotel",
       "spots": [
         {"id": "beverly-hills-hotel", "name": "The Beverly Hills Hotel", "kind": "hotel", "at": [34.08171, -118.41380], "hours": null},
@@ -35,7 +35,7 @@
     "Las Vegas": {
       "country": "United States", "flag": "🇺🇸", "continent": "North America", "tz": "America/Los_Angeles",
       "color": "#c792ff", "center": [36.12, -115.17],
-      "airport": {"code": "LAS", "name": "Harry Reid International", "at": [36.08612, -115.13687]},
+      "airport": {"code": "LAS", "name": "Harry Reid Terminal 3", "at": [36.08612, -115.13687]},
       "base": "wynn-las-vegas",
       "spots": [
         {"id": "wynn-las-vegas", "name": "Wynn", "kind": "hotel", "at": [36.12662, -115.16540], "hours": null},
@@ -45,7 +45,7 @@
     "Aspen": {
       "country": "United States", "flag": "🇺🇸", "continent": "North America", "tz": "America/Denver",
       "color": "#9fe0ff", "center": [39.19, -106.82],
-      "airport": {"code": "ASE", "name": "Aspen/Pitkin County", "at": [39.22242, -106.86777]},
+      "airport": {"code": "ASE", "name": "Aspen/Pitkin County", "at": [39.21960, -106.86442]},
       "spots": [
         {"id": "the-little-nell", "name": "The Little Nell", "kind": "hotel", "at": [39.18645, -106.81737], "hours": null, "note": "ski season Dec–Apr"}
       ]
@@ -53,7 +53,7 @@
     "Los Cabos": {
       "country": "Mexico", "flag": "🇲🇽", "continent": "North America", "tz": "America/Mazatlan",
       "color": "#ffd166", "center": [23.06, -109.70],
-      "airport": {"code": "SJD", "name": "Los Cabos International", "at": [23.14517, -109.71801]},
+      "airport": {"code": "SJD", "name": "Los Cabos Terminal 2", "at": [23.15725, -109.71680]},
       "spots": [
         {"id": "one-and-only-palmilla", "name": "One&Only Palmilla", "kind": "hotel", "at": [23.00668, -109.71403], "hours": null}
       ]
@@ -61,7 +61,7 @@
     "St. Barths": {
       "country": "Saint Barthélemy", "flag": "🇧🇱", "continent": "North America", "tz": "America/St_Barthelemy",
       "color": "#4fd1c5", "center": [17.90, -62.83],
-      "airport": {"code": "SBH", "name": "St. Barths (Rémy de Haenen)", "at": [17.90432, -62.84392]},
+      "airport": {"code": "SBH", "name": "St. Barths (Rémy de Haenen)", "at": [17.90352, -62.84504]},
       "spots": [
         {"id": "nikki-beach-st-barth", "name": "Nikki Beach", "kind": "beach club", "at": [17.90250, -62.83519], "hours": [11, 18], "note": "peak Dec–Apr"}
       ]
@@ -69,7 +69,7 @@
     "Monaco": {
       "country": "Monaco", "flag": "🇲🇨", "continent": "Europe", "tz": "Europe/Monaco",
       "color": "#ff6b81", "center": [43.74, 7.42],
-      "airport": {"code": "NCE", "name": "Nice Côte d'Azur", "at": [43.65921, 7.20452]},
+      "airport": {"code": "NCE", "name": "Nice Terminal 2", "at": [43.65921, 7.20452]},
       "spots": [
         {"id": "hotel-de-paris-monte-carlo", "name": "Hôtel de Paris Monte-Carlo", "kind": "hotel", "at": [43.73901, 7.42747], "hours": null}
       ]
@@ -77,7 +77,7 @@
     "Saint-Tropez": {
       "country": "France", "flag": "🇫🇷", "continent": "Europe", "tz": "Europe/Paris",
       "color": "#ffa3c4", "center": [43.26, 6.64],
-      "airport": {"code": "NCE", "name": "Nice Côte d'Azur", "at": [43.65921, 7.20452]},
+      "airport": {"code": "NCE", "name": "Nice Terminal 2", "at": [43.65921, 7.20452]},
       "base": "cheval-blanc-st-tropez",
       "spots": [
         {"id": "cheval-blanc-st-tropez", "name": "Cheval Blanc St-Tropez", "kind": "hotel", "at": [43.26648, 6.62657], "hours": null, "note": "Apr–Oct"},
@@ -87,7 +87,7 @@
     "Paris": {
       "country": "France", "flag": "🇫🇷", "continent": "Europe", "tz": "Europe/Paris",
       "color": "#ef3f4f", "center": [48.86, 2.35],
-      "airport": {"code": "CDG", "name": "Charles de Gaulle", "at": [49.00476, 2.56708]},
+      "airport": {"code": "CDG", "name": "CDG Terminal 2D", "at": [49.00476, 2.56708]},
       "spots": [
         {"id": "ritz-paris", "name": "Ritz Paris", "kind": "hotel", "at": [48.86797, 2.32884], "hours": null}
       ]
@@ -95,7 +95,7 @@
     "London": {
       "country": "United Kingdom", "flag": "🇬🇧", "continent": "Europe", "tz": "Europe/London",
       "color": "#5ee6d0", "center": [51.51, -0.13],
-      "airport": {"code": "LHR", "name": "Heathrow", "at": [51.46774, -0.45878]},
+      "airport": {"code": "LHR", "name": "Heathrow Terminal 5", "at": [51.47090, -0.48958]},
       "base": "the-dorchester",
       "spots": [
         {"id": "the-dorchester", "name": "The Dorchester", "kind": "hotel", "at": [51.50730, -0.15236], "hours": null},
@@ -121,7 +121,7 @@
     "Lake Como": {
       "country": "Italy", "flag": "🇮🇹", "continent": "Europe", "tz": "Europe/Rome",
       "color": "#6ee7b7", "center": [45.84, 9.08],
-      "airport": {"code": "MXP", "name": "Milan Malpensa", "at": [45.62775, 8.71430]},
+      "airport": {"code": "MXP", "name": "Malpensa Terminal 1", "at": [45.62775, 8.71430]},
       "spots": [
         {"id": "villa-d-este", "name": "Villa d'Este", "kind": "hotel", "at": [45.84493, 9.07982], "hours": null, "note": "Mar–Nov"}
       ]
@@ -129,7 +129,7 @@
     "Positano": {
       "country": "Italy", "flag": "🇮🇹", "continent": "Europe", "tz": "Europe/Rome",
       "color": "#fcd34d", "center": [40.63, 14.49],
-      "airport": {"code": "NAP", "name": "Naples", "at": [40.87757, 14.28158]},
+      "airport": {"code": "NAP", "name": "Naples Capodichino", "at": [40.87757, 14.28158]},
       "spots": [
         {"id": "le-sirenuse", "name": "Le Sirenuse", "kind": "hotel", "at": [40.62877, 14.48763], "hours": null, "note": "Apr–Oct"}
       ]
@@ -137,7 +137,7 @@
     "Courchevel": {
       "country": "France", "flag": "🇫🇷", "continent": "Europe", "tz": "Europe/Paris",
       "color": "#c4d7ff", "center": [45.41, 6.63],
-      "airport": {"code": "CVF", "name": "Courchevel Altiport", "at": [45.39708, 6.63447]},
+      "airport": {"code": "CVF", "name": "Courchevel Altiport", "at": [45.39611, 6.63461]},
       "spots": [
         {"id": "les-airelles", "name": "Les Airelles", "kind": "hotel", "at": [45.41000, 6.63411], "hours": null, "note": "winter only, Dec–Apr"}
       ]
@@ -153,7 +153,7 @@
     "Dubai": {
       "country": "United Arab Emirates", "flag": "🇦🇪", "continent": "Middle East", "tz": "Asia/Dubai",
       "color": "#e8c25a", "center": [25.2, 55.27],
-      "airport": {"code": "DXB", "name": "Dubai International", "at": [25.25154, 55.36665]},
+      "airport": {"code": "DXB", "name": "Dubai International T3", "at": [25.24566, 55.36010]},
       "spots": [
         {"id": "burj-al-arab", "name": "Burj Al Arab", "kind": "hotel", "at": [25.14133, 55.18540], "hours": null}
       ]
@@ -161,7 +161,7 @@
     "Tokyo": {
       "country": "Japan", "flag": "🇯🇵", "continent": "Asia", "tz": "Asia/Tokyo",
       "color": "#ff8fab", "center": [35.68, 139.76],
-      "airport": {"code": "HND", "name": "Haneda", "at": [35.54569, 139.77610]},
+      "airport": {"code": "HND", "name": "Haneda Terminal 3", "at": [35.54577, 139.76902]},
       "spots": [
         {"id": "aman-tokyo", "name": "Aman Tokyo", "kind": "hotel", "at": [35.68559, 139.76539], "hours": null}
       ]
@@ -169,7 +169,7 @@
     "Singapore": {
       "country": "Singapore", "flag": "🇸🇬", "continent": "Asia", "tz": "Asia/Singapore",
       "color": "#f87171", "center": [1.29, 103.85],
-      "airport": {"code": "SIN", "name": "Changi", "at": [1.35109, 103.98941]},
+      "airport": {"code": "SIN", "name": "Changi Terminal 3", "at": [1.35461, 103.98508]},
       "spots": [
         {"id": "marina-bay-sands", "name": "Marina Bay Sands", "kind": "hotel", "at": [1.28370, 103.86072], "hours": null}
       ]
@@ -177,7 +177,7 @@
     "Bali": {
       "country": "Indonesia", "flag": "🇮🇩", "continent": "Asia", "tz": "Asia/Makassar",
       "color": "#34d399", "center": [-8.80, 115.15],
-      "airport": {"code": "DPS", "name": "Ngurah Rai", "at": [-8.74652, 115.16737]},
+      "airport": {"code": "DPS", "name": "Ngurah Rai International Terminal", "at": [-8.74356, 115.16866]},
       "spots": [
         {"id": "bulgari-bali", "name": "Bulgari Resort Bali", "kind": "hotel", "at": [-8.84385, 115.12066], "hours": null}
       ]
@@ -185,7 +185,7 @@
     "Marrakech": {
       "country": "Morocco", "flag": "🇲🇦", "continent": "Africa", "tz": "Africa/Casablanca",
       "color": "#fb923c", "center": [31.63, -7.99],
-      "airport": {"code": "RAK", "name": "Marrakesh Menara", "at": [31.60587, -8.03246]},
+      "airport": {"code": "RAK", "name": "Marrakesh Menara Terminal 1", "at": [31.60204, -8.02686]},
       "spots": [
         {"id": "royal-mansour", "name": "Royal Mansour", "kind": "hotel", "at": [31.62527, -7.99830], "hours": null}
       ]
@@ -193,7 +193,7 @@
     "Cape Town": {
       "country": "South Africa", "flag": "🇿🇦", "continent": "Africa", "tz": "Africa/Johannesburg",
       "color": "#a3e635", "center": [-33.92, 18.42],
-      "airport": {"code": "CPT", "name": "Cape Town International", "at": [-33.97185, 18.60211]},
+      "airport": {"code": "CPT", "name": "Cape Town International", "at": [-33.96884, 18.59712]},
       "spots": [
         {"id": "the-silo", "name": "The Silo Hotel", "kind": "hotel", "at": [-33.90840, 18.42300], "hours": null}
       ]
@@ -201,7 +201,7 @@
     "Rio de Janeiro": {
       "country": "Brazil", "flag": "🇧🇷", "continent": "South America", "tz": "America/Sao_Paulo",
       "color": "#22c55e", "center": [-22.95, -43.20],
-      "airport": {"code": "GIG", "name": "Galeão", "at": [-22.81123, -43.25856]},
+      "airport": {"code": "GIG", "name": "Galeão Terminal 2", "at": [-22.81445, -43.24594]},
       "spots": [
         {"id": "copacabana-palace", "name": "Copacabana Palace", "kind": "hotel", "at": [-22.96701, -43.17918], "hours": null}
       ]
@@ -209,7 +209,7 @@
     "José Ignacio": {
       "country": "Uruguay", "flag": "🇺🇾", "continent": "South America", "tz": "America/Montevideo",
       "color": "#93c5fd", "center": [-34.84, -54.63],
-      "airport": {"code": "PDP", "name": "Punta del Este (Laguna del Sauce)", "at": [-34.85474, -55.09267]},
+      "airport": {"code": "PDP", "name": "Punta del Este (Laguna del Sauce)", "at": [-34.86071, -55.09817]},
       "spots": [
         {"id": "la-huella", "name": "Parador La Huella", "kind": "restaurant", "at": [-34.84224, -54.63417], "hours": [12, 24], "note": "summer, Dec–Mar"}
       ]
@@ -217,7 +217,7 @@
     "Sydney": {
       "country": "Australia", "flag": "🇦🇺", "continent": "Oceania", "tz": "Australia/Sydney",
       "color": "#38bdf8", "center": [-33.87, 151.21],
-      "airport": {"code": "SYD", "name": "Sydney Kingsford Smith", "at": [-33.94989, 151.18197]},
+      "airport": {"code": "SYD", "name": "Sydney T1 International", "at": [-33.93734, 151.16703]},
       "spots": [
         {"id": "bondi-icebergs", "name": "Icebergs Dining Room", "kind": "restaurant", "at": [-33.89527, 151.27441], "hours": [12, 23]}
       ]
