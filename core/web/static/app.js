@@ -598,6 +598,17 @@ function cityNames(){
   const n=[...new Set([...ROUTES,...PLACES].map(x=>x.city))];
   return n.sort((a,b)=> (a==='Elsewhere')-(b==='Elsewhere') || cityItems(b).length-cityItems(a).length || a.localeCompare(b));
 }
+// countries come from CITY_INFO too; a city without one (unknown region, "Elsewhere") goes in OTHER, last
+const OTHER = 'Other places';
+const countryOf = c => cityInfo(c).country || OTHER;
+const countryFlag = k => k===OTHER ? '🌐' : Object.values(CITY_INFO).find(c=>c.country===k).flag;
+const countryCities = k => cityNames().filter(c=>countryOf(c)===k);
+const countryItems = k => countryCities(k).flatMap(cityItems);
+function countryNames(){
+  const n=[...new Set(cityNames().map(countryOf))];
+  return n.sort((a,b)=> (a===OTHER)-(b===OTHER) || countryItems(b).length-countryItems(a).length || a.localeCompare(b));
+}
+let shutCountries=new Set();   // collapsed country groups in the gallery
 const itemPoints = it => it.type==='route' ? it.def.line : [[it.def.lat, it.def.lon]];
 function cityCenter(c){
   if(CITY_INFO[c]) return [CITY_INFO[c].lat, CITY_INFO[c].lon];
@@ -647,25 +658,37 @@ function mapArt(items, w, h, color, pad=26){
   return `<div class="art" style="--t:${color}"><div class="stage" style="width:${w}px;height:${h}px;margin:${-h/2}px 0 0 ${-w/2}px">${tiles}<svg width="${w}" height="${h}">${svg}</svg></div></div>`;
 }
 
-const plural = (n, word) => `${n} ${word}${n===1?'':'s'}`;
+const plural = (n, word) => `${n} ${n===1 ? word : word.endsWith('y') ? word.slice(0,-1)+'ies' : word+'s'}`;
 const liveBadge = '<span class="livebadge"><i></i>Live</span>';
+// one city card; `half` is the smaller one used 2-up when a country has several cities
+function cityCard(c, w, half){
+  const C=cityInfo(c), items=cityItems(c);
+  const r=items.filter(i=>i.type==='route').length, p=items.length-r;
+  const miles=items.reduce((s,i)=>s+(i.def.meters||0),0)/1609.34;
+  const word = (n, s) => half ? n : plural(n, s);
+  return `<button class="gcard" data-city="${esc(c)}" style="--t:${C.color}">
+    ${mapArt(items, w, half ? 136 : 168, C.color, half ? 22 : 36)}<div class="shade"></div>
+    <div class="top">${liveBadge}<span class="go">${icon('arrow-right',15)}</span></div>
+    <div class="bot"><div class="cn">${esc(c)}</div><div class="mchips">
+      ${r?`<span class="mchip">${icon('route',12)}${word(r,'route')}</span>`:''}
+      ${p?`<span class="mchip">${icon('map-pin',12)}${word(p,'place')}</span>`:''}
+      ${miles?`<span class="mchip">${miles.toFixed(miles<10?1:0)} mi</span>`:''}</div></div>
+  </button>`;
+}
 function galleryHtml(W){
-  const names=cityNames();
+  const names=cityNames(), countries=countryNames();
   if(!names.length) return `<div class="bempty">no routes in core/routes/ or places in core/places.json yet</div>`;
-  return `<div class="bhead"><div><h2>Destinations</h2><div class="sub">${names.length===1 ? '1 city' : names.length+' cities'}, pick one</div></div>
+  return `<div class="bhead"><div><h2>Destinations</h2><div class="sub">${plural(names.length,'city')} in ${plural(countries.length,'country')}</div></div>
       <button id="resetview" onclick="resetView()" title="Reset view" aria-label="Reset view">${icon('rotate-ccw',15)}</button></div>`
-    + names.map(c=>{
-      const C=cityInfo(c), items=cityItems(c);
-      const r=items.filter(i=>i.type==='route').length, p=items.length-r;
-      const miles=items.reduce((s,i)=>s+(i.def.meters||0),0)/1609.34;
-      return `<button class="gcard" data-city="${esc(c)}" style="--t:${C.color}">
-        ${mapArt(items, W-28, 168, C.color, 36)}<div class="shade"></div>
-        <div class="top"><span class="flag">${C.flag}</span>${esc(C.country)} ${liveBadge}<span class="go">${icon('arrow-right',15)}</span></div>
-        <div class="bot"><div class="cn">${esc(c)}</div><div class="mchips">
-          ${r?`<span class="mchip">${icon('route',12)}${plural(r,'route')}</span>`:''}
-          ${p?`<span class="mchip">${icon('map-pin',12)}${plural(p,'place')}</span>`:''}
-          ${miles?`<span class="mchip">${miles.toFixed(miles<10?1:0)} mi</span>`:''}</div></div>
-      </button>`;
+    + countries.map(k=>{
+      const cs=countryCities(k), shut=shutCountries.has(k);
+      const r=countryItems(k).filter(i=>i.type==='route').length;
+      return `<div class="cgroup"><button class="chead${shut?' shut':''}" data-country="${esc(k)}" aria-expanded="${!shut}" style="--t:${cityInfo(cs[0]).color}">
+          <span class="fl">${countryFlag(k)}</span>
+          <div><div class="nm">${esc(k)}</div><div class="sb">${plural(cs.length,'city')}${r?' · '+plural(r,'route'):''}</div></div>
+          ${liveBadge}<span class="chev">${icon('chevron-down',16)}</span></button>
+        ${shut ? '' : cs.length===1 ? cityCard(cs[0], W-28)
+          : `<div class="halves">${cs.map(c=>cityCard(c, Math.floor((W-38)/2), true)).join('')}</div>`}</div>`;
     }).join('');
 }
 function cityHtml(W){
@@ -696,9 +719,10 @@ function renderBrowse(animate){
 }
 function openCityPage(c){ openCity=c; renderBrowse(true); frameBrowse(); }
 $('browse').addEventListener('click', e=>{
-  const t=e.target.closest('[data-city],[data-back],[data-id]');
+  const t=e.target.closest('[data-city],[data-country],[data-back],[data-id]');
   if(!t) return;
   if(t.dataset.city) openCityPage(t.dataset.city);
+  else if(t.dataset.country){ const k=t.dataset.country; shutCountries.has(k) ? shutCountries.delete(k) : shutCountries.add(k); renderBrowse(); }
   else if(t.dataset.back!==undefined){ openCity=null; renderBrowse(true); frameBrowse(); }
   else {
     const def=(t.dataset.kind==='route'?ROUTES:PLACES).find(x=>x.id===t.dataset.id);
@@ -832,6 +856,7 @@ function markLive(){
   const def = !live ? null : kind==='route' ? ROUTES.find(r=>r.id===live.label) : PLACES.find(p=>p.name===live.label);
   document.querySelectorAll('#browse [data-id]').forEach(b=>b.classList.toggle('live', !!def && b.dataset.id===def.id && b.dataset.kind===kind));
   document.querySelectorAll('#browse [data-city]').forEach(b=>b.classList.toggle('live', !!def && b.dataset.city===def.city));
+  document.querySelectorAll('#browse [data-country]').forEach(b=>b.classList.toggle('live', !!def && b.dataset.country===countryOf(def.city)));
 }
 
 /* ============ DATA ============ */
