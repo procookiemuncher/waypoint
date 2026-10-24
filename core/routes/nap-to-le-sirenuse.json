@@ -1,0 +1,41 @@
+{
+  "name": "nap-to-le-sirenuse",
+  "label": "NAP → Le Sirenuse",
+  "city": "Positano",
+  "generated": true,
+  "description": "Naples Capodichino to Le Sirenuse, 62.2 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          40.87757,
+          14.28158
+        ],
+        [
+          40.877507,
+          14.281937
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 24.0,
+      "snap": true,
+      "waypoints": [
+        [
+          40.87757,
+          14.28158
+        ],
+        [
+          40.62877,
+          14.48763
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}

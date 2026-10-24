@@ -1,0 +1,27 @@
+{
+  "name": "the-dorchester-to-sexy-fish-london",
+  "label": "The Dorchester → Sexy Fish",
+  "city": "London",
+  "generated": true,
+  "description": "Walk from The Dorchester to Sexy Fish, 839 m, then 10 min there. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "snap": true,
+      "waypoints": [
+        [
+          51.5073,
+          -0.15236
+        ],
+        [
+          51.50937,
+          -0.14432
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "name": "cdg-to-ritz-paris",
+  "label": "CDG → Ritz Paris",
+  "city": "Paris",
+  "generated": true,
+  "description": "CDG Terminal 2D to Ritz Paris, 32.3 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          49.00476,
+          2.56708
+        ],
+        [
+          49.004372,
+          2.56708
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          49.00476,
+          2.56708
+        ],
+        [
+          48.86797,
+          2.32884
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}
