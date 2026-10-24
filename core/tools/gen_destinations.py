@@ -31,6 +31,7 @@ from backend.routes import ROUTES_DIR, haversine  # noqa: E402
 DWELL_S = 600          # parked at the door long enough for a Place arrival (geofence-arrival-mechanics.md)
 WALK_MIN_M = 25        # closer than this to the road, skip the walk leg
 WALK_WARN_M = 500      # a walk-in longer than this usually means a bad coordinate
+WALK_ONLY_M = 1000     # spots closer than this (straight line) are walked, nobody drives 4 blocks
 
 
 def drive_speed(meters: float) -> float:
@@ -42,9 +43,10 @@ def drive_speed(meters: float) -> float:
     return 24.0         # ~54 mph
 
 
-def snap_drive(a, b):
-    cached = os.path.exists(_cache_path([[round(x, 6) for x in a], [round(x, 6) for x in b]], "auto"))
-    poly = snap_waypoints([tuple(a), tuple(b)], "drive")
+def snap_leg(a, b, mode="drive"):
+    costing = {"drive": "auto", "walk": "pedestrian"}[mode]
+    cached = os.path.exists(_cache_path([[round(x, 6) for x in a], [round(x, 6) for x in b]], costing))
+    poly = snap_waypoints([tuple(a), tuple(b)], mode)
     if not cached:
         time.sleep(1.0)  # be polite to the public FOSSGIS server
     return poly
@@ -52,7 +54,18 @@ def snap_drive(a, b):
 
 def make_route(rid, label, city, start, end, end_name, from_name):
     """-> (route dict, notes, road meters). Raises SnapError if there's no road between them."""
-    poly = snap_drive(start, end)
+    if haversine(start, end) < WALK_ONLY_M:
+        poly = snap_leg(start, end, "walk")
+        meters = sum(haversine(poly[i], poly[i + 1]) for i in range(len(poly) - 1))
+        return {
+            "name": rid, "label": label, "city": city, "generated": True,
+            "description": f"Walk from {from_name} to {end_name}, {meters:.0f} m, then {DWELL_S // 60} min "
+                           f"there. Generated from core/destinations.json, edit that and rerun "
+                           f"core/tools/gen_destinations.py instead of this file.",
+            "segments": [{"mode": "walk", "snap": True, "waypoints": [list(start), list(end)]},
+                         {"mode": "stop", "dwell_s": DWELL_S}],
+        }, [], meters
+    poly = snap_leg(start, end)
     meters = sum(haversine(poly[i], poly[i + 1]) for i in range(len(poly) - 1))
     notes, segs = [], []
     out_m, in_m = haversine(start, poly[0]), haversine(poly[-1], end)
