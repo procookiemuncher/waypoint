@@ -7,6 +7,11 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-24 — `reset` now goes to the whole-world view
+
+- **Changed:** the console `reset` command used to fly the map to Miami. It now backs out of any open city page and frames every city tag (same `frameBrowse` view as on load). `frameBrowse(force)` skips the "something's playing" guard because `reset` calls it right after `stop`, before the status poll clears `live`.
+- **Not tested on a device** (UI only, checked syntax with `node --check`).
+
 ## 2026-10-24 — Researched altitude spoofing tools (none found)
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner asked for a tool that spoofs altitude for the "landed" push.
