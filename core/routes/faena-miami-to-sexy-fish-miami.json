@@ -1,0 +1,58 @@
+{
+  "name": "faena-miami-to-sexy-fish-miami",
+  "label": "Faena Hotel → Sexy Fish",
+  "city": "Miami",
+  "generated": true,
+  "description": "Faena Hotel to Sexy Fish, 15.4 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          25.80738,
+          -80.12314
+        ],
+        [
+          25.807607,
+          -80.123279
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          25.80738,
+          -80.12314
+        ],
+        [
+          25.76368,
+          -80.18942
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          25.764073,
+          -80.189308
+        ],
+        [
+          25.76368,
+          -80.18942
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "at": [
+        25.76368,
+        -80.18942
+      ],
+      "dwell_s": 600
+    }
+  ]
+}

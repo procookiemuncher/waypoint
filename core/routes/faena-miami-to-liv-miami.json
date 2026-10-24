@@ -1,0 +1,58 @@
+{
+  "name": "faena-miami-to-liv-miami",
+  "label": "Faena Hotel → LIV",
+  "city": "Miami",
+  "generated": true,
+  "description": "Faena Hotel to LIV, 1.3 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          25.80738,
+          -80.12314
+        ],
+        [
+          25.807607,
+          -80.123279
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 11.0,
+      "snap": true,
+      "waypoints": [
+        [
+          25.80738,
+          -80.12314
+        ],
+        [
+          25.81808,
+          -80.12204
+        ]
+      ]
+    },
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          25.81805,
+          -80.12273
+        ],
+        [
+          25.81808,
+          -80.12204
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "at": [
+        25.81808,
+        -80.12204
+      ],
+      "dwell_s": 600
+    }
+  ]
+}
