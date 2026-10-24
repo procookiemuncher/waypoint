@@ -1,0 +1,41 @@
+{
+  "name": "sjd-to-one-and-only-palmilla",
+  "label": "SJD → One&Only Palmilla",
+  "city": "Los Cabos",
+  "generated": true,
+  "description": "Los Cabos Terminal 2 to One&Only Palmilla, 26.0 km by road, then 10 min parked at the door. Generated from core/destinations.json, edit that and rerun core/tools/gen_destinations.py instead of this file.",
+  "segments": [
+    {
+      "mode": "walk",
+      "waypoints": [
+        [
+          23.15725,
+          -109.7168
+        ],
+        [
+          23.15769,
+          -109.716621
+        ]
+      ]
+    },
+    {
+      "mode": "drive",
+      "speed_mps": 17.0,
+      "snap": true,
+      "waypoints": [
+        [
+          23.15725,
+          -109.7168
+        ],
+        [
+          23.00668,
+          -109.71403
+        ]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 600
+    }
+  ]
+}
