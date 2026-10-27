@@ -79,7 +79,7 @@ const NIGHT = (() => {
         // arrival ping on the pin as the line gets there
         const p = prog(f, 179, 192);
         ring.setAttribute('r', (11 + 26 * ease.outCubic(p)).toFixed(2));
-        ring.setAttribute('opacity', f < 179 ? 0 : (0.4 * (1 - p)).toFixed(3));
+        ring.setAttribute('opacity', f < 179 ? 0 : (0.3 * (1 - p)).toFixed(3));
         const v = Math.abs(speed(offset, f));
         const rb = roundBlur(f), sm = smearOf(v);
         if (extra) el.style.filter = extra;
