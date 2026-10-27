@@ -1,0 +1,8 @@
+node_modules/
+frames/
+out/
+cache/
+*.wav
+*.mp3
+*.mp4
+*.log

@@ -1,0 +1,10 @@
+{
+  "name": "waypoint-sting",
+  "private": true,
+  "type": "module",
+  "description": "12s Waypoint product sting, rendered frame by frame with Playwright",
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "playwright": "^1.55.0"
+  }
+}
