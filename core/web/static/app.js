@@ -977,13 +977,14 @@ async function boot(){
   const r=bootLine('', dev?'ok':'dim');
   await typeInto(r, dev ? '  ready.' : '  no phone yet — plug it in + unlock it, I\'ll keep looking.', 14);
   await wait(450);
-  await linkPhone();
+  const passed = await linkPhone();
   $('boot').classList.add('gone');
   $('panel').classList.add('reveal');
   map.invalidateSize();
   $('sweep').classList.add('go');
   if(lib){ renderBrowse(true); frameBrowse(); }
   if(!STATUS?.active) setMode('IDLE');
+  if(passed && Warp.active){ await wait(1400); await Warp.out(); }   // app is laid out under the rings by now
   await wait(250);
   if(STATUS?.dry_run) typeLine('dry run — commands are printed, the phone is not touched.','warn');
   typeLine('pick a route or place, or click the map to drop a pin.','sys');
@@ -1038,21 +1039,22 @@ async function linkPhone(){
       if(!linkDone) break;
       if(renderLink()==='ready'){
         await new Promise(r=>setTimeout(r, 1800));   // a moment to see the lit wire
-        leaveLink(); break;
+        if(!booted) await Warp.in();   // first boot only: the rings cover the card before it goes
+        leaveLink(true); break;
       }
       await new Promise(r=>setTimeout(r, 700));   // not wait(): that's 0 under reduced motion
     }
   })();
-  await done;
+  return done;   // true when the phone passed every check, false on "continue without phone"
 }
-function leaveLink(){
+function leaveLink(passed=false){
   if(!linkDone) return;
   const finish = linkDone; linkDone = null;
   const el = $('link');
   el.classList.add('out');
   $('frame').classList.remove('linking');
   linkHideTimer = setTimeout(()=>{ el.hidden = true; }, 650);
-  finish();
+  finish(passed);
 }
 
 /* ============ INIT ============ */
