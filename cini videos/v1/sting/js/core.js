@@ -397,6 +397,8 @@ function routeGroup(fit, name, color, width = 6, glow = 18, glowAlpha = 0.18) {
   const line = s('path', { ...common, stroke: color, 'stroke-width': width });
   const g = s('g', {}, [under, line]);
   g.draw = t => { // 0..1 of the real path length
+    // at zero length the round caps would still leave a dot on the start
+    g.style.visibility = t <= 0.0005 ? 'hidden' : 'visible';
     for (const p of [under, line]) {
       p.setAttribute('stroke-dasharray', `${len + 2} ${len + 2}`);
       p.setAttribute('stroke-dashoffset', ((1 - t) * (len + 2)).toFixed(2));
