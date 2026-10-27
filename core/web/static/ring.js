@@ -51,6 +51,17 @@
     }
     return [segs[0].ax, segs[0].ay];
   }
+  // [s0, s1] (perimeter distance, may run past L or below 0) cut where the ring's segments meet,
+  // as [from, to, segment] pieces
+  function pieces(s0, s1) {
+    const out = [];
+    for (let s = s0; s < s1 - 1e-6;) {
+      const m = ((s % L) + L) % L, g = segs.find(g => m < g.s0 + g.len - 1e-9) || segs[segs.length - 1];
+      const e = Math.min(s1, s - m + g.s0 + g.len);
+      out.push([s, e, g]); s = e;
+    }
+    return out;
+  }
   function ringPath() {
     ctx.beginPath();
     for (const g of segs) {
@@ -61,10 +72,31 @@
   }
 
   // the colour the conic gradient paints at a point, for the bloom (which isn't a stroke)
-  function colorAt(x, y, rot) {
-    let u = (Math.atan2(y - cy, x - cx) - rot) / (2 * Math.PI); u -= Math.floor(u);
+  function uAt(x, y, rot) {
+    const u = (Math.atan2(y - cy, x - cx) - rot) / (2 * Math.PI); return u - Math.floor(u);
+  }
+  function rainbow(u) {
     const f = u * 6, i = Math.min(Math.floor(f), 5), k = f - i, a = RGB[i], b = RGB[i + 1];
     return [0, 1, 2].map(j => Math.round(a[j] + (b[j] - a[j]) * k));
+  }
+  const colorAt = (x, y, rot) => rainbow(uAt(x, y, rot));
+
+  // the bloom is ~100 soft dots a frame. making each one its own radial gradient was most of the
+  // ring's cost, so each rainbow colour's dot is painted once here (at full strength) and stamped
+  // with globalAlpha after. 96 colours round the rainbow is finer than a 16% glow can show
+  const HUES = 96;
+  let dots = [];
+  function dot(u) {
+    const k = Math.round(u * HUES) % HUES;
+    if (dots[k]) return dots[k];
+    const G = S.glow, n = Math.ceil(G * 2 * dpr), c = document.createElement('canvas');
+    c.width = c.height = n;
+    const g = c.getContext('2d'), [r, gr, bl] = rainbow(k / HUES), rg = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+    rg.addColorStop(0, `rgba(${r},${gr},${bl},${.16 * S.light})`);
+    rg.addColorStop(.4, `rgba(${r},${gr},${bl},${.06 * S.light})`);
+    rg.addColorStop(1, `rgba(${r},${gr},${bl},0)`);
+    g.fillStyle = rg; g.fillRect(0, 0, n, n);
+    return dots[k] = c;
   }
 
   function draw() {
@@ -87,34 +119,53 @@
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'butt';
 
-    // short chunks so the alpha fades along the tail while the colour stays the gradient's own
-    const STEP = 2, CH = 10, n = Math.max(Math.ceil((tail + lead) / CH), 1);
-    for (let c = 0; c < n; c++) {
-      const a = -lead + c * (tail + lead) / n, b = -lead + (c + 1) * (tail + lead) / n, f = fall((a + b) / 2);
-      if (f <= .002) continue;
-      ctx.beginPath();
-      ctx.moveTo(...at(head - a));
-      for (let d = a + STEP; d < b; d += STEP) ctx.lineTo(...at(head - d));
-      ctx.lineTo(...at(head - b));   // end exactly where the next chunk starts, no gap
-      ctx.strokeStyle = grad;
-      ctx.globalAlpha = Math.min(f * .45 * Lt, 1); ctx.lineWidth = w * 3.2; ctx.stroke();
-      ctx.globalAlpha = Math.min(f * 1.1 * Lt, 1); ctx.lineWidth = w;       ctx.stroke();
-      const hot = Math.pow(f, 5) * .85 * Lt;   // white-hot only right at the head
-      if (hot > .01) { ctx.strokeStyle = '#fff'; ctx.globalAlpha = Math.min(hot, 1); ctx.lineWidth = w * .75; ctx.stroke(); }
+    // the tail fades along its length in the rainbow's own colours: a wide soft pass, the line, and
+    // white-hot only right at the head. along a straight edge each pass is one stroke whose linear
+    // gradient carries the colour and the fade (stops every 8px); the tiny corner arcs are short solid
+    // chunks. it used to be ~60 chunks x 3 strokes every frame, which was nearly all of the ring's cpu
+    const passes = [
+      [f => Math.min(f * .45 * Lt, 1), w * 3.2, false],
+      [f => Math.min(f * 1.1 * Lt, 1), w, false],
+      [f => Math.min(Math.pow(f, 5) * .85 * Lt, 1), w * .75, true],
+    ];
+    ctx.globalAlpha = 1;   // the fade is in the gradients (straight) or set per chunk (corners)
+    for (const [s0, s1, g] of pieces(head - tail, head + lead)) {
+      if (g.k === 'l') {
+        const [ax, ay] = at(s0), [bx, by] = at(s1), n = Math.max(Math.ceil((s1 - s0) / 8), 1), stops = [];
+        for (let j = 0; j <= n; j++) { const s = s0 + (s1 - s0) * j / n; stops.push([j / n, fall(head - s), colorAt(...at(s), rot)]); }
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+        for (const [alpha, lw, white] of passes) {
+          if (white && !stops.some(([, f]) => alpha(f) > .01)) continue;
+          const lg = ctx.createLinearGradient(ax, ay, bx, by);
+          for (const [p, f, c] of stops) lg.addColorStop(p, `rgba(${white ? '255,255,255' : c},${alpha(f)})`);
+          ctx.strokeStyle = lg; ctx.lineWidth = lw; ctx.stroke();
+        }
+      } else {
+        const n = Math.max(Math.ceil((s1 - s0) / 10), 1);
+        for (let c = 0; c < n; c++) {
+          const a = s0 + c * (s1 - s0) / n, b = s0 + (c + 1) * (s1 - s0) / n, f = fall(head - (a + b) / 2);
+          if (f <= .002) continue;
+          ctx.beginPath(); ctx.moveTo(...at(a));
+          for (let s = a + 2; s < b; s += 2) ctx.lineTo(...at(s));
+          ctx.lineTo(...at(b));   // end exactly where the next piece starts, no gap
+          const col = `rgb(${colorAt(...at((a + b) / 2), rot)})`;
+          for (const [alpha, lw, white] of passes) {
+            if (white && alpha(f) <= .01) continue;
+            ctx.strokeStyle = white ? '#fff' : col; ctx.globalAlpha = alpha(f); ctx.lineWidth = lw; ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
     }
 
     // bloom spilling off the line, plus a flare at the head
     if (G > 0) {
-      ctx.globalAlpha = 1;
       for (let d = -lead; d <= tail; d += Math.max(G / 3, 4)) {
         const f = fall(d); if (f < .02) continue;
-        const [x, y] = at(head - d), [r, g, bl] = colorAt(x, y, rot);
-        const rg = ctx.createRadialGradient(x, y, 0, x, y, G);
-        rg.addColorStop(0, `rgba(${r},${g},${bl},${.16 * f * Lt})`);
-        rg.addColorStop(.4, `rgba(${r},${g},${bl},${.06 * f * Lt})`);
-        rg.addColorStop(1, `rgba(${r},${g},${bl},0)`);
-        ctx.fillStyle = rg; ctx.fillRect(x - G, y - G, G * 2, G * 2);
+        const [x, y] = at(head - d);
+        ctx.globalAlpha = f; ctx.drawImage(dot(uAt(x, y, rot)), x - G, y - G, G * 2, G * 2);
       }
+      ctx.globalAlpha = 1;
       const [x, y] = at(head), [r, g, bl] = colorAt(x, y, rot), F = G * 1.3 + w * 3;
       const rg = ctx.createRadialGradient(x, y, 0, x, y, F);
       rg.addColorStop(0, `rgba(255,255,255,${.5 * Lt})`);
@@ -126,7 +177,7 @@
   }
 
   function resize() {
-    W = innerWidth; H = innerHeight; dpr = devicePixelRatio || 1;
+    W = innerWidth; H = innerHeight; dpr = devicePixelRatio || 1; dots = [];
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     geometry(); draw();
   }
