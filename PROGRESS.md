@@ -28,6 +28,8 @@ Run-to-run noise is about ±5%, and the window has to be in front: an occluded w
 - Marker ping animates `transform` (was width/height). The hero card sweep rotates a fixed conic gradient (was an animated
   `@property --ang`, a main-thread repaint every frame). Both render the same as before (old/new screenshot diff).
 - Card map tiles `decoding="async"`; status/log polls pause while the page is hidden.
+- Holding a place (or after a route arrives) the map loop wakes 4x/s instead of 30, since nothing moves. Live route
+  rendering checked in headless Chrome after these changes: glow, dim line, done line meeting the marker, readouts all fine.
 - Backend: once the phone is ready, `usbmux list` runs every 10s (was 4s, ~0.3s of CPU per spawn) and the devicectl lock
   check every 6s (was 2s). The connect screen is unchanged.
 
