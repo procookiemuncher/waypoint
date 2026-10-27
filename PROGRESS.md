@@ -28,6 +28,12 @@ for it when you clear the checks and load into the tool.
   Both run under the connect card as it turns green. The panel rise and sweep start as the rings fade out. Result: zero
   gaps while the rings play. The remaining ~90 ms stall happens under the card at the moment it turns green.
   Skipping during the green moment no longer plays the rings or leaves the prepped canvas in the page.
+- **Brand moment (same day):** the rings now carry the logo and the word. The app icon's tile (its grid lines dropped,
+  too small to read) sharpens in from a blur with a lavender glow. Then "Waypoint" (Inter 600, −0.02em, matching
+  the sting's S8) rises letter by letter, and one light shimmer passes across it. A soft dark radial sits behind them for
+  contrast. The hold went from 1.4 to 2.4 s (`Warp.hold`), so the rings are up about 3.7 s in all. The ring wave
+  leaves the screen at about 2 s, so the second half is the lockup on near-black. Keyframes stay on through `.out` so
+  nothing snaps when the fade starts. Still zero dropped frames while it plays.
 
 ---
 
