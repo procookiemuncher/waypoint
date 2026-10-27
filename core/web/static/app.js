@@ -113,18 +113,22 @@ function setAccent(hex){
   rs.setProperty('--accent-dim', dimOf(hex));
   if(lineGlow) lineGlow.setStyle({ color:hex });
   if(lineDone) lineDone.setStyle({ color:hex });
+  if(lineHead) lineHead.setStyle({ color:hex });
   if(lineDim) lineDim.setStyle({ color:dimOf(hex) });
 }
 
 /* ============ MAP ============ */
 const TILE_URL='https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png';
 let map, tilesReady=false;
-let marker=null, lineDim=null, lineGlow=null, lineDone=null;   // live layers
+let marker=null, lineDim=null, lineGlow=null, lineDone=null, lineHead=null;   // live layers
 let preview=null, pinCandidate=null;                           // selection layers
 function initMap(){
   map = L.map('map', { zoomControl:false, attributionControl:true, zoomSnap:.5 })
     .setView([25.7617,-80.1918], 13);
   L.control.zoom({ position:'bottomright' }).addTo(map);
+  // the blurred route glow gets its own layer under the lines, so redrawing the line as the
+  // marker moves doesn't re-blur it every frame
+  map.createPane('glow').style.zIndex=399;
   // Stadia's dark style is keyless from localhost (CARTO wants an API key now)
   const tiles = L.tileLayer(TILE_URL, {
     attribution:'© Stadia Maps © OpenMapTiles © OpenStreetMap', maxZoom:20,
@@ -137,10 +141,11 @@ function initMap(){
   map.on('mousemove', e=>{ if(!live) setCoord(e.latlng.lat, e.latlng.lng); });
   map.on('click', e=> dropPin(e.latlng.lat, e.latlng.lng));
 }
+function setText(id, s){ const e=$(id); if(e.textContent!==s) e.textContent=s; }
 function setCoord(lat, lon){
   const s = lat.toFixed(4)+', '+lon.toFixed(4);
-  $('v-coord').textContent=s;
-  $('sb-coord').textContent=s;
+  setText('v-coord', s);
+  setText('sb-coord', s);
 }
 function makeMarker(latlng){
   return L.marker(latlng, { icon: L.divIcon({ className:'wp-marker', html:'<span class="ring"></span><span class="core"></span>', iconSize:[12,12] }), interactive:false }).addTo(map);
@@ -150,13 +155,13 @@ function clearPreview(){
   preview=pinCandidate=null;
 }
 function clearLiveLayers(){
-  [marker,lineDim,lineGlow,lineDone].forEach(l=>{ if(l) map.removeLayer(l); });
-  marker=lineDim=lineGlow=lineDone=null;
+  [marker,lineDim,lineGlow,lineDone,lineHead].forEach(l=>{ if(l) map.removeLayer(l); });
+  marker=lineDim=lineGlow=lineDone=lineHead=null;
 }
 
 /* ============ LIVE STATE (what the phone is doing) ============ */
 // live = { key, kind, label, started, timeline, cum, total, accent, arrived }
-let live=null, follow=true, clockOffset=0, rafId=null, lastLogAt=-99;
+let live=null, follow=true, clockOffset=0, rafId=null, tickTimer=null, lastLogAt=-99;
 
 function serverNow(){ return Date.now()/1000 + clockOffset; }
 
@@ -170,7 +175,7 @@ function syncLive(active){
     return;
   }
   // something new (or nothing) is on the phone
-  cancelAnimationFrame(rafId);
+  cancelAnimationFrame(rafId); clearTimeout(tickTimer);
   clearLiveLayers();
   live=null;
   $('nowplaying').classList.remove('on');
@@ -199,9 +204,11 @@ function syncLive(active){
     live.timeline = tl;
     live.total = tl.length ? tl[tl.length-1][0] : 0;
     const latlngs = tl.map(p=>[p[1],p[2]]);
-    lineGlow=L.polyline(latlngs,{ color:live.accent, weight:9, opacity:.28, className:'glowcase' }).addTo(map);
+    lineGlow=L.polyline(latlngs,{ color:live.accent, weight:9, opacity:.28, className:'glowcase', pane:'glow' }).addTo(map);
     lineDim=L.polyline(latlngs,{ color:dimOf(live.accent), weight:2.5, opacity:.55 }).addTo(map);
     lineDone=L.polyline([latlngs[0]],{ color:live.accent, weight:3, opacity:.95 }).addTo(map);
+    lineHead=L.polyline([latlngs[0]],{ color:live.accent, weight:3, opacity:.95 }).addTo(map);
+    live.doneTo=0;
     marker=makeMarker(latlngs[0]);
     map.flyToBounds(lineDim.getBounds().pad(.25), { duration:1.1 });
     const how = active.engine==='drive' ? (active.mph ? `drive · ${Math.round(active.mph)} mph` : 'drive · varying') : 'spoof';
@@ -225,32 +232,43 @@ function sampleAt(tl, t){
            spd: d/((b[0]-a[0])||1), hdg: d>0.5 ? heading(pa,pb) : null };
 }
 
-function tick(){
+// the marker creeps a few px a second, so 30fps is as smooth as the screen's 60/120; the numbers
+// only need a few updates a second. between frames it's a timer, so nothing wakes the page
+const LIVE_FPS=30, READOUT_MS=250;
+function tick(now){
+  rafId=null;
   if(!live) return;
-  const el = serverNow() - live.started;
-  $('np-time').textContent='t+'+fmtT(el);
-  $('sb-elapsed').textContent=fmtT(el);
+  const el = serverNow() - live.started, readout = !(now-live.readAt < READOUT_MS);
+  if(readout){
+    live.readAt=now;
+    setText('np-time', 't+'+fmtT(el));
+    setText('sb-elapsed', fmtT(el));
+  }
   if(live.kind==='route' && live.timeline.length){
     const tl=live.timeline, s=sampleAt(tl, el);
     // drive mode holds one speed; spoof follows the route's own speeds
     const mph = el>=live.total ? 0 : (live.engine==='drive' ? (live.mph||s.spd*MPS_TO_MPH) : s.spd*MPS_TO_MPH);
     marker.setLatLng([s.lat,s.lon]);
-    const done=tl.slice(0, s.i+1).map(q=>[q[1],q[2]]); done.push([s.lat,s.lon]);
-    lineDone.setLatLngs(done);
+    // the long finished part only changes when we pass a timeline point; the bit from there to
+    // the marker is its own two-point line
+    if(s.i!==live.doneTo){ live.doneTo=s.i; lineDone.setLatLngs(tl.slice(0, s.i+1).map(q=>[q[1],q[2]])); }
+    lineHead.setLatLngs([[tl[s.i][1],tl[s.i][2]], [s.lat,s.lon]]);
     if(follow && !map.getBounds().pad(-.2).contains([s.lat,s.lon])) map.panTo([s.lat,s.lon]);
-    setCoord(s.lat,s.lon);
-    $('v-speed').textContent=mph.toFixed(1)+' mph';
-    if(s.hdg!==null) $('v-hdg').textContent=Math.round(s.hdg)+'° '+compass(s.hdg);
-    $('v-leg').textContent = el>=live.total ? 'arrived' : fmtT(live.total-el);
-    $('np-fill').style.width=Math.min(100, el/live.total*100).toFixed(1)+'%';
-    $('gauge-fill').style.width=Math.min(100, mph/90*100)+'%';
+    if(readout){
+      setCoord(s.lat,s.lon);
+      setText('v-speed', mph.toFixed(1)+' mph');
+      if(s.hdg!==null) setText('v-hdg', Math.round(s.hdg)+'° '+compass(s.hdg));
+      setText('v-leg', el>=live.total ? 'arrived' : fmtT(live.total-el));
+      $('np-fill').style.width=Math.min(100, el/live.total*100).toFixed(1)+'%';
+      $('gauge-fill').style.width=Math.min(100, mph/90*100)+'%';
+    }
     if(el-lastLogAt>=30 && el<live.total){
       lastLogAt=el;
       logLine(`[t+${fmtT(el)}] ${s.lat.toFixed(4)},${s.lon.toFixed(4)} · ${mph.toFixed(1)}mph`,'dim');
     }
     if(el>=live.total && !live.arrived) arrive();
   }
-  rafId=requestAnimationFrame(tick);
+  tickTimer=setTimeout(()=>{ rafId=requestAnimationFrame(tick); }, 1000/LIVE_FPS-4);
 }
 function arrive(){
   live.arrived=true;
