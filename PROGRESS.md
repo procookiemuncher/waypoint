@@ -7,6 +7,37 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-27 — App performance / battery pass (Waypoint UI)
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner asked for a smoother app that's lighter on the laptop battery.
+
+**Measured** with the real app (pywebview/WebKit, dry run, window focused): `top` over 40s, all WebKit processes summed.
+Idle on the gallery: **~60% of a core → ~20%**. A route playing: **~57% → ~47%** after the tick fix (that was measured
+before the ring rewrite below, which saved another ~15% at idle). Headless Chrome doesn't show these costs, you have to measure WebKit.
+Run-to-run noise is about ±5%, and the window has to be in front: an occluded window reads ~0 because WebKit throttles it.
+
+**Changed**
+- `ring.js` (the rainbow border) was almost all of it. It redrew a full-window canvas every vsync forever, in the background
+  too. Now 30fps on a timer (not skipped rAFs), it stops on window blur / hidden, and it freezes while `#browse` scrolls
+  (like it already did for map panning). The comet tail was ~60 chunks x 3 strokes a frame, and the stroke *count* was the
+  cost, not gradient vs solid colour. Each straight edge is now one stroke per pass, with a linear gradient carrying the colour + fade.
+  Bloom dots are cached per colour (96). Pixel-diffed against the old ring at 5 times: the only change is the old 10px
+  banding along the tail is gone. `S` (the tuned look) is untouched.
+- Live route `tick()`: 30fps, rebuilds the finished line only when it passes a timeline point (a 2-point `lineHead`
+  covers the rest), readouts 4x/s, the blurred glow in its own `glow` pane (z 399) so it isn't re-blurred per frame.
+- Marker ping animates `transform` (was width/height). The hero card sweep rotates a fixed conic gradient (was an animated
+  `@property --ang`, a main-thread repaint every frame). Both render the same as before (old/new screenshot diff).
+- Card map tiles `decoding="async"`; status/log polls pause while the page is hidden.
+- Backend: once the phone is ready, `usbmux list` runs every 10s (was 4s, ~0.3s of CPU per spawn) and the devicectl lock
+  check every 6s (was 2s). The connect screen is unchanged.
+
+**Tried, not kept:** plain-alpha `#crt` instead of `mix-blend-mode: overlay`, and dropping `backdrop-filter` in the list.
+Neither showed a measurable WebKit difference (scrolling is ~2% WebKit, the compositor does it), so the look stays.
+**Not verified:** anything on the real phone (no need: UI + poll timing only). Whether WKWebView fires `visibilitychange`
+on minimise is untested. `blur`/`focus` (which does fire) covers the ring either way.
+
+---
+
 ## 2026-10-24 — Destinations catalog: 35 LARP spots, every continent but Antarctica
 
 **Model: Claude Opus 5.5 (Claude Code), in the `larp` worktree (another agent was on main).** Owner wants
