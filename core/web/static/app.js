@@ -981,7 +981,7 @@ async function boot(){
   $('boot').classList.add('gone');
   layoutApp(true);   // no-op if the connect screen already did it
   if(!STATUS?.active) setMode('IDLE');
-  if(passed && Warp.active) await wait(1400);
+  if(passed && Warp.active) await wait(Warp.hold);
   Warp.out();   // also clears a prepped-but-unplayed one when the phone step was skipped
   $('panel').classList.add('reveal');   // after the rings start fading, so the rise is seen
   $('sweep').classList.add('go');
