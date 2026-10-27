@@ -22,14 +22,14 @@ const opt = (name, dflt) => { const i = args.indexOf('--' + name); return i >= 0
 let frames = [], outFor;
 if (opt('stills')) {
   frames = opt('stills').split(',').map(Number);
-  const dir = path.join(HERE, 'out', opt('dir', 'stills'));
+  const dir = path.resolve(HERE, 'out', opt('dir', 'stills'));
   fs.mkdirSync(dir, { recursive: true });
   outFor = f => path.join(dir, `f${String(f).replace('.', '_').padStart(3, '0')}.png`);
 } else {
   const [a, b] = opt('frames', '0-359').split('-').map(Number);
   const step = Number(opt('step', '0.5'));
   for (let i = 0; a + i * step <= b + 1 - step + 1e-9; i++) frames.push(+(a + i * step).toFixed(4));
-  const dir = path.join(HERE, opt('dir', 'frames'));
+  const dir = path.resolve(HERE, opt('dir', 'frames'));
   fs.mkdirSync(dir, { recursive: true });
   outFor = f => path.join(dir, String(Math.round(f / step)).padStart(5, '0') + '.png');
 }
