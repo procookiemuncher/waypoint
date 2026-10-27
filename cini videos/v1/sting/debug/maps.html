@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>map check</title>
+<style>
+@font-face { font-family: 'Inter'; font-weight: 100 900; src: url('/core/web/static/fonts/inter-latin.woff2') format('woff2'); }
+@font-face { font-family: 'JetBrains Mono'; font-weight: 100 800; src: url('/core/web/static/fonts/jetbrains-mono-latin.woff2') format('woff2'); }
+html,body{margin:0;background:#050609}
+#stage{position:relative;width:1080px;height:1080px;overflow:hidden;font-family:Inter;color:#f4f4f5}
+</style></head><body>
+<div id="stage"></div><svg id="fx" width="0" height="0" style="position:absolute"></svg>
+<script src="../data/icon.js"></script><script src="../data/routes.js"></script><script src="../data/maps.js"></script>
+<script src="../js/core.js"></script>
+<script>SHOTS.length = 0;</script><script src="../js/main.js"></script>
+<script>
+// three regions side by side, each fitted to its route, to eyeball land/water and the routes
+const st = document.getElementById('stage');
+const svg = s('svg', { width: 1080, height: 1080 });
+st.appendChild(svg);
+const panels = [['nyc_thumb', 'jfk-to-the-plaza', C.accent, { x: 20, y: 20, w: 1040, h: 500 }],
+  ['mia', 'mia-to-faena-miami', C.mia, { x: 20, y: 560, w: 500, h: 500 }],
+  ['stt', 'cheval-blanc-st-tropez-to-club-55', C.stt, { x: 560, y: 560, w: 500, h: 500 }]];
+for (const [reg, route, col, box] of panels) {
+  const fit = fitPoints(reg, ROUTES[route].points, { x: box.x + 60, y: box.y + 60, w: box.w - 120, h: box.h - 120 });
+  const id = 'c' + reg;
+  svg.appendChild(s('clipPath', { id }, [s('rect', { x: box.x, y: box.y, width: box.w, height: box.h })]));
+  const g = s('g', { 'clip-path': `url(#${id})` }, [mapGroup(fit), routeGroup(fit, route, col, 4, 12)]);
+  svg.appendChild(g);
+}
+</script></body></html>
