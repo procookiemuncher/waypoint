@@ -17,12 +17,13 @@
 
   // final cross slots: left graphite, top lavender, right blue, bottom pink (angle CCW, screen)
   const SQ = [
-    { phi: 180, row: [468, 540], rowSize: 30, style: 'graphite' },
-    { phi: 90, row: [520, 540], rowSize: 40, color: C.accent },
-    { phi: 0, row: [568, 540], rowSize: 40, color: C.ny },
-    { phi: 270, row: [616, 540], rowSize: 40, color: C.mia },
+    { phi: 180, row: [461, 540], rowSize: 30, style: 'graphite' },
+    { phi: 90, row: [513, 540], rowSize: 40, color: C.accent },
+    { phi: 0, row: [561, 540], rowSize: 40, color: C.ny },
+    { phi: 270, row: [609, 540], rowSize: 40, color: C.mia },
   ];
-  const iconPos = f => [lerp(CX, 468, pB(f)), CY];
+  // the icon ends on x461, where the Waypoint tile sits in the Dock on the next frame
+  const iconPos = f => [lerp(CX, 461, pB(f)), CY];
 
   function sqState(q, f) {
     const p = pB(f);
@@ -85,7 +86,7 @@
     const f = Math.min(f0, 100);
     const k = iconSize(f0) / iconSize(f);
     E.g.style.transform = k < 1 ? `scale(${k.toFixed(4)})` : 'none';
-    E.g.style.transformOrigin = '542px 540px';
+    E.g.style.transformOrigin = '535px 540px';
 
     const hd = halo(f);
     E.halo.style.width = E.halo.style.height = px(hd);

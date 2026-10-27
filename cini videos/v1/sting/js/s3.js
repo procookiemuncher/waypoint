@@ -2,16 +2,18 @@
 // tile, the camera pans, a frosted console springs out of the tile and the command types; then
 // the whole scene drifts up into a whip-tilt through a lavender tint.
 //
-// Coordinates: the Dock numbers are pre-pan (content space, the pan carries them +125 px). The
-// console's settled box (x196-922, y568-797) is a stage position, so the console lives outside
-// the pan and only starts at the tile.
+// Coordinates: every number in the brief is the settled, post-pan stage position (Dock x228-852,
+// tile 4 at 586, console x196-922 by f138). Content is laid out 125 px to the left and the pan
+// carries it home, so the console sits over the tile it came out of. The console lives inside
+// the pan layer for that reason.
 'use strict';
 
 (() => {
-  const TILE_X = [310, 402, 494, 586, 678, 770], TILE_Y = 910, WP = 3;
+  const PAN = 125;
+  const TILE_X = [310, 402, 494, 586, 678, 770].map(x => x - PAN), TILE_Y = 910, WP = 3;
   const CMD = 'play jfk-to-the-plaza';
 
-  const pan = f => spline(f, [[115, 0], [116, 1.5], [117, 6], [118, 16], [119, 32], [120, 50], [121, 66], [122, 80], [124, 100], [126, 112], [128, 120], [130, 125]], { v0: 0, v1: 0 });
+  const pan = f => spline(f, [[115, 0], [116, 1.5], [117, 6], [118, 16], [119, 32], [120, 50], [121, 66], [122, 80], [124, 100], [126, 112], [128, 120], [130, PAN]], { v0: 0, v1: 0 });
   const settleS = f => approach(f, 101, 1.06, 1, 0.22);
   const settleY = f => approach(f, 101, 28, 0, 0.22);
   const settleBlur = f => approach(f, 101, 3, 0, 0.25);
@@ -19,10 +21,10 @@
   const whip = f => (f < 136 ? 0 : -110 * Math.pow((f - 136) / 22, 5));
   const whipV = f => (f < 136 ? 0 : 25 * Math.pow((f - 136) / 22, 4));
 
-  // console box, stage coordinates (centre + size), springing out of the tile
+  // console box in content coordinates (centre + size), springing out of tile 4
   const cw = f => spline(f, [[116, 84], [118, 250], [120, 470], [122, 640], [124, 724], [126, 744], [129, 738], [132, 727], [135, 724], [138, 726]], { v0: 70, v1: 0 });
   const chh = f => spline(f, [[116, 84], [118, 118], [120, 168], [122, 206], [124, 226], [126, 234], [129, 232], [132, 228.5], [135, 227.6], [138, 228]], { v1: 0 });
-  const ccx = f => spline(f, [[116, 588], [120, 575], [124, 563], [128, 559], [138, 559]], { v1: 0 });
+  const ccx = f => spline(f, [[116, 461], [120, 450], [124, 439], [128, 434], [138, 434]], { v1: 0 });
   const ccy = f => spline(f, [[116, 910], [118, 870], [120, 800], [122, 740], [124, 705], [126, 688], [129, 681], [132, 682.6], [138, 682.5]], { v0: -12, v1: 0 });
 
   // typing: one char a frame from f121, with a held frame every 2-3 chars, done at f150
@@ -38,7 +40,7 @@
   }
   const typed = f => COUNT[Math.max(0, Math.min(160, Math.floor(f + 1e-6)))]; // text steps, it can't be fractional
 
-  const curPos = f => [approach(f, 101.5, 640, 597, 0.2), approach(f, 101.5, 1160, 917, 0.21)];
+  const curPos = f => [approach(f, 101.5, 515, 472, 0.2), approach(f, 101.5, 1160, 917, 0.21)];
 
   const GLYPHS = [
     '<rect x="24" y="24" width="15" height="15" rx="4"/><rect x="45" y="24" width="15" height="15" rx="4"/><rect x="24" y="45" width="15" height="15" rx="4"/><rect x="45" y="45" width="15" height="15" rx="4"/>',
@@ -51,7 +53,7 @@
 
   let E = {};
   function build(root) {
-    const scene = layer('', { transformOrigin: '586px 910px' });
+    const scene = layer('', { transformOrigin: `${TILE_X[WP]}px ${TILE_Y}px` });
     root.appendChild(scene);
     E.scene = scene;
     E.whipBlur = dirBlur(0.1);
@@ -84,7 +86,7 @@
     panL.appendChild(art);
 
     // the Dock
-    const dock = h('div', { class: 'abs', style: { left: '228px', top: '850px', width: '624px', height: '120px', borderRadius: '40px', background: 'rgba(30,32,40,.40)', backdropFilter: 'blur(22px) saturate(1.2) brightness(1.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 1px rgba(255,255,255,.05), 0 24px 60px rgba(0,0,0,.45)' } });
+    const dock = h('div', { class: 'abs', style: { left: `${228 - PAN}px`, top: '850px', width: '624px', height: '120px', borderRadius: '40px', background: 'rgba(30,32,40,.40)', backdropFilter: 'blur(22px) saturate(1.2) brightness(1.18)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08), inset 0 0 0 1px rgba(255,255,255,.05), 0 24px 60px rgba(0,0,0,.45)' } });
     panL.appendChild(dock);
     E.tiles = TILE_X.map((x, i) => {
       let t;
@@ -107,7 +109,7 @@
 
     // the console: graphite glass over the wallpaper
     const con = h('div', { class: 'abs', style: { overflow: 'hidden', background: 'rgba(18,19,24,.62)', backdropFilter: 'blur(26px) saturate(1.15) brightness(1.22)', boxShadow: 'inset 0 1.5px 0 rgba(236,228,255,.55), inset 0 0 0 1px rgba(255,255,255,.06), 0 0 0 .5px rgba(180,154,255,.16), 0 40px 100px rgba(0,0,0,.55)' } });
-    scene.appendChild(con);
+    panL.appendChild(con);
     E.con = con;
     E.conBlur = dirBlur(0.1);
     con.appendChild(h('div', { class: 'abs', style: { width: '100%', height: '90px', background: 'linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0))' } }));
