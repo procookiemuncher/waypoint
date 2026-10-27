@@ -805,11 +805,12 @@ function drawBrowseMap(){
     else L.circleMarker([it.def.lat, it.def.lon], { radius:4, color, weight:2, fillColor:'#fff', fillOpacity:.9, interactive:false }).addTo(browseLayer);
   }
 }
-function frameBrowse(force){
+function frameBrowse(force, instant){
   if((live && !force) || !map) return;   // don't yank the map away from something that's playing
   const pts = openCity ? cityItems(openCity).flatMap(itemPoints) : cityNames().map(cityCenter);
   if(!pts.length) return;
-  map.flyToBounds(L.latLngBounds(pts).pad(openCity ? .15 : .35), { duration:1.1, maxZoom: openCity ? 14 : 4 });
+  const b = L.latLngBounds(pts).pad(openCity ? .15 : .35), maxZoom = openCity ? 14 : 4;
+  instant ? map.fitBounds(b, { animate:false, maxZoom }) : map.flyToBounds(b, { duration:1.1, maxZoom });
 }
 
 function availableEngines(){ return ENGINES.length ? ENGINES : [{id:'spoof',label:'Spoof',real_speed:false}]; }
@@ -962,9 +963,8 @@ async function boot(){
     renderDevice();
     return tilesReady ? { ok:true } : { ok:false, text:'[ OFFLINE ]' };
   });
-  let lib;
   await bootStep('loading route library', async()=>{
-    await loadLibrary(); lib=true;
+    await loadLibrary(); libLoaded=true;
     return { ok:true, text:`[ ${ROUTES.length} ROUTES · ${PLACES.length} PLACES ]` };
   });
   await bootStep('looking for the iphone', async()=>{
@@ -979,12 +979,12 @@ async function boot(){
   await wait(450);
   const passed = await linkPhone();
   $('boot').classList.add('gone');
-  $('panel').classList.add('reveal');
-  map.invalidateSize();
-  $('sweep').classList.add('go');
-  if(lib){ renderBrowse(true); frameBrowse(); }
+  layoutApp(true);   // no-op if the connect screen already did it
   if(!STATUS?.active) setMode('IDLE');
-  if(passed && Warp.active){ await wait(1400); await Warp.out(); }   // app is laid out under the rings by now
+  if(passed && Warp.active) await wait(1400);
+  Warp.out();   // also clears a prepped-but-unplayed one when the phone step was skipped
+  $('panel').classList.add('reveal');   // after the rings start fading, so the rise is seen
+  $('sweep').classList.add('go');
   await wait(250);
   if(STATUS?.dry_run) typeLine('dry run — commands are printed, the phone is not touched.','warn');
   typeLine('pick a route or place, or click the map to drop a pin.','sys');
@@ -993,6 +993,17 @@ async function boot(){
   setInterval(()=>{ if(!document.hidden) pollStatus(); }, 2000);
   setInterval(()=>{ if(!document.hidden) pollLogs(); }, 1000);
   document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ pollStatus(); pollLogs(); } });
+}
+
+// the heavy part of showing the app: the browse cards and the map's first framing. On a first boot
+// with the phone ready it runs under the connect card, before the rings, with the map jumped
+// straight to its spot: a fly-to under the rings fetched tiles every frame and they stuttered.
+let libLoaded=false, laidOut=false;
+function layoutApp(fly){
+  if(laidOut) return;
+  laidOut=true;
+  map.invalidateSize();
+  if(libLoaded){ renderBrowse(fly); frameBrowse(false, !fly); }
 }
 
 /* ============ CONNECT SCREEN ============ */
@@ -1038,7 +1049,9 @@ async function linkPhone(){
       await pollStatus();
       if(!linkDone) break;
       if(renderLink()==='ready'){
+        if(!booted){ layoutApp(false); Warp.prep(); }   // under the card, so the rings get the frames
         await new Promise(r=>setTimeout(r, 1800));   // a moment to see the lit wire
+        if(!linkDone) break;   // skipped while the wire was lit
         if(!booted) await Warp.in();   // first boot only: the rings cover the card before it goes
         leaveLink(true); break;
       }
