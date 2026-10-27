@@ -37,6 +37,16 @@ REGIONS = {
     "stt": dict(bbox=(43.190, 6.550, 43.300, 6.740), tol=5, min_area=5_000,
                 roads=["motorway", "trunk", "primary", "secondary", "tertiary", "unclassified",
                        "residential"], counties=False),
+    # S4: the whole night map at ~49 m/px, plus the 420 px it scrolls in from. Roads come in
+    # 2x2 tiles, one query for all of it times out. Only the five boroughs get outlines.
+    "nyc": dict(bbox=(40.555, -74.170, 41.110, -73.620), tol=15, min_area=70_000,
+                roads=["motorway", "trunk", "primary", "secondary"], counties=True, road_tiles=2,
+                county_names=["New York County", "Kings County", "Queens County", "Bronx County",
+                              "Richmond County"]),
+    # S5: the hero card's cover, Midtown East and the tunnel at ~12 m/px, every street
+    "mnh": dict(bbox=(40.700, -74.030, 40.800, -73.890), tol=3, min_area=4_000,
+                roads=["motorway", "trunk", "primary", "secondary", "tertiary", "unclassified",
+                       "residential"], counties=False),
 }
 
 ROAD_CLASS = {"motorway": "major", "trunk": "major", "primary": "primary",
@@ -306,7 +316,18 @@ def process_region(name, cfg):
         f'[out:json][timeout:240];(way["leisure"="park"]({b});relation["leisure"="park"]({b}););out geom;',
         name + "-parks")
     road_re = "|".join(cfg["roads"])
-    roads = overpass(f'[out:json][timeout:240];way["highway"~"^({road_re})$"]({b});out geom;', name + "-roads")
+    nt = cfg.get("road_tiles", 1)
+    road_els, seen_ways = [], set()
+    for i in range(nt):
+        for j in range(nt):
+            tb = (s + (n - s) * i / nt, w + (e - w) * j / nt, s + (n - s) * (i + 1) / nt, w + (e - w) * (j + 1) / nt)
+            part = overpass(f'[out:json][timeout:240];way["highway"~"^({road_re})$"]({bbox_str(tb)});out geom;',
+                            name + (f"-roads{i}{j}" if nt > 1 else "-roads"))
+            for el in part["elements"]:  # ways crossing a tile edge come back twice
+                if el["type"] == "way" and el["id"] not in seen_ways:
+                    seen_ways.add(el["id"])
+                    road_els.append(el)
+    roads = {"elements": road_els}
     counties = None
     if cfg["counties"]:
         counties = overpass(
@@ -359,7 +380,10 @@ def process_region(name, cfg):
     county_lines = []
     if counties:
         seen = set()
+        keep = cfg.get("county_names")
         for el in counties["elements"]:
+            if keep and el.get("tags", {}).get("name") not in keep:
+                continue
             for m in el.get("members", []):
                 if m.get("type") == "way" and m.get("geometry") and m.get("ref") not in seen:
                     seen.add(m.get("ref"))
