@@ -21,6 +21,13 @@ for it when you clear the checks and load into the tool.
 - Time runs at 3/s from the clock, which is the original's 0.05 per frame at 60 fps, without the frame-rate dependence.
 - Bug found while checking: `linkPhone()` awaited its promise without returning it, so callers always got `undefined`.
 - Checked in headless Chromium against a dry-run server: rings on screen, then the app, and no warp on the skip path.
+- **Smoothness pass (same day, owner said it lagged):** measured with a longtask observer and rAF frame gaps. The rings
+  dropped 125–270 ms frames because the app was building behind them: the 1.1 s map fly-to fetched tiles every frame,
+  the browse cards were built then, and the shader compiled on the frame its fade started. Now `layoutApp()` builds the
+  cards and jumps the map straight to its framing (`frameBrowse(_, instant)`), and `Warp.prep()` compiles the shader.
+  Both run under the connect card as it turns green. The panel rise and sweep start as the rings fade out. Result: zero
+  gaps while the rings play. The remaining ~90 ms stall happens under the card at the moment it turns green.
+  Skipping during the green moment no longer plays the rings or leaves the prepped canvas in the page.
 
 ---
 
