@@ -131,13 +131,29 @@
     geometry(); draw();
   }
 
-  // frozen while the map moves (same as the old css ring) and still under reduced motion
+  // frozen while the map moves or the list scrolls, and still under reduced motion. the motion is
+  // slow (a 37s lap) so 30fps looks the same as 120 on a ProMotion screen; the wait is a timer, not
+  // skipped rAFs, so the frames in between don't wake the page at all
+  const FPS = 30;
+  let timer = 0, raf = 0;
+  const still = () => document.body.classList.contains('panning') || document.body.classList.contains('scrolling');
   function tick(now) {
-    if (!document.body.classList.contains('panning')) { t += (now - last) * S.speed; draw(); }
-    last = now; requestAnimationFrame(tick);
+    raf = 0;
+    if (!still()) { t += (now - last) * S.speed; draw(); }
+    last = now;
+    timer = setTimeout(() => { timer = 0; raf = requestAnimationFrame(tick); }, 1000 / FPS - 4);
   }
+  function start() {
+    if (RM || timer || raf) return;
+    last = performance.now(); raf = requestAnimationFrame(tick);
+  }
+  function stop() { clearTimeout(timer); cancelAnimationFrame(raf); timer = raf = 0; }
 
   addEventListener('resize', resize);
   resize();
-  if (!RM) requestAnimationFrame(tick);
+  // nobody's looking when the window is in the background or minimised, so hold the last frame
+  addEventListener('blur', stop);
+  addEventListener('focus', start);
+  document.addEventListener('visibilitychange', () => document.hidden ? stop() : document.hasFocus() && start());
+  start();
 })();

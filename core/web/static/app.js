@@ -742,6 +742,12 @@ $('browse').addEventListener('click', e=>{
   }
 });
 $('browse').addEventListener('dblclick', e=>{ if(e.target.closest('[data-id]')) runSelected(); });
+// like panning: the border light holds still while the list scrolls so the scroll gets the frames
+let scrollEnd;
+$('browse').addEventListener('scroll', ()=>{
+  document.body.classList.add('scrolling');
+  clearTimeout(scrollEnd); scrollEnd=setTimeout(()=>document.body.classList.remove('scrolling'), 150);
+}, { passive:true });
 let browseResize;
 window.addEventListener('resize', ()=>{ clearTimeout(browseResize); browseResize=setTimeout(()=>renderBrowse(), 150); });
 
