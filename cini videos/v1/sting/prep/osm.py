@@ -46,7 +46,7 @@ REGIONS = {
     # S5: the hero card's cover, Midtown East and the tunnel at ~12 m/px, every street
     "mnh": dict(bbox=(40.700, -74.030, 40.800, -73.890), tol=3, min_area=4_000,
                 roads=["motorway", "trunk", "primary", "secondary", "tertiary", "unclassified",
-                       "residential"], counties=False),
+                       "residential"], counties=False, road_tiles=2),
 }
 
 ROAD_CLASS = {"motorway": "major", "trunk": "major", "primary": "primary",
