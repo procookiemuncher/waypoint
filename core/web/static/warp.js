@@ -1,7 +1,8 @@
 // the "you're in" moment: once the phone passes every check on first boot, the connect screen
 // gives way to a burst of rainbow rings before the app shows. plain WebGL on one fullscreen
-// triangle, no three.js. Warp.in() resolves once it covers the screen, Warp.out() fades it away.
-// reduced motion or no WebGL: both are no-ops and the app just shows as before.
+// triangle, no three.js. Warp.prep() compiles it ahead of time (do it while something else is on
+// screen, the compile hitches), Warp.in() resolves once it covers the screen, Warp.out() fades it.
+// reduced motion or no WebGL: all no-ops and the app just shows as before.
 const Warp = (() => {
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FADE = 500;
@@ -29,7 +30,7 @@ const Warp = (() => {
     }
   `;
 
-  let el = null, gl = null, raf = 0, onResize = null;
+  let el = null, gl = null, raf = 0, onResize = null, draw = null;
 
   function start(){
     el = document.createElement('div');
@@ -65,28 +66,32 @@ const Warp = (() => {
     addEventListener('resize', onResize);
 
     // the original stepped time by 0.05 a frame, so 3/s at 60 fps, kept frame-rate independent here
-    const t0 = performance.now();
-    const draw = now => {
+    let t0 = 0;
+    draw = now => {
+      if(!t0) t0 = now;
       gl.uniform1f(uTime, 1 + (now - t0) / 1000 * 3);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       raf = requestAnimationFrame(draw);
     };
-    raf = requestAnimationFrame(draw);
+    gl.uniform1f(uTime, 1);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);   // one hidden draw so the driver finishes the pipeline now
     return true;
   }
 
   function stop(){
-    cancelAnimationFrame(raf);
+    cancelAnimationFrame(raf); raf = 0;
     if(onResize) removeEventListener('resize', onResize);
     gl?.getExtension('WEBGL_lose_context')?.loseContext();
     el?.remove();
-    el = gl = onResize = null;
+    el = gl = onResize = draw = null;
   }
 
   return {
     get active(){ return !!el; },
+    prep(){ if(!RM && !el) start(); },
     in(){
-      if(RM || el || !start()) return Promise.resolve();
+      if(RM || raf || (!el && !start())) return Promise.resolve();
+      raf = requestAnimationFrame(draw);
       return new Promise(res => {
         requestAnimationFrame(() => { el.classList.add('in'); setTimeout(res, FADE); });
       });
