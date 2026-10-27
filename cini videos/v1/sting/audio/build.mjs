@@ -104,7 +104,7 @@ const clamp1 = v => Math.max(-1, Math.min(1, v));
   const air = mul(svf(pink(n, 7), 380, 0.7, 'lp'), env(n, t => (1 - Math.exp(-t / 0.004)) * Math.exp(-t / 0.18)));
   const L = new Float32Array(n), R = new Float32Array(n);
   for (let i = 0; i < n; i++) { L[i] = thump[i] + 0.9 * air[i]; R[i] = thump[i] + 0.9 * air[i] * 0.94; }
-  const g = undb(-10) / peakOf(L);
+  const g = undb(-14) / peakOf(L);
   add(sfx, 0.100, L, R, g);
 }
 
@@ -158,7 +158,7 @@ for (const [t, seed] of [[2.33, 31], [3.83, 32]]) {
   const body = env(n, u => Math.sin(2 * Math.PI * 1750 * u) * Math.exp(-u / 0.004));
   const x = new Float32Array(n);
   for (let i = 0; i < n; i++) x[i] = tick[i] + 0.4 * body[i];
-  norm(x, -16);
+  norm(x, -8);
   add(sfx, t, x, x.map(v => v * 0.92));
 }
 
@@ -169,13 +169,16 @@ for (const [t, seed] of [[2.33, 31], [3.83, 32]]) {
   for (let fr = 122; fr <= 150; fr++) if (!HOLDS.has(fr - 122)) keys.push(fr);
   const r = rng(41);
   keys.forEach((fr, j) => {
-    const n = Math.round(0.02 * SR);
-    const f0 = 3000 + 2500 * r();
-    const x = mul(svf(noise(n, 100 + j), f0, 1.8, 'bp'), env(n, u => Math.exp(-u / (0.0012 + 0.0008 * r()))));
-    norm(x, -26 - 3 * r());
-    const p = (r() - 0.5) * 0.5;
+    // a short bright click with a little body under it; every random draw happens once per key
+    const n = Math.round(0.03 * SR);
+    const f0 = 3000 + 2000 * r(), dec = 0.0035 + 0.0015 * r(), body = 1000 + 400 * r();
+    const lvl = -12 - 3 * r(), p = (r() - 0.5) * 0.5, jit = 0.002 * r();
+    const click = mul(svf(noise(n, 100 + j), f0, 1.6, 'bp'), env(n, u => Math.exp(-u / dec)));
+    const x = new Float32Array(n);
+    for (let i = 0; i < n; i++) { const u = i / SR; x[i] = click[i] + 0.25 * Math.sin(2 * Math.PI * body * u) * Math.exp(-u / 0.005); }
+    norm(x, lvl);
     const [L, R] = pan(x, p);
-    add(sfx, fsec(fr) + 0.002 * r(), L, R);
+    add(sfx, fsec(fr) + jit, L, R);
   });
 }
 
