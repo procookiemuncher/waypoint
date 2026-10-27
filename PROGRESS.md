@@ -7,6 +7,36 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-27 — Waypoint sting (v1 cinematic video): stills checkpoint
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner pasted the v1 video brief (`cini videos/v1/prompt.txt`): a 12s
+1080x1080 product sting, drawn by `seek(f)` as a pure function of the frame and screenshotted with Playwright.
+
+**Where:** `cini videos/v1/sting/`. It's not `build/` because the root .gitignore ignores every `build/` folder.
+node_modules, frames/, out/ and cache/ are ignored there.
+- `prep/routes.py` (run with the .venv python): loads the routes with the app's own loader and snap cache, no network,
+  and writes the snapped road polylines to `data/routes.js` (JFK to Plaza is 974 points, the JSON alone only has the ends).
+- `prep/osm.py` (.venv python, the system python3's LibreSSL fails the TLS handshake): Overpass gives coastline joined
+  into land polygons, plus water, parks, roads and county lines, written to `data/maps.js`. Raw answers are cached in
+  `cache/osm/`. Regions so far: nyc_thumb, mia, stt. The big S4 New York region isn't fetched yet.
+- `prep/assets.py` inlines `mac-version/app/icon.svg` into `data/icon.js`.
+- `node render.mjs --stills 40,86,150,230` writes `out/stills/`. `./sheet.sh <name> "f,f,..."` makes contact sheets.
+
+**Gotchas**
+- The repo's Inter / JetBrains Mono latin woff2 subsets have **no → (U+2192) and no ▸ (U+25B8)** (checked the
+  cmap), so both are drawn as SVG. A browser width test claims they're there, but that's macOS system fallback and it's wrong.
+- Playwright 1.55's chromium unzip hangs under Node 26. Unzipped by hand with `ditto` and added the
+  `INSTALLATION_COMPLETE` marker. The renderer launches `channel: 'chromium'`.
+- Stroking Inter text traces its overlapping contours (inside S and z). The glass title edge uses an alpha erode filter instead.
+- overpass-api.de throws 502/504 a lot. The script rotates mirrors.
+
+**State:** S1, S2, S3 and S6 are built. Stills f40, f86, f150 and f230 are rendered for the owner to review.
+**Next, once the look is OK'd:** S4 map (fetch the big NYC region), S5 hero card, S7 disc, S8 end card, audio
+(Mixkit "Rising Forest" by Diego Nava, stretched to 124 BPM, synthesized SFX, mastered to -14 LUFS), then the full
+720-frame 59.94 render and mux.
+
+---
+
 ## 2026-10-27 — App performance / battery pass (Waypoint UI)
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner asked for a smoother app that's lighter on the laptop battery.
