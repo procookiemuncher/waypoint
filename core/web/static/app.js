@@ -268,7 +268,9 @@ function tick(now){
     }
     if(el>=live.total && !live.arrived) arrive();
   }
-  tickTimer=setTimeout(()=>{ rafId=requestAnimationFrame(tick); }, 1000/LIVE_FPS-4);
+  // holding a spot (or arrived) nothing moves, only the clock ticks
+  const still = live.kind==='place' || live.arrived;
+  tickTimer=setTimeout(()=>{ rafId=requestAnimationFrame(tick); }, still ? READOUT_MS : 1000/LIVE_FPS-4);
 }
 function arrive(){
   live.arrived=true;
