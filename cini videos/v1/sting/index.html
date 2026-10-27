@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Waypoint sting</title>
+<style>
+  /* the repo's own woff2 files, both variable, so every weight is real */
+  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: block;
+    src: url('/core/web/static/fonts/inter-latin.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 100 800; font-display: block;
+    src: url('/core/web/static/fonts/jetbrains-mono-latin.woff2') format('woff2'); }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #050609; overflow: hidden; }
+  #stage { position: relative; width: 1080px; height: 1080px; overflow: hidden; background: #050609;
+    font-family: 'Inter', sans-serif; color: #f4f4f5; -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision; font-kerning: normal; }
+  .shot { position: absolute; left: 0; top: 0; width: 1080px; height: 1080px; overflow: hidden; display: none; }
+  .layer { position: absolute; left: 0; top: 0; width: 1080px; height: 1080px; }
+  .abs { position: absolute; left: 0; top: 0; }
+  .icon { position: absolute; left: 0; top: 0; }
+  .disc { position: absolute; left: 0; top: 0; border-radius: 50%; background: #121318; box-shadow: inset 0 0 0 1px #2a3042; }
+  .disc-mark { position: absolute; }
+  .cursor { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+  .cursor-spin { position: absolute; left: -48px; top: -48px; width: 96px; height: 96px; transform-origin: 48px 48px; }
+  .cursor-body { position: absolute; left: 48px; top: 48px; width: 0; height: 0; transform-origin: 0 0;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .55)); }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .nowrap { white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<svg id="fx" width="0" height="0" style="position:absolute;left:0;top:0" aria-hidden="true"></svg>
+<script src="data/icon.js"></script>
+<script src="data/routes.js"></script>
+<script src="data/maps.js"></script>
+<script src="js/core.js"></script>
+<script src="js/s1.js"></script>
+<script src="js/s2.js"></script>
+<script src="js/s3.js"></script>
+<script src="js/s6.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
