@@ -1,7 +1,8 @@
 // Render the sting with Playwright, one screenshot per frame.
 //
 //   node render.mjs --stills 40,86,150,230     -> out/stills/f040.png ...
-//   node render.mjs --frames 0-359 [--step 0.5] -> frames/00000.png ... (59.94 master = step 0.5)
+//   node render.mjs --frames 0-359 [--step 0.5] -> frames/00000.png ... 00719.png (f0 to f359.5,
+//                                                  the 59.94 master is step 0.5)
 //
 // The page is served from the repo root on 127.0.0.1 so it can load the repo's fonts; every
 // other request is refused, nothing reaches the network during a render.
@@ -27,7 +28,7 @@ if (opt('stills')) {
 } else {
   const [a, b] = opt('frames', '0-359').split('-').map(Number);
   const step = Number(opt('step', '0.5'));
-  for (let i = 0; a + i * step <= b + 0.5 - step + 1e-9; i++) frames.push(+(a + i * step).toFixed(4));
+  for (let i = 0; a + i * step <= b + 1 - step + 1e-9; i++) frames.push(+(a + i * step).toFixed(4));
   const dir = path.join(HERE, opt('dir', 'frames'));
   fs.mkdirSync(dir, { recursive: true });
   outFor = f => path.join(dir, String(Math.round(f / step)).padStart(5, '0') + '.png');
