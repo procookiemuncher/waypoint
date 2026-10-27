@@ -7,6 +7,23 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-27 — Waypoint: ring burst when the phone passes its checks
+
+**Model: Claude Opus 5.5 (Claude Code).** The owner pasted a React/three.js/shadcn "ShaderAnimation" component and asked
+for it when you clear the checks and load into the tool.
+
+- The app has no React, Tailwind, TS or build step, so I didn't set up shadcn or install three. Its GLSL is ported as is
+  to plain WebGL on one fullscreen triangle in `core/web/static/warp.js` (~100 lines, no dependency, works offline).
+- **When:** first boot only, after the connect screen goes green and shows the lit wire for 1.8 s. The rings fade in over
+  the card (0.5 s), the app is laid out underneath, they hold 1.4 s, then fade out (0.8 s). One ring wave sweeps from the
+  center past the corners in about that time. It doesn't play for "Continue without phone", a phone reconnect after boot,
+  reduced motion, or when WebGL is missing.
+- Time runs at 3/s from the clock, which is the original's 0.05 per frame at 60 fps, without the frame-rate dependence.
+- Bug found while checking: `linkPhone()` awaited its promise without returning it, so callers always got `undefined`.
+- Checked in headless Chromium against a dry-run server: rings on screen, then the app, and no warp on the skip path.
+
+---
+
 ## 2026-10-27 — Waypoint sting (v1 cinematic video): the full film
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner OK'd the four stills, so I built S4, S5, S7, S8 and the sound, then
