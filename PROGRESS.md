@@ -30,7 +30,11 @@ High yuv420p. The RGB to YUV conversion uses the BT.709 matrix the file is tagge
   of 0.048 + 0.4838k. A 2 ms de-click at sample 0, because the cut starts mid-bar. The last 60 ms is the only fade.
 - **SFX** are synthesized in `audio/build.mjs` from a seeded PRNG: a soft impact at 0.10 s; whooshes peaking on the
   f72/f101/f159/f301 cuts; hits on 6.240 and 8.175 s; clicks at 2.33 and 3.83 s; one key tick per typed character (the
-  frames where the console text grows); a shimmer at 10.05 s; a small Freeverb on the SFX bus.
+  frames where the console text grows); a shimmer at 10.05 s; a small Freeverb on the SFX bus. Levels were set by
+  meter, not by ear: `node audio/cues.mjs` compares each cue with the music inside the cue's own band. Broadband
+  numbers hid that the ticks were 18 dB under the hats. Now the clicks, whooshes, hits and shimmer sit at 0 to +6 dB
+  in band, and the "very quiet" ticks at −3 dB.
+- **The Plaza pin** gets an arrival ping ring (f179–192, peak 0.3 opacity) as the line reaches it. Not in the brief.
 - **S4:** one Web Mercator fit, least squares on the brief's anchors: JFK T4 lands at (791,894), The Plaza at (359,526).
   The map stays north-up, so both anchors can't be exact. On f159 the blur is 16 px round plus the speed smear, about
   24 px along the motion. With 24 px round blur under the .30 flash, f159 was a flat lavender frame, and the brief's
