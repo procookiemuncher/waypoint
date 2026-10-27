@@ -113,6 +113,10 @@
     E.con = con;
     E.conBlur = dirBlur(0.1);
     con.appendChild(h('div', { class: 'abs', style: { width: '100%', height: '90px', background: 'linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0))' } }));
+    // the backdrop blur irons the wallpaper's dither flat, so the glass gets its own grain
+    const gr = grain(760, 250, 4, 33, 20);
+    gr.className = 'abs';
+    con.appendChild(gr);
     const inner = h('div', { class: 'abs', style: { width: '726px', height: '228px' } });
     con.appendChild(inner);
     E.inner = inner;

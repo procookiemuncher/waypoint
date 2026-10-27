@@ -203,6 +203,28 @@ function dithered(w, h_, fn, amp = 0.02, seed = 1) {
 }
 const smoothstep = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
 
+// Seeded grain to lay over frosted glass: a backdrop blur smooths the dither out of whatever
+// is behind it, and the blurred gradient steps after H.264. Light pixels lift and dark pixels
+// sink by roughly +-levels on a dark surface (black needs more alpha to move a dark value).
+function grain(w, h_, levels = 1.6, seed = 7, base = 40) {
+  const c = h('canvas', { width: w, height: h_ });
+  const ctx = c.getContext('2d');
+  const img = ctx.createImageData(w, h_);
+  const d = img.data;
+  for (let y = 0; y < h_; y++) {
+    for (let x = 0; x < w; x++) {
+      const n = hash2(x, y, seed) + hash2(x, y, seed + 101) - 1; // triangular, -1..1
+      const i = (y * w + x) * 4;
+      const v = n > 0 ? 255 : 0;
+      d[i] = d[i + 1] = d[i + 2] = v;
+      d[i + 3] = Math.round(255 * Math.abs(n) * levels / (n > 0 ? 255 - base : base));
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  c.style.display = 'block';
+  return c;
+}
+
 // ---------- shots ----------
 const SHOTS = [];
 function shot(name, f0, f1, build, render) {
