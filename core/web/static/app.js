@@ -667,7 +667,7 @@ function mapArt(items, w, h, color, pad=26){
   let tiles='';
   for(let tx=Math.floor(x0/256); tx<=Math.floor((x0+w)/256); tx++)
     for(let ty=Math.floor(y0/256); ty<=Math.floor((y0+h)/256); ty++)
-      tiles+=`<img src="${TILE_URL.replace('{z}',z).replace('{x}',tx).replace('{y}',ty).replace('{r}','@2x')}" style="left:${(tx*256-x0).toFixed(1)}px;top:${(ty*256-y0).toFixed(1)}px" alt="" draggable="false">`;
+      tiles+=`<img src="${TILE_URL.replace('{z}',z).replace('{x}',tx).replace('{y}',ty).replace('{r}','@2x')}" style="left:${(tx*256-x0).toFixed(1)}px;top:${(ty*256-y0).toFixed(1)}px" alt="" draggable="false" decoding="async">`;
   const P=(lat,lon)=>{ const [a,b]=mercator(lat,lon,z); return [(a-x0).toFixed(1), (b-y0).toFixed(1)]; };
   let svg='';
   for(const it of items){
@@ -986,8 +986,10 @@ async function boot(){
   if(STATUS?.dry_run) typeLine('dry run — commands are printed, the phone is not touched.','warn');
   typeLine('pick a route or place, or click the map to drop a pin.','sys');
   booted=true;
-  setInterval(pollStatus, 2000);
-  setInterval(pollLogs, 1000);
+  // no polling while minimised (each status poll also has the server ask the phone); catch up on return
+  setInterval(()=>{ if(!document.hidden) pollStatus(); }, 2000);
+  setInterval(()=>{ if(!document.hidden) pollLogs(); }, 1000);
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ pollStatus(); pollLogs(); } });
 }
 
 /* ============ CONNECT SCREEN ============ */
