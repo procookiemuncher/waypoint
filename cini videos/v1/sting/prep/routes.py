@@ -1,0 +1,35 @@
+"""Pull the real road geometry for the sting's three routes out of the app's own route code.
+
+The route JSONs only hold the endpoints; the drive legs get snapped to roads at build time and
+cached in core/build/snap-cache. This loads each route the same way the app does (cache only,
+no network) and writes the moving legs as one [lat, lon] polyline per route.
+"""
+import json
+import os
+import sys
+
+REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+sys.path.insert(0, os.path.join(REPO, "core"))
+os.environ["VALHALLA_BASE_URL"] = "http://127.0.0.1:9"  # cache or bust, never the network
+
+from backend.movement.model import load_route  # noqa: E402
+from backend.movement.snapper import snap_route  # noqa: E402
+
+ROUTES = ["jfk-to-the-plaza", "mia-to-faena-miami", "cheval-blanc-st-tropez-to-club-55"]
+
+out = {}
+for name in ROUTES:
+    route, warnings = snap_route(load_route(os.path.join(REPO, "core", "routes", name + ".json")))
+    if warnings:
+        sys.exit(f"{name}: {warnings}")
+    poly = []
+    for seg in route.segments:
+        for p in seg.waypoints:
+            p = [round(p[0], 6), round(p[1], 6)]
+            if not poly or poly[-1] != p:
+                poly.append(p)
+    out[name] = {"label": route.label, "city": route.city, "points": poly}
+    print(f"{name}: {len(poly)} points, {poly[0]} -> {poly[-1]}")
+
+with open(os.path.join(os.path.dirname(__file__), "..", "data", "routes.json"), "w") as f:
+    json.dump(out, f, separators=(",", ":"))
