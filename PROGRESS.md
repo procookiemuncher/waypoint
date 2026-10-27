@@ -7,6 +7,50 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-27 — Waypoint sting (v1 cinematic video): the full film
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner OK'd the four stills, so I built S4, S5, S7, S8 and the sound, then
+rendered the film.
+
+**Output:** `cini videos/v1/sting/out/waypoint-sting.mp4` (gitignored). 1080x1080, 720 frames at 60000/1001, H.264
+High yuv420p. The RGB to YUV conversion uses the BT.709 matrix the file is tagged with. AAC 320k at 48 kHz. The video is
+12.012 s; the audio's edit list makes it exactly 12.075 s. Measured on the mp4's own audio: −14.0 LUFS, −1.4 dBTP.
+- `./film.sh` renders four frame ranges in parallel, builds the sound and encodes. The frames go to
+  `$TMPDIR/waypoint-sting-frames`, not the project. The Desktop is iCloud-synced: rendering there uploaded ~500 MB
+  every pass and left `00083 2.png` conflict copies. `./film.sh encode` only re-encodes.
+- `node audio/build.mjs` writes `out/audio/sting.wav` plus stems. `node audio/analyze.mjs <file>` prints the tempo and
+  a bar-by-bar energy map.
+- `prep/osm.py nyc mnh` adds the S4 map (49 m/px; roads come in 2x2 tiles because one query times out; only the
+  five boroughs are outlined) and the S5 Manhattan cover (every street).
+
+**Decisions**
+- **Tempo:** "Rising Forest" already measures 124.00 BPM as published, so it plays at its own speed with no stretch.
+  The edit starts at 43.987 s in the track, so bar 24's kick lands on beat 5 (2.467 s). That kick is the big drop
+  after the eight-bar build, and the soft intro is the tail of that build. Every kick on the final mix is within ~9 ms
+  of 0.048 + 0.4838k. A 2 ms de-click at sample 0, because the cut starts mid-bar. The last 60 ms is the only fade.
+- **SFX** are synthesized in `audio/build.mjs` from a seeded PRNG: a soft impact at 0.10 s; whooshes peaking on the
+  f72/f101/f159/f301 cuts; hits on 6.240 and 8.175 s; clicks at 2.33 and 3.83 s; one key tick per typed character (the
+  frames where the console text grows); a shimmer at 10.05 s; a small Freeverb on the SFX bus.
+- **S4:** one Web Mercator fit, least squares on the brief's anchors: JFK T4 lands at (791,894), The Plaza at (359,526).
+  The map stays north-up, so both anchors can't be exact. On f159 the blur is 16 px round plus the speed smear, about
+  24 px along the motion. With 24 px round blur under the .30 flash, f159 was a flat lavender frame, and the brief's
+  gotcha allows lowering it. The S4 map (`NIGHT` in s4.js) is reused by S5 and keeps creeping under the card (−20 px
+  by f214), so nothing freezes. In S5 the cursor stays on top of the card, drifts right and fades by f191.
+- **S8:** "Waypoint" is Inter 600 at −0.02em. The ink width is measured after the fonts load. The width follows a
+  monotone spline through the brief's table. 24 streak copies are used, with a horizontal smear on the opening frames only.
+- **Grain on the S3 console glass:** the backdrop blur smoothed the wallpaper's dither flat, and H.264 stepped it.
+  Found by amplifying mp4 frames ×7. The S1 haze, the S3 wallpaper and the S8 radial were already clean.
+- **S3 drift:** eased in from f136, because f138 and f138.5 were identical. The only repeated frames now are the S7
+  hold, f269–f287 (hash-checked).
+- **render.mjs fix:** `--frames a-b` was dropping the last half frame of each range.
+
+**Checks done:** mp4 frames 143/144, 201/202 and 317/318 straddle the f72/f101/f159 cuts exactly. Both streams start
+at pts 0. Contact sheets were checked across every cut. Overpass mirrors were 502/504 for a long stretch; the cache
+in `cache/osm/` means it never has to be fetched again.
+**Next:** owner review of the film.
+
+---
+
 ## 2026-10-27 — Waypoint sting (v1 cinematic video): stills checkpoint
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner pasted the v1 video brief (`cini videos/v1/prompt.txt`): a 12s
