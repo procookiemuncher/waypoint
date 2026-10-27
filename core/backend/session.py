@@ -96,7 +96,10 @@ class Session:
         return [l for l in self.logs if l["n"] > n]
 
     def devices(self) -> list:
-        if time.time() - self._devices_at > 4:
+        # each look is a whole pmd3 start (~0.3s of cpu), so once the phone is ready look less
+        # often; an unplug still shows within ~10s
+        every = 10 if self.readiness[0] == "ready" else 4
+        if time.time() - self._devices_at > every:
             self._devices, self._devices_at = self.pmd3.list_devices(), time.time()
             if not self._devices:
                 self.mounted = False   # unplugged / rebooted → the DDI has to go back on
@@ -113,6 +116,8 @@ class Session:
         if self.mounted and not self.readiness_check:
             return {"state": "ready", "message": ""}
         every = 2 if self.readiness_check else 4
+        if self.readiness[0] == "ready":
+            every = 6    # each check spawns devicectl; quick on the connect screen, calmer once it's up
         if self.active and self.active.get("kind") == "route":
             every = 20   # keep devicectl quiet while a route plays, like the terminal drive.command
         if not self._probing and time.time() - self._probe_at > every:
