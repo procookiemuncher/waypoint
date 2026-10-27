@@ -17,9 +17,11 @@
   const settleS = f => approach(f, 101, 1.06, 1, 0.22);
   const settleY = f => approach(f, 101, 28, 0, 0.22);
   const settleBlur = f => approach(f, 101, 3, 0, 0.25);
-  // whip: velocity grows as t^4 to 25 px/frame at f158
-  const whip = f => (f < 136 ? 0 : -110 * Math.pow((f - 136) / 22, 5));
-  const whipV = f => (f < 136 ? 0 : 25 * Math.pow((f - 136) / 22, 4));
+  // whip: a gentle drift that eases in from f136 (so no frame repeats while the t^5 part is
+  // still sub-pixel), plus velocity growing as t^4 to about 25 px/frame at f158
+  const drift = t => -0.3 * (t - 1.5 * (1 - Math.exp(-t / 1.5)));
+  const whip = f => (f < 136 ? 0 : drift(f - 136) - 110 * Math.pow((f - 136) / 22, 5));
+  const whipV = f => (f < 136 ? 0 : 0.3 * (1 - Math.exp(-(f - 136) / 1.5)) + 25 * Math.pow((f - 136) / 22, 4));
 
   // console box in content coordinates (centre + size), springing out of tile 4
   const cw = f => spline(f, [[116, 84], [118, 250], [120, 470], [122, 640], [124, 724], [126, 744], [129, 738], [132, 727], [135, 724], [138, 726]], { v0: 70, v1: 0 });
