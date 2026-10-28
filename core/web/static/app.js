@@ -977,12 +977,12 @@ async function boot(){
   const r=bootLine('', dev?'ok':'dim');
   await typeInto(r, dev ? '  ready.' : '  no phone yet — plug it in + unlock it, I\'ll keep looking.', 14);
   await wait(450);
-  const passed = await linkPhone();
+  const played = await linkPhone();
   $('boot').classList.add('gone');
   layoutApp(true);   // no-op if the connect screen already did it
   if(!STATUS?.active) setMode('IDLE');
-  if(passed && Warp.active) await wait(Warp.hold);
-  Warp.out();   // also clears a prepped-but-unplayed one when the phone step was skipped
+  if(played && Warp.active) await wait(Warp.hold);
+  Warp.out();   // also clears a prepped-but-unplayed one
   $('panel').classList.add('reveal');   // after the rings start fading, so the rise is seen
   $('sweep').classList.add('go');
   await wait(250);
@@ -1016,7 +1016,7 @@ const LINK_COPY = {
   ready:    ['iPhone ready', ''],
   error:    ['Something\'s off', ''],
 };
-let linkDone = null, linkHideTimer = null;
+let linkDone = null, linkHideTimer = null, linkLeaving = false;
 function renderLink(){
   const dev = STATUS?.devices?.[0];
   const ph = STATUS?.phone || { state: dev ? 'checking' : 'none' };
@@ -1043,31 +1043,46 @@ async function linkPhone(){
   await wait(30);
   el.classList.add('in');
   $('boot').classList.add('gone');   // covered by now; gone so it can't show through the fade-out
+  if(!booted) Warp.prep();   // compile while the card is up, a skip plays the rings too
   const done = new Promise(res => linkDone = res);
   (async function loop(){
     while(linkDone){
       await pollStatus();
-      if(!linkDone) break;
+      if(!linkDone || linkLeaving) break;
       if(renderLink()==='ready'){
         if(!booted){ layoutApp(false); Warp.prep(); }   // under the card, so the rings get the frames
         await new Promise(r=>setTimeout(r, 1800));   // a moment to see the lit wire
-        if(!linkDone) break;   // skipped while the wire was lit
+        if(!linkDone || linkLeaving) break;   // skipped while the wire was lit
+        linkLeaving = true;   // a skip click from here on would just double up the rings
         if(!booted) await Warp.in();   // first boot only: the rings cover the card before it goes
-        leaveLink(true); break;
+        linkLeaving = false;
+        leaveLink(!booted); break;
       }
       await new Promise(r=>setTimeout(r, 700));   // not wait(): that's 0 under reduced motion
     }
   })();
-  return done;   // true when the phone passed every check, false on "continue without phone"
+  return done;   // true when the rings played (first boot), false otherwise
 }
-function leaveLink(passed=false){
+// "continue without phone": on first boot it gets the rings too, same as a phone that passed
+async function skipLink(){
+  if(!linkDone || linkLeaving) return;
+  if(!booted){
+    linkLeaving = true;
+    layoutApp(false); Warp.prep();
+    await Warp.in();
+    linkLeaving = false;
+    return leaveLink(true);
+  }
+  leaveLink();
+}
+function leaveLink(played=false){
   if(!linkDone) return;
   const finish = linkDone; linkDone = null;
   const el = $('link');
   el.classList.add('out');
   $('frame').classList.remove('linking');
   linkHideTimer = setTimeout(()=>{ el.hidden = true; }, 650);
-  finish(passed);
+  finish(played);
 }
 
 /* ============ INIT ============ */
