@@ -7,6 +7,26 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-28 — Waypoint idle resource check
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner asked how heavy the app is when it's just sitting there. Measured with
+`top` (5 s samples, ~60 s per state) on an M1 Pro, `VIDA_DRY_RUN=1`, app idle on the main screen. CPU is % of ONE core.
+
+| state | python (app + uvicorn) | WebKit WebContent | WebKit GPU | total |
+|---|---|---|---|---|
+| window not focused | ~0.3% | ~0.3% | ~0.2% | **<1%**, ~450 MB |
+| window frontmost | ~9% | ~15% | ~13% | **~35–40% of a core** (~4% of the machine), ~600 MB |
+
+- The gap is the background ring (`core/web/static/ring.js`): 30 fps full-window 2D canvas at retina dpr with radial
+  gradients per dot. It already stops on blur, which is why the unfocused number is near zero.
+- WebContent holds 300–490 MB (map tiles + the full-size canvas). That's the biggest memory cost.
+- Status/log polling (2 s / 1 s) keeps going while unfocused because it only checks `document.hidden`, which an occluded
+  window doesn't set. Cheap (~0.3%), not worth touching.
+- Dry run skips the devicectl/usbmux readiness polling, so a real run adds a short `xcrun` spawn every 6–10 s on top.
+- Didn't change anything. If foreground cost matters: drop the ring to ~15 fps or render it at dpr 1.
+
+---
+
 ## 2026-10-27 — Waypoint: ring burst when the phone passes its checks
 
 **Model: Claude Opus 5.5 (Claude Code).** The owner pasted a React/three.js/shadcn "ShaderAnimation" component and asked
