@@ -34,6 +34,10 @@ for it when you clear the checks and load into the tool.
   contrast. The hold went from 1.4 to 2.4 s (`Warp.hold`), so the rings are up about 3.7 s in all. The ring wave
   leaves the screen at about 2 s, so the second half is the lockup on near-black. Keyframes stay on through `.out` so
   nothing snaps when the fade starts. Still zero dropped frames while it plays.
+- **Skip gets it too (2026-10-28):** "Continue without phone" on first boot now plays the same rings + brand moment
+  (`skipLink()`), the app lays out under the card first like the phone path. `Warp.prep()` now runs as soon as the
+  connect card shows on first boot so the click doesn't wait on the shader compile. `linkLeaving` stops a skip during
+  the rings from starting them twice. Later visits to the connect card (phone unplugged) still skip straight out.
 
 ---
 
