@@ -132,8 +132,12 @@ function initMap(){
   // Stadia's dark style is keyless from localhost (CARTO wants an API key now)
   const tiles = L.tileLayer(TILE_URL, {
     attribution:'© Stadia Maps © OpenMapTiles © OpenStreetMap', maxZoom:20,
-  }).addTo(map);
+  });
   tiles.once('load', ()=>{ tilesReady=true; });
+  // only after the page's load event: pywebview keeps the window black until load fires, and
+  // load waits on every image, so internet tiles on a slow cold start held the whole app back
+  if(document.readyState==='complete') tiles.addTo(map);
+  else window.addEventListener('load', ()=>tiles.addTo(map), { once:true });
   // the border light + frosted HUDs repaint every frame; pause them while the map moves
   map.on('movestart', ()=> document.body.classList.add('panning'));
   map.on('moveend', ()=> document.body.classList.remove('panning'));
