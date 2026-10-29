@@ -3,13 +3,13 @@
 // Leap mark round its rim, then settles into the flat Dock icon, and "Waypoint" rises letter by
 // letter under it. the glass itself is glass.js. Warp.prep() compiles it and builds the mark's
 // distance field ahead of time (do it while something else is on screen, it hitches), Warp.in()
-// resolves once it covers the screen, Warp.finished() once the whole reveal has played (glass settled,
-// word in, shimmer done) however slow the frames came, Warp.out() fades it.
+// resolves once black covers the screen, Warp.finished() then plays the reveal and resolves once all of
+// it has played (glass settled, word in, shimmer done) however slow the frames came, Warp.out() fades it.
 // reduced motion or no WebGL2: all no-ops and the app just shows as before.
 const Warp = (() => {
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FADE = 500;
-  const WORD = 3700;   // from .in to the word's shimmer ending (app.css: last letter + wp-shine)
+  const WORD = 3700;   // from .go to the word's shimmer ending (app.css: last letter + wp-shine)
   const BEAT = 500;    // a moment on the finished icon before the app comes in
   const CAP = 12000;   // never hold the app longer than this (a minimised window gets no frames)
 
@@ -17,6 +17,7 @@ const Warp = (() => {
   const LEAP = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 258 254"><path fill="#fff" fill-rule="evenodd" d="M62 162a32 32 0 1 1 0 64a32 32 0 1 1 0-64zM62 180a14 14 0 1 0 0 28a14 14 0 1 0 0-28zM58.09 140.37A151 151 0 0 1 129.15 62.65A15 15 0 0 1 142.85 89.35A121 121 0 0 0 85.90 151.63A15 15 0 0 1 58.09 140.37ZM194 28a34 34 0 1 1 0 68a34 34 0 1 1 0-68z"/></svg>`;
 
   let el = null, glass = null, played = null;
+  const sleep = ms => new Promise(res => setTimeout(res, ms));
 
   function start(){
     el = document.createElement('div');
@@ -46,16 +47,19 @@ const Warp = (() => {
       if(RM || el?.classList.contains('in') || (!el && !start())) return;
       try { await glass.ready; } catch { stop(); return; }   // the mark never loaded: skip the intro
       if(!el) return;
-      const sleep = ms => new Promise(res => setTimeout(res, ms));
-      played = new Promise(res => requestAnimationFrame(() => {
-        el.classList.add('in');
-        res(Promise.all([glass.play(), sleep(WORD)]));
-      })).then(() => sleep(BEAT));
-      await sleep(FADE);
+      await new Promise(res => requestAnimationFrame(res));
+      el.classList.add('in');
+      await sleep(FADE);   // just the black: the reveal waits for finished(), so none of it plays under the fade
     },
+    // plays the reveal on the covered screen (the app does its leaving work first, so that hitch
+    // lands on black, not on the droplet) and resolves once all of it has played
     finished(){
-      if(!played) return Promise.resolve();
-      return Promise.race([played, new Promise(res => setTimeout(res, CAP))]);
+      if(!el?.classList.contains('in')) return Promise.resolve();
+      played ??= new Promise(res => requestAnimationFrame(() => {
+        el?.classList.add('go');
+        res(Promise.all([glass?.play(), sleep(WORD)]));
+      })).then(() => sleep(BEAT));
+      return Promise.race([played, sleep(CAP)]);
     },
     out(){
       if(!el) return Promise.resolve();
