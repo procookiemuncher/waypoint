@@ -7,6 +7,24 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: native launch splash
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner picked the native logo splash from a throwaway preview of the options.
+- `mac-version/splash.py`, hooked up in `app.py` with `splash.attach(window)`. On pywebview's `before_show` (main
+  thread, window and WKWebView made, page not loading yet) it puts the webview in a plain container with the splash
+  on top and makes that the content view. pywebview only moves the webview in when `webview.window()` is nil, so it
+  leaves this alone. The page loads under the splash. On `loaded` the splash fades out (0.3 s) and is removed.
+- Look: Waypoint.icns at a 150 pt tile, a radial lavender glow plus a shadow pulse (Core Animation, 1.2 s,
+  autoreverse, so no Python per frame), "Waypoint" in the system semibold. "starting…" shows after 2.5 s. Reduced
+  motion turns the pulse off. The splash drops after 30 s even if `loaded` never comes. Any error while building it
+  is printed, and the app opens as it did before.
+- Checked in the real window (dry run): splash from the window's first frame, crossfade at `loaded`, JS bridge
+  (`pywebview.api.*`) still there, webview is first responder, one subview left after the fade.
+- Side note: the all-black `screencapture -l` frames earlier in the day were the window before pywebview put the
+  webview in, not a capture problem.
+
+---
+
 ## 2026-10-29 — Waypoint: black window on start
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner still saw ~10 s of black window at launch.
