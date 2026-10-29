@@ -7,6 +7,19 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: glass reveal intro
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wanted the 21st.dev "liquid glass logo reveal" as the first-boot intro.
+- That component is React + Tailwind + shadcn; the app is a plain static page with no build step, so I ported the
+  engine to vanilla JS instead of bringing in a toolchain: `core/web/static/glass.js` (WebGL2, shader unchanged from
+  upstream zanwei/glass-icon-reveal, MIT). Dark look, `keepPlate`, so it ends on the flat icon.
+- `warp.js` keeps its API (`prep/in/out/hold/active`), so `app.js` is untouched. The rings are gone: a glass droplet
+  lands, spreads into the squircle, bends the Leap round its rim, then settles into the Dock icon (`#17141f` tile,
+  `#b49aff` mark), "Waypoint" rises under it. `prep()` also builds the mark's SDF (~100 ms) while the connect card is up.
+  Hold went 2.4 s → 3.2 s (reveal is ~2.7 s at speed 1.3). Reduced motion / no WebGL2: no intro, as before.
+- Checked in headed Chromium (Playwright) with frame grabs: droplet, rim colour, final icon + word all right. Not
+  checked in the real pywebview window yet.
+
 ## 2026-10-29 — Waypoint: new app icon (the Leap)
 
 **Model: Claude Opus 5.5 (Claude Code).**
