@@ -14,6 +14,9 @@ what changed, what was decided, what broke, what's next.
   `#consolewrap` now focuses `#prompt-in` with the caret at the end. A drag that selects output text is left alone,
   so copying from the console still works. The whole box shows the text cursor.
 - Not checked in the running app yet, only `node --check`.
+- Follow-up: the thick blinking block stays while typing now. The native caret is transparent and the input is
+  sized to its text (`Nch + 2px`) so the block sits right after the last character. Arrow left/right still move the
+  real (hidden) caret but the block stays at the end.
 
 ## 2026-10-29 — Waypoint: native launch splash
 
