@@ -507,7 +507,7 @@ path.glowcase { filter: blur(5px); }
   font-family: 'JetBrains Mono', monospace; font-size: 11px;
 }
 #promptline .ps { color: var(--accent); margin-right: 7px; text-shadow: 0 0 8px rgba(var(--accent-rgb),.3); }
-#promptline { cursor: text; }
+#consolewrap, #promptline { cursor: text; }
 #prompt-in {
   width: 1ch; min-width: 1ch; max-width: calc(100% - 90px); padding: 0; border: 0; outline: none;
   background: none; color: #dbe3ea; font: inherit; caret-color: var(--accent);

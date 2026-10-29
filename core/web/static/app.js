@@ -543,6 +543,12 @@ promptIn.addEventListener('keydown', e=>{
   }
 });
 $('promptline').addEventListener('mousedown', e=>{ if(e.target!==promptIn){ e.preventDefault(); promptIn.focus(); } });
+// clicking anywhere in the console box focuses the prompt, unless the click was a drag to select output text
+$('consolewrap').addEventListener('click', e=>{
+  if(e.target===promptIn || !window.getSelection().isCollapsed) return;
+  promptIn.focus();
+  const n=promptIn.value.length; promptIn.setSelectionRange(n, n);
+});
 
 /* ============ COMMAND PANEL (hero + thumbs) ============ */
 let selected=null, engineChoice=null;
