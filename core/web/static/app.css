@@ -658,10 +658,10 @@ path.glowcase { filter: blur(5px); }
   opacity: 0;
 }
 #warp .mark svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 10px 28px rgba(0,0,0,.55)); }
-#warp .mark .arrow { transform-box: fill-box; transform-origin: 50% 60%; }
+#warp .mark .leap { transform-box: fill-box; transform-origin: 50% 60%; }
 #warp:is(.in,.out) .mark { animation: wp-mark .9s cubic-bezier(.16,1,.3,1) .15s forwards; }
 #warp:is(.in,.out) .mark::before { animation: wp-glow 1.6s ease-out .25s forwards; }
-#warp:is(.in,.out) .mark .arrow { animation: wp-arrow .9s cubic-bezier(.34,1.56,.64,1) .35s backwards; }
+#warp:is(.in,.out) .mark .leap { animation: wp-leap .9s cubic-bezier(.34,1.56,.64,1) .35s backwards; }
 #warp .word {
   position: relative; display: flex;
   font: 600 46px/1 'Inter', sans-serif; letter-spacing: -0.02em; color: #f4f1ff;
@@ -678,7 +678,7 @@ path.glowcase { filter: blur(5px); }
 #warp:is(.in,.out) .word::after { animation: wp-shine 1.1s ease-in-out 1.45s; }
 @keyframes wp-mark  { from { opacity: 0; transform: scale(.82); filter: blur(10px); } to { opacity: 1; transform: none; filter: blur(0); } }
 @keyframes wp-glow  { 0% { opacity: 0; transform: scale(.6); } 40% { opacity: 1; } 100% { opacity: .55; transform: scale(1); } }
-@keyframes wp-arrow { from { transform: translateY(14%) scale(.7); opacity: 0; } }
+@keyframes wp-leap { from { transform: translateY(14%) scale(.7); opacity: 0; } }
 @keyframes wp-letter { from { opacity: 0; transform: translateY(14px); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
 @keyframes wp-shine { 0% { opacity: 1; background-position: 130% 0; } 100% { opacity: 1; background-position: -30% 0; } }
 
