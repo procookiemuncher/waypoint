@@ -7,6 +7,24 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: black window on start
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner still saw ~10 s of black window at launch.
+- Cause: pywebview (cocoa) only puts the WKWebView into the window in `webView_didFinishNavigation_`, so the window
+  shows its `background_color` until the page's `load` event. `load` waits on every image, and the Stadia map tiles
+  were added to the map before it. So the black lasted as long as the internet tiles took, and the boot log typed
+  where nobody could see it.
+- Measured in the real window (dry run, warm, with a temporary load beacon): `load` at +1.27 s before, +0.88 s
+  after (~0.1 s after the HTML). Cold tiles took up to ~3.5 s in Chromium even warm-ish. Cold DNS/TLS/VPN can make
+  that the 10 s.
+- Fix: `initMap()` adds the tile layer after `load`. The "starting map engine" step still waits up to 2 s on the
+  first tiles as before.
+- Python side was already fast on the owner's launch: `startup +0.53s server up` in Waypoint.log.
+- Not checked: a real cold boot after a reboot. If there's still black, the next suspect is the WebKit
+  WebContent process starting cold.
+
+---
+
 ## 2026-10-29 — Waypoint: slow cold start
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner said the app takes a while to load, worse on a cold start.
