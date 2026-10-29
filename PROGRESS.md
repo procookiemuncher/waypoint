@@ -7,6 +7,27 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: slow cold start
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner said the app takes a while to load, worse on a cold start.
+- Warm, nothing here is slow: imports ~0.2 s (fastapi is most of it), first `/api/status` 0.55 s (a `pmd3 usbmux list`
+  spawn), cold `xcrun` cache 0.64 s. No phone was plugged in, so devicectl against the phone wasn't measured.
+- The real problem was the order. The phone was only looked at once the boot log reached "looking for the iphone"
+  (~3 s of typing plus up to 2 s waiting on map tiles). Only then did usbmux run, then `lockState`, then
+  `ddiServices` (~5 s, every launch, since `ddi_ok` is in memory). On a cold start each devicectl call is slower
+  and CoreDevice may need a few polls to reach the phone.
+- Fixes: `app.py` starts `session.phone()` as soon as the server is up. `boot()` fetches the library and status
+  at the start. `DevicectlReadiness` runs the DDI look in the background next to the first lock look, and a locked
+  poll doesn't wait on it. If it says not usable, it asks once more before showing the error.
+- Startup timings now go to `~/Library/Logs/Waypoint.log` (`startup +Xs imports done / server up`, plus any
+  devicectl call over 2 s). The clock starts when app.py loads, so interpreter start isn't counted.
+- Not changed: the 1.8 s lit wire + ~3.7 s rings (on purpose). iCloud: "Optimize Mac Storage" is on and the
+  14k-file `.venv` sits on the synced Desktop (1048 `* 2` conflict copies in it, all evicted). Could slow a cold
+  first read; not measured. Fix would be moving the venv out of the Desktop, not done without asking.
+- **Next:** owner does a reboot + launch with the phone plugged in and unlocked, then read the log.
+
+---
+
 ## 2026-10-29 — Waypoint: smoother "Continue without phone"
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner said the skip click lagged on a real (not dry) run with no phone.
