@@ -953,6 +953,9 @@ async function bootStep(label, work){
   return res;
 }
 async function boot(){
+  // ask for the library and the phone right away; the steps below just show them landing
+  const library = loadLibrary(), firstLook = pollStatus();
+  library.catch(()=>{});   // the step below reports a failure
   await wait(250);
   const native = !!window.pywebview || navigator.userAgent.includes('Macintosh') && !navigator.userAgent.includes('Chrome');
   const h=bootLine('','accent'); await typeInto(h,'▸ waypoint — vida-360 location console', 14);
@@ -964,11 +967,11 @@ async function boot(){
     return tilesReady ? { ok:true } : { ok:false, text:'[ OFFLINE ]' };
   });
   await bootStep('loading route library', async()=>{
-    await loadLibrary(); libLoaded=true;
+    await library; libLoaded=true;
     return { ok:true, text:`[ ${ROUTES.length} ROUTES · ${PLACES.length} PLACES ]` };
   });
   await bootStep('looking for the iphone', async()=>{
-    await pollStatus();
+    await firstLook;
     const dev = STATUS?.devices?.[0];
     return dev ? { ok:true, text:'[ '+dev.name.toUpperCase()+' ]' } : { ok:false, text:'[ NOT FOUND ]' };
   });
