@@ -79,6 +79,13 @@ class WindowApi:
     def close(self):
         self._quit()
 
+    def open_url(self, url):
+        """Outside links (the map's Leaflet / OSM credits) go to the default browser. Followed in
+        the window they replaced the app, and there's no back button to get to the map again."""
+        if url.startswith(('http://', 'https://')):
+            import webbrowser
+            webbrowser.open(url)
+
 
 _last_press = [None]   # the latest left mouse-down; performWindowDragWithEvent_ needs the real event
 
