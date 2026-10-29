@@ -3,7 +3,7 @@
 // and settles into the flat icon. one WebGL2 pass over a fullscreen triangle.
 // shader + spring timeline ported from zanwei/glass-icon-reveal (MIT), via the 21st.dev React
 // component, trimmed to what the intro needs (no loop, no image logos, dark look only).
-// GlassReveal.create(host, anchor, opts) → null without WebGL2, else { ready, play(), still(), dispose() }.
+// GlassReveal.create(host, anchor, opts) → null without WebGL2, else { ready, play() → done, still(), dispose() }.
 const GlassReveal = (() => {
   const TEX = 1024;   // logo texture size
   const BOX = 0.75;   // share of the texture the logo fills (the rest is room for the SDF)
@@ -563,7 +563,7 @@ void main() {
     const tl = timeToReach(0.85, P.response, damping) - 0.01;   // the droplet lands: the ripple leaves
     const tm = timeToReach(0.92, P.response, damping) - 0.01;   // and spreads into the tile
     const end = P.present + TAIL;
-    let time = 0, raf = 0, last = 0, dead = false;
+    let time = 0, raf = 0, last = 0, dead = false, finish = null;
 
     function draw(){
       const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -581,6 +581,7 @@ void main() {
       last = now;
       draw();
       if(time < end) raf = requestAnimationFrame(tick);
+      else { const f = finish; finish = null; f?.(); }
     }
     const onResize = () => { if(!raf && !dead) draw(); };
     addEventListener('resize', onResize);
@@ -595,16 +596,19 @@ void main() {
     return {
       ready,
       duration: end / P.speed,
+      // resolves once the reveal has run to its last frame (or the player is disposed)
       play(){
-        if(dead || raf) return;
+        if(dead || raf) return Promise.resolve();
         time = 0; last = performance.now();
         raf = requestAnimationFrame(tick);
+        return new Promise(res => finish = res);
       },
       // jump to the finished icon (reduced motion)
       still(){ if(!dead){ time = end; draw(); } },
       dispose(){
         dead = true;
         cancelAnimationFrame(raf); raf = 0;
+        finish?.(); finish = null;
         removeEventListener('resize', onResize);
         renderer.dispose();
         canvas.remove();
