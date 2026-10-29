@@ -7,6 +7,17 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: smoother "Continue without phone"
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner said the skip click lagged on a real (not dry) run with no phone.
+- Cause: `skipLink()` ran `layoutApp()` (browse cards + map framing) on the click itself, right as the rings started.
+  Measured in headless Chromium, no phone, real mode: a 90 ms long task on the click, frame gaps of 125 ms and 92 ms.
+- Fix: on first boot `linkPhone()` now lays the app out under the card 700 ms after it shows (once its fade-in is done).
+  The skip and phone paths both find it already done.
+- After: 0 long tasks over 3 runs, one ~30 ms frame as the rings first composite. Phone path not re-checked on device.
+
+---
+
 ## 2026-10-28 — Waypoint idle resource check
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner asked how heavy the app is when it's just sitting there. Measured with
