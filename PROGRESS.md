@@ -7,6 +7,16 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: intro no longer plays under its own fade-in
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner: the intro only played part of the way, then the app loaded in.
+- Cause: `Warp.in()` started the glass and the word timers on the same frame the black cover began its 0.5 s fade,
+  and the droplet lands + spreads in the first ~0.15 s, so the opening happened while the overlay was still see-through.
+- Now `in()` only fades the black in. `finished()` starts the reveal (adds `.go`, the word/shine CSS keys off it now
+  instead of `.in`) after the app has done its leaving work, so that hitch lands on black, and resolves when it's all played.
+- Checked in headed Chromium with a bare page: black at +0.6 s, droplet/tile after, icon + word at the end, out at ~5.7 s.
+  Not checked in the real pywebview window.
+
 ## 2026-10-29 — Waypoint: glass reveal intro
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wanted the 21st.dev "liquid glass logo reveal" as the first-boot intro.
