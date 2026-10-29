@@ -5,6 +5,14 @@
 
 /* ============ WINDOW CHROME ============ */
 function winMinimize(){ if(window.pywebview?.api) window.pywebview.api.minimize(); }
+// outside links open in the real browser; in the app window they'd replace the page with no way back
+document.addEventListener('click', e=>{
+  const a=e.target.closest('a[href]');
+  if(!a || a.origin===location.origin || !/^https?:/.test(a.protocol)) return;
+  e.preventDefault();
+  if(window.pywebview?.api?.open_url) window.pywebview.api.open_url(a.href);
+  else window.open(a.href, '_blank', 'noopener');
+});
 function winClose(){ if(window.pywebview?.api) window.pywebview.api.close(); else window.close(); }
 // the titlebar drags the window natively (AppKit). pywebview's own drag region moved it with a
 // bridge call per mousemove, which lagged way behind the cursor
