@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 
+T0 = time.time()
 HERE = os.path.dirname(os.path.abspath(__file__))
 CORE = os.path.join(os.path.dirname(HERE), "core")
 sys.path.insert(0, CORE)
@@ -29,6 +30,11 @@ from phone_check import DevicectlReadiness
 APP_NAME = "Waypoint"
 ICON = os.path.join(HERE, "app", "Waypoint.icns")
 QUIT_LIMIT = 45   # seconds; if clearing the phone takes longer than this, quit anyway
+
+
+def mark(what):
+    """Startup timing, to ~/Library/Logs/Waypoint.log (not the in-app console)."""
+    print(f"[{time.strftime('%H:%M:%S')}] startup +{time.time() - T0:.2f}s {what}", flush=True)
 
 
 def look_like_an_app():
@@ -95,6 +101,7 @@ def on_sigterm(cleanup):
 
 
 def main():
+    mark("imports done")
     signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGTERM])   # before any thread exists
     look_like_an_app()
     session = Session()
@@ -112,6 +119,10 @@ def main():
         if server.started:
             break
         time.sleep(0.05)
+    mark("server up")
+    # look for the phone now, not once the page's boot log gets to it: the usbmux + devicectl checks
+    # take seconds on a cold start and this way they run while the boot log is typing
+    threading.Thread(target=session.phone, daemon=True).start()
 
     started, finished, quitting = threading.Event(), threading.Event(), threading.Event()
 
