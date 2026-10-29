@@ -19,6 +19,11 @@ what changed, what was decided, what broke, what's next.
   Hold went 2.4 s → 3.2 s (reveal is ~2.7 s at speed 1.3). Reduced motion / no WebGL2: no intro, as before.
 - Checked in headed Chromium (Playwright) with frame grabs: droplet, rim colour, final icon + word all right. Not
   checked in the real pywebview window yet.
+- Follow-up (owner: "make sure the whole animation plays regardless if the app is ready"): the app used to give it a
+  fixed 3.2 s, but the glass clock only advances on drawn frames, so a hitch (layout under it) cut it off mid reveal.
+  Now `glass.play()` resolves on the last frame and boot awaits `Warp.finished()` = glass done + word shimmer + 0.5 s
+  beat, capped at 12 s (minimised window = no frames). Tested with 3 s of forced main-thread stalls: finished at ~5 s
+  on the settled icon + full word (normal is ~4.2 s).
 
 ## 2026-10-29 — Waypoint: new app icon (the Leap)
 
