@@ -1044,6 +1044,8 @@ async function linkPhone(){
   el.classList.add('in');
   $('boot').classList.add('gone');   // covered by now; gone so it can't show through the fade-out
   if(!booted) Warp.prep();   // compile while the card is up, a skip plays the rings too
+  // and lay the app out under it once the card has faded in, so the skip click doesn't pay for it
+  if(!booted) setTimeout(()=>{ if(linkDone && !linkLeaving) layoutApp(false); }, 700);
   const done = new Promise(res => linkDone = res);
   (async function loop(){
     while(linkDone){
