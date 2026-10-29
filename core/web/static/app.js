@@ -975,6 +975,11 @@ async function boot(){
   // ask for the library and the phone right away; the steps below just show them landing
   const library = loadLibrary(), firstLook = pollStatus();
   library.catch(()=>{});   // the step below reports a failure
+  // the glass intro, all of it, before the terminal starts typing (no-op under reduced motion / no WebGL2)
+  Warp.prep();
+  await Warp.in();
+  await Warp.finished();
+  await Warp.out();
   await wait(250);
   const native = !!window.pywebview || navigator.userAgent.includes('Macintosh') && !navigator.userAgent.includes('Chrome');
   const h=bootLine('','accent'); await typeInto(h,'▸ waypoint — vida-360 location console', 14);
@@ -999,13 +1004,11 @@ async function boot(){
   const r=bootLine('', dev?'ok':'dim');
   await typeInto(r, dev ? '  ready.' : '  no phone yet — plug it in + unlock it, I\'ll keep looking.', 14);
   await wait(450);
-  const played = await linkPhone();
+  await linkPhone();
   $('boot').classList.add('gone');
   layoutApp(true);   // no-op if the connect screen already did it
   if(!STATUS?.active) setMode('IDLE');
-  if(played) await Warp.finished();   // the whole reveal, even if the app was ready long before
-  Warp.out();   // also clears a prepped-but-unplayed one
-  $('panel').classList.add('reveal');   // after the rings start fading, so the rise is seen
+  $('panel').classList.add('reveal');
   $('sweep').classList.add('go');
   await wait(250);
   if(STATUS?.dry_run) typeLine('dry run — commands are printed, the phone is not touched.','warn');
@@ -1018,8 +1021,7 @@ async function boot(){
 }
 
 // the heavy part of showing the app: the browse cards and the map's first framing. On a first boot
-// with the phone ready it runs under the connect card, before the rings, with the map jumped
-// straight to its spot: a fly-to under the rings fetched tiles every frame and they stuttered.
+// with the phone ready it runs under the connect card, with the map jumped straight to its spot.
 let libLoaded=false, laidOut=false;
 function layoutApp(fly){
   if(laidOut) return;
@@ -1038,7 +1040,7 @@ const LINK_COPY = {
   ready:    ['iPhone ready', ''],
   error:    ['Something\'s off', ''],
 };
-let linkDone = null, linkHideTimer = null, linkLeaving = false;
+let linkDone = null, linkHideTimer = null;
 function renderLink(){
   const dev = STATUS?.devices?.[0];
   const ph = STATUS?.phone || { state: dev ? 'checking' : 'none' };
@@ -1065,48 +1067,38 @@ async function linkPhone(){
   await wait(30);
   el.classList.add('in');
   $('boot').classList.add('gone');   // covered by now; gone so it can't show through the fade-out
-  if(!booted) Warp.prep();   // compile while the card is up, a skip plays the rings too
-  // and lay the app out under it once the card has faded in, so the skip click doesn't pay for it
-  if(!booted) setTimeout(()=>{ if(linkDone && !linkLeaving) layoutApp(false); }, 700);
+  // lay the app out under it once the card has faded in, so the skip click doesn't pay for it
+  if(!booted) setTimeout(()=>{ if(linkDone) layoutApp(false); }, 700);
   const done = new Promise(res => linkDone = res);
   (async function loop(){
     while(linkDone){
       await pollStatus();
-      if(!linkDone || linkLeaving) break;
+      if(!linkDone) break;
       if(renderLink()==='ready'){
-        if(!booted){ layoutApp(false); Warp.prep(); }   // under the card, so the rings get the frames
+        if(!booted) layoutApp(false);   // under the card, so the skip/leave doesn't pay for it
         await new Promise(r=>setTimeout(r, 1800));   // a moment to see the lit wire
-        if(!linkDone || linkLeaving) break;   // skipped while the wire was lit
-        linkLeaving = true;   // a skip click from here on would just double up the rings
-        if(!booted) await Warp.in();   // first boot only: the rings cover the card before it goes
-        linkLeaving = false;
-        leaveLink(!booted); break;
+        if(!linkDone) break;   // skipped while the wire was lit
+        leaveLink(); break;
       }
       await new Promise(r=>setTimeout(r, 700));   // not wait(): that's 0 under reduced motion
     }
   })();
-  return done;   // true when the rings played (first boot), false otherwise
+  return done;
 }
-// "continue without phone": on first boot it gets the rings too, same as a phone that passed
-async function skipLink(){
-  if(!linkDone || linkLeaving) return;
-  if(!booted){
-    linkLeaving = true;
-    layoutApp(false); Warp.prep();
-    await Warp.in();
-    linkLeaving = false;
-    return leaveLink(true);
-  }
+// "continue without phone"
+function skipLink(){
+  if(!linkDone) return;
+  layoutApp(false);
   leaveLink();
 }
-function leaveLink(played=false){
+function leaveLink(){
   if(!linkDone) return;
   const finish = linkDone; linkDone = null;
   const el = $('link');
   el.classList.add('out');
   $('frame').classList.remove('linking');
   linkHideTimer = setTimeout(()=>{ el.hidden = true; }, 650);
-  finish(played);
+  finish();
 }
 
 /* ============ INIT ============ */

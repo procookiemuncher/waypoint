@@ -1,6 +1,5 @@
-// the "you're in" moment: once the phone passes every check on first boot, the connect screen
-// gives way to the brand: a droplet of glass lands, spreads into the app icon's squircle, bends the
-// Leap mark round its rim, then settles into the flat Dock icon, and "Waypoint" rises letter by
+// the launch intro, before the boot terminal starts: a droplet of glass lands, spreads into the
+// app icon's squircle, bends the Leap mark round its rim, then settles into the flat Dock icon, and "Waypoint" rises letter by
 // letter under it. the glass itself is glass.js. Warp.prep() compiles it and builds the mark's
 // distance field ahead of time (do it while something else is on screen, it hitches), Warp.in()
 // resolves once black covers the screen, Warp.finished() then plays the reveal and resolves once all of
