@@ -7,6 +7,13 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: launch splash is plain dark
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner: it started with the logo already showing; wants all black, then the glass fades in.
+- The logo was the native splash (`mac-version/splash.py`), shown until the page loads. Dropped its icon, glow, pulse
+  and name; it's just the dark background now (still a tiny "starting…" after 2.5 s on a slow cold start).
+- Launched once with `VIDA_DRY_RUN=1`: splash installs fine (no "splash skipped"). Didn't eyeball the window frames.
+
 ## 2026-10-29 — Waypoint: glass intro moved to launch
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner: "the full animation doesnt play at the start it gets cutoff by the terminal loading".
