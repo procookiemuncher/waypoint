@@ -1003,7 +1003,7 @@ async function boot(){
   $('boot').classList.add('gone');
   layoutApp(true);   // no-op if the connect screen already did it
   if(!STATUS?.active) setMode('IDLE');
-  if(played && Warp.active) await wait(Warp.hold);
+  if(played) await Warp.finished();   // the whole reveal, even if the app was ready long before
   Warp.out();   // also clears a prepped-but-unplayed one
   $('panel').classList.add('reveal');   // after the rings start fading, so the rise is seen
   $('sweep').classList.add('go');

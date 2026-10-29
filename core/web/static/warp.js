@@ -3,17 +3,20 @@
 // Leap mark round its rim, then settles into the flat Dock icon, and "Waypoint" rises letter by
 // letter under it. the glass itself is glass.js. Warp.prep() compiles it and builds the mark's
 // distance field ahead of time (do it while something else is on screen, it hitches), Warp.in()
-// resolves once it covers the screen, Warp.out() fades it.
+// resolves once it covers the screen, Warp.finished() once the whole reveal has played (glass settled,
+// word in, shimmer done) however slow the frames came, Warp.out() fades it.
 // reduced motion or no WebGL2: all no-ops and the app just shows as before.
 const Warp = (() => {
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FADE = 500;
-  const HOLD = 3200;   // how long the brand stays after the screen is covered (the reveal is ~2.7 s)
+  const WORD = 3700;   // from .in to the word's shimmer ending (app.css: last letter + wp-shine)
+  const BEAT = 500;    // a moment on the finished icon before the app comes in
+  const CAP = 12000;   // never hold the app longer than this (a minimised window gets no frames)
 
   // the Leap from the Dock icon (mac-version/app/icon.svg), on its own; the tile is the glass
   const LEAP = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 258 254"><path fill="#fff" fill-rule="evenodd" d="M62 162a32 32 0 1 1 0 64a32 32 0 1 1 0-64zM62 180a14 14 0 1 0 0 28a14 14 0 1 0 0-28zM58.09 140.37A151 151 0 0 1 129.15 62.65A15 15 0 0 1 142.85 89.35A121 121 0 0 0 85.90 151.63A15 15 0 0 1 58.09 140.37ZM194 28a34 34 0 1 1 0 68a34 34 0 1 1 0-68z"/></svg>`;
 
-  let el = null, glass = null;
+  let el = null, glass = null, played = null;
 
   function start(){
     el = document.createElement('div');
@@ -33,19 +36,26 @@ const Warp = (() => {
   function stop(){
     glass?.dispose();
     el?.remove();
-    el = glass = null;
+    el = glass = played = null;
   }
 
   return {
-    hold: RM ? 0 : HOLD,
     get active(){ return !!el; },
     prep(){ if(!RM && !el) start(); },
     async in(){
       if(RM || el?.classList.contains('in') || (!el && !start())) return;
       try { await glass.ready; } catch { stop(); return; }   // the mark never loaded: skip the intro
       if(!el) return;
-      requestAnimationFrame(() => { el.classList.add('in'); glass.play(); });
-      await new Promise(res => setTimeout(res, FADE));
+      const sleep = ms => new Promise(res => setTimeout(res, ms));
+      played = new Promise(res => requestAnimationFrame(() => {
+        el.classList.add('in');
+        res(Promise.all([glass.play(), sleep(WORD)]));
+      })).then(() => sleep(BEAT));
+      await sleep(FADE);
+    },
+    finished(){
+      if(!played) return Promise.resolve();
+      return Promise.race([played, new Promise(res => setTimeout(res, CAP))]);
     },
     out(){
       if(!el) return Promise.resolve();
