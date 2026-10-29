@@ -7,6 +7,16 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: map credit links trapped the window
+
+**Model: Claude Opus 5.5 (Claude Code).**
+- Clicking "Leaflet" (or any credit) in the map's corner navigated the pywebview window to that site, and there's
+  no back button, so the app was stuck there until restart.
+- Now a page-wide click handler catches links to other origins and sends them to `WindowApi.open_url`
+  (`mac-version/app.py`), which hands http(s) URLs to the default browser. In a normal browser (no pywebview) it
+  falls back to a new tab. Credits stay visible since Stadia / OSM require attribution.
+- Only `node --check` / `py_compile` so far, not clicked in the real window.
+
 ## 2026-10-29 — Waypoint: click anywhere in the console to type
 
 **Model: Claude Opus 5.5 (Claude Code).**
