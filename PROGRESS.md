@@ -7,6 +7,16 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: glass intro moved to launch
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner: "the full animation doesnt play at the start it gets cutoff by the terminal loading".
+- The intro used to play after the boot log + connect card, so at launch the native splash went straight to the typing terminal.
+- Now `boot()` runs prep → in → finished → out before the first boot line, so the whole reveal plays on black and the
+  terminal only starts once it has faded. The connect card just fades away now (no second intro); `linkLeaving` and
+  the `played` plumbing are gone. glass.js/warp.js load before app.js since boot() runs as soon as app.js loads.
+- Checked against the real page (dry-run server, headed Chromium): droplet at ~0.8 s, icon + word ~4.8 s, intro gone
+  ~5.8 s, first boot line right after, no page errors. Not checked in the pywebview window.
+
 ## 2026-10-29 — Waypoint: intro no longer plays under its own fade-in
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner: the intro only played part of the way, then the app loaded in.
