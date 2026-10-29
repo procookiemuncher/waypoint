@@ -7,6 +7,20 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: new app icon (the Leap)
+
+**Model: Claude Opus 5.5 (Claude Code).**
+- Owner felt the old icon (gradient rim, faint grid + circle, gradient nav arrow) looked vibe-coded. Went through
+  ~15 concepts with the `logo-design` skill (installed to `~/.claude/skills/logo-design`), owner picked **Leap**:
+  a hollow start ring, one arc, a solid landing dot, i.e. "from here to anywhere".
+- `mac-version/app/icon.svg` is now flat: tile `#17141f`, mark `#b49aff` (same as the UI's `--accent`). No
+  gradients, no strokes, the arc is an outlined path so AppKit renders it the same as browsers.
+- The warp intro's copy of the mark (`warp.js`) swapped too; the pop-in animation now targets `.leap`, a `<g>`
+  around the path, because a CSS transform on the path itself would wipe its own `transform` attribute.
+- Rebuilt `Waypoint.icns` + `~/Applications/Waypoint.app` via `make-app.command`; checked the icns at 16–256 px.
+- Not touched: `cini videos/v1` still describes and inlines the old arrow icon (its prompt.txt, sting `core.js`).
+  Re-run `prep/assets.py` and update the prompt if that video gets re-rendered.
+
 ## 2026-10-29 — Waypoint: map credit links trapped the window
 
 **Model: Claude Opus 5.5 (Claude Code).**
