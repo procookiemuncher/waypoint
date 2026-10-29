@@ -7,6 +7,14 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Waypoint: click anywhere in the console to type
+
+**Model: Claude Opus 5.5 (Claude Code).**
+- Before, only the prompt row focused the input, so clicking the output area did nothing. A click anywhere in
+  `#consolewrap` now focuses `#prompt-in` with the caret at the end. A drag that selects output text is left alone,
+  so copying from the console still works. The whole box shows the text cursor.
+- Not checked in the running app yet, only `node --check`.
+
 ## 2026-10-29 — Waypoint: native launch splash
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner picked the native logo splash from a throwaway preview of the options.
