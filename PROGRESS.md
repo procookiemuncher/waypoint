@@ -7,6 +7,20 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-29 — Installed the `design-taste-frontend` skill (tasteskill v2)
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner asked for it: `npx skills add https://github.com/Leonxlnx/taste-skill --skill "design-taste-frontend"`.
+- Ran it project scope, Claude Code only (`-a claude-code -y`); the CLI copied it to `.claude/skills/design-taste-frontend/`
+  (2.4 MB, upstream 12af471). Gitignored `.claude/skills/` + `.taste-skill/` (where its scripts drop direction sheets and
+  screenshots), same rule as `.agents/` + `skills-lock.json`: personal tooling, not project source.
+- Read SKILL.md + skimmed the scripts first: art direction for web pages and app screens, node scripts that drive a local
+  Chrome (inspect/screenshot) and search open image collections (Openverse, Wikimedia, AIC, Met, NASA). Installer scan:
+  Gen pass; Socket low (`assets/charts.js` puts labels into `innerHTML`, XSS only if fed untrusted data); Snyk medium
+  (W011, `assets.mjs` pulls third-party search results into context). Nothing blocking.
+- Heads-up for Waypoint UI work: its house rules ban glass/backdrop blur, glows, gradients, violet/indigo and monospace,
+  i.e. the glass intro, the `#b49aff` accent and the boot terminal. Its own escape hatch for an existing brand is
+  `draw.mjs --keep palette,type` + `inspect.mjs --allow <rule>`; use that so it doesn't fight the Leap icon/colours.
+
 ## 2026-10-29 — Waypoint: launch splash is plain dark
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner: it started with the logo already showing; wants all black, then the glass fades in.
