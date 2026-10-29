@@ -17,9 +17,11 @@ what changed, what was decided, what broke, what's next.
   Chrome (inspect/screenshot) and search open image collections (Openverse, Wikimedia, AIC, Met, NASA). Installer scan:
   Gen pass; Socket low (`assets/charts.js` puts labels into `innerHTML`, XSS only if fed untrusted data); Snyk medium
   (W011, `assets.mjs` pulls third-party search results into context). Nothing blocking.
-- Heads-up for Waypoint UI work: its house rules ban glass/backdrop blur, glows, gradients, violet/indigo and monospace,
-  i.e. the glass intro, the `#b49aff` accent and the boot terminal. Its own escape hatch for an existing brand is
-  `draw.mjs --keep palette,type` + `inspect.mjs --allow <rule>`; use that so it doesn't fight the Leap icon/colours.
+- Heads-up for Waypoint UI work: it'd take the skill's app-screen path (`references/app-screens.md`), which still bans
+  glass/backdrop blur, glows, gradients and violet/indigo accents, i.e. the glass intro and the `#b49aff` accent.
+  Monospace is fine there (IDs, figures, code), so the boot terminal is OK. Its escape hatch for an existing brand is
+  `draw.mjs --app --keep palette,type` + `inspect.mjs --app --allow palette-purple,glass,gradient`; use that so it
+  doesn't fight the Leap icon/colours.
 
 ## 2026-10-29 — Waypoint: launch splash is plain dark
 
