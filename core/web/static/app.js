@@ -468,7 +468,8 @@ function resetView(){
 /* ============ PROMPT (typed commands) ============ */
 const promptIn=$('prompt-in');
 const cmdHistory=[]; let histAt=0, promptRunning=false;
-function sizePrompt(){ promptIn.style.width=(promptIn.value.length+1)+'ch'; }
+// native caret is hidden, the blinking .cursor block after the input is the caret. 2px spare so the text doesn't scroll
+function sizePrompt(){ promptIn.style.width=`calc(${promptIn.value.length}ch + 2px)`; }
 function clearConsole(){ consoleEl.innerHTML=''; }
 const HELP = [
   'clear                     clear the console (ctrl+L)',
