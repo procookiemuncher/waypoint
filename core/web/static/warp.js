@@ -9,17 +9,10 @@ const Warp = (() => {
   const FADE = 500;
   const HOLD = 2400;   // how long the brand stays after the rings cover the screen
 
-  // the Dock icon (mac-version/app/icon.svg), minus its grid lines, which turn to mush this small
+  // the Dock icon (mac-version/app/icon.svg)
   const MARK = `<svg viewBox="100 100 824 824" aria-hidden="true">
-    <defs>
-      <linearGradient id="wp-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#171a24"/><stop offset="1" stop-color="#08090d"/></linearGradient>
-      <linearGradient id="wp-rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b49aff"/><stop offset=".35" stop-color="#7a8cff"/><stop offset=".6" stop-color="#ff7ab8"/><stop offset="1" stop-color="#ffb37a"/></linearGradient>
-      <linearGradient id="wp-mark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d4c4ff"/><stop offset="1" stop-color="#8f74e6"/></linearGradient>
-    </defs>
-    <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#wp-bg)"/>
-    <rect x="112" y="112" width="800" height="800" rx="176" fill="none" stroke="url(#wp-rim)" stroke-width="20" opacity=".9"/>
-    <circle cx="512" cy="512" r="250" fill="none" stroke="#b49aff" stroke-width="6" opacity=".25"/>
-    <path class="arrow" d="M512 262 L692 742 L512 628 L332 742 Z" fill="url(#wp-mark)"/>
+    <rect x="100" y="100" width="824" height="824" rx="186" fill="#17141f"/>
+    <g class="leap"><path fill="#b49aff" fill-rule="evenodd" transform="translate(512 512) scale(2.32) translate(-129 -127)" d="M62 162a32 32 0 1 1 0 64a32 32 0 1 1 0-64zM62 180a14 14 0 1 0 0 28a14 14 0 1 0 0-28zM58.09 140.37A151 151 0 0 1 129.15 62.65A15 15 0 0 1 142.85 89.35A121 121 0 0 0 85.90 151.63A15 15 0 0 1 58.09 140.37ZM194 28a34 34 0 1 1 0 68a34 34 0 1 1 0-68z"/></g>
   </svg>`;
 
   function brand(){
