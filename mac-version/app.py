@@ -26,6 +26,7 @@ from backend.device import DRY_RUN
 from backend.session import Session
 from drive_engine import DriveEngine
 from phone_check import DevicectlReadiness
+import splash
 
 APP_NAME = "Waypoint"
 ICON = os.path.join(HERE, "app", "Waypoint.icns")
@@ -176,6 +177,7 @@ def main():
         frameless=True, easy_drag=False, background_color="#050609")
     api._window, api._quit = window, quit_soon
     window.events.closing += on_closing
+    splash.attach(window)
     from PyObjCTools import AppHelper
     webview.start(lambda: AppHelper.callAfter(watch_presses))
     cleanup()
