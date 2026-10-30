@@ -100,6 +100,19 @@ def watch_presses():
     watch_presses.monitor = NSEvent.addLocalMonitorForEventsMatchingMask_handler_(NSEventMaskLeftMouseDown, seen)
 
 
+def handle_reopen(fn):
+    """pywebview's app delegate has no applicationShouldHandleReopen:hasVisibleWindows:, so add
+    one that calls fn(app, has_visible) -> bool (False = handled, skip AppKit's default)."""
+    import objc
+    from webview.platforms.cocoa import BrowserView
+
+    def applicationShouldHandleReopen_hasVisibleWindows_(self, app, has_visible):
+        return fn(app, has_visible)
+    objc.classAddMethods(BrowserView.AppDelegate, [
+        objc.selector(applicationShouldHandleReopen_hasVisibleWindows_,
+                      selector=b"applicationShouldHandleReopen:hasVisibleWindows:", signature=b"Z@:@Z")])
+
+
 def on_sigterm(cleanup):
     """atexit skips SIGTERM, and a Python signal handler never runs while the main thread sits
     in Cocoa's run loop — so block SIGTERM everywhere (main() does that first) and wait for it here."""
@@ -151,6 +164,9 @@ def main():
         print(f"still clearing after {QUIT_LIMIT}s, quitting anyway", flush=True)
         os._exit(1)
 
+    reopened = threading.Event()
+    deadline = [None]
+
     def quit_soon():
         """Hide now, clear in the background, then close the window for real (which ends
         webview.start). Clearing used to run inside the close handler on the main thread and
@@ -158,15 +174,32 @@ def main():
         if quitting.is_set():
             return
         quitting.set()
+        reopened.clear()
         window.hide()
-        deadline = threading.Timer(QUIT_LIMIT, give_up)
-        deadline.daemon = True
-        deadline.start()
+        deadline[0] = threading.Timer(QUIT_LIMIT, give_up)
+        deadline[0].daemon = True
+        deadline[0].start()
 
         def clear_then_close():
+            session.shutdown()
+            if reopened.is_set():   # Dock icon clicked while clearing: stay open instead
+                session.closing = False
+                quitting.clear()
+                return
             cleanup()
             window.destroy()
         threading.Thread(target=clear_then_close, daemon=True).start()
+
+    def on_reopen(app, has_visible):
+        """Dock icon click / launching it again. While a quit is still clearing the phone the
+        process is alive with its window hidden, so macOS hands the click to us instead of
+        starting a fresh app — and without this nothing came back."""
+        if not quitting.is_set() or finished.is_set():
+            return True
+        reopened.set()
+        deadline[0].cancel()
+        window.show()
+        return False
 
     def on_closing():
         # red button, Cmd+W, Cmd+Q and Dock > Quit all land here, on the main thread
@@ -185,6 +218,7 @@ def main():
     api._window, api._quit = window, quit_soon
     window.events.closing += on_closing
     splash.attach(window)
+    handle_reopen(on_reopen)
     from PyObjCTools import AppHelper
     webview.start(lambda: AppHelper.callAfter(watch_presses))
     cleanup()
