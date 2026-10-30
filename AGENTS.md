@@ -156,6 +156,8 @@ windows-version/   Windows launchers (spoof, fly, setup)
 core/              shared engine — spoof.py, routes/, backend/ (movement, life360), tools/, tests/,
                    map-visualizer.html, build/ (generated, ignored)
 docs/              design docs + research
+cini videos/       promo films drawn frame by frame in HTML and rendered with Playwright:
+                   v1/sting (12 s square sting), v2/trailer (45 s trailer, see v2/brief.md)
 .venv  .env  requirements.txt   stay at the repo root
 ```
 

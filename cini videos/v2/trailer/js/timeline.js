@@ -31,8 +31,8 @@
     chapters: 64,          // S9: one city per beat
     numbers: 72,           // S10
     resolve: 80,           // S11: logo
-    wordmark: 82,
-    tagline: 84,
+    wordmark: 82.9,
+    tagline: 84.6,
     end: 93,
   };
   const shots = [
