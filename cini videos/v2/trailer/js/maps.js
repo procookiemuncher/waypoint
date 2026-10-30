@@ -83,11 +83,16 @@ function worldGroup(fit, opts = {}) {
   const pal = { water: '#07080c', land: '#111219', coast: '#232838', border: '#1c2030', ...(opts.pal || {}) };
   const g = s('g', { class: 'world' });
   const lw = opts.lineScale ?? 1;
+  let offPrev = 0;
   const ring = (a, closed) => {
-    let d = '';
+    let d = '', off = 0;
     for (let i = 0; i < a.length; i += 2) {
       const lat = clamp(a[i + 1], -85, 85);
-      const [x, y] = project(fit, lat, a[i]);
+      // rings that cross the antimeridian jump 360 degrees; unwrap them so the edge runs off the
+      // map instead of streaking straight across it
+      if (i && Math.abs(a[i] + off - (a[i - 2] + offPrev)) > 180) off += a[i] + off < a[i - 2] + offPrev ? 360 : -360;
+      offPrev = off;
+      const [x, y] = project(fit, lat, a[i] + off);
       d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1);
     }
     return d + (closed ? 'Z' : '');

@@ -113,7 +113,7 @@ shot({
     const fr = this.win.firstChild.nextSibling ? this.win.querySelector('.wp-frame') : null;
     if (fr) { css(fr, 'transformOrigin', '50% 100%'); css(fr, 'transform', `scale(${settle.toFixed(4)})`); }
     css(this.winWrap, 'boxShadow', `0 40px 120px rgba(5,6,9,${f2(0.6 * sh)})`);
-    this.win.setRing(t + 3, 0.55 * sh);
+    this.win.setRing(t + 3, 0.9 * sh);
 
     // city tags pop in, two per beat
     this.bubs.forEach((b, i) => {
