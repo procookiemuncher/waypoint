@@ -112,6 +112,8 @@ shot({
       arr2 += `${f2(Math.min(dash, rem))} ${f2(L * 2)}`;
       this.flight.setAttribute('stroke-dasharray', fl > 0 ? arr2 : `0 ${f2(L * 2)}`);
     }
+    // a zero-length dash still paints its round caps as a dot: no path until the flight leaves
+    show(this.flight, landed || fl > 0);
     const land = lb - on;
     this.dotB.setAttribute('r', f2(LEAP.dotR * this.unit * (land > 0 ? spring(land, 1.5, 0.38) : 0) / Math.pow(zoom, 0.92)));
     const pp = prog(lb, on, on + 1.6);
