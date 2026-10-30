@@ -38,9 +38,12 @@ shot({
 
     // headline, upper left
     const type = { position: 'absolute', font: '600 128px/0.98 Inter', letterSpacing: '-0.045em', color: C.text };
-    this.l1 = riseLine('Put your iPhone', { ...type, left: '96px', top: '118px' });
-    this.l2 = riseLine('anywhere.', { ...type, left: '96px', top: '244px' });
-    this.head = h('div', { class: 'abs' }, [this.l1, this.l2]);
+    this.l1 = riseLine('Put your iPhone', { ...type, left: '96px', top: '104px' });
+    this.l2 = riseLine('anywhere.', { ...type, left: '96px', top: '230px' });
+    // what it is, plainly, under the headline
+    this.sub = h('div', { class: 'abs', text: 'Waypoint moves your iPhone\u2019s location along real roads, at real speed, from your Mac.',
+      style: { left: '100px', top: '410px', width: '540px', font: '500 30px/1.36 Inter', letterSpacing: '-0.012em', color: C.body } });
+    this.head = h('div', { class: 'abs' }, [this.l1, this.l2, this.sub]);
     this.world.appendChild(this.head);
 
     // the stage: flat lavender, corner notched by a ring centred on its corner
@@ -83,7 +86,7 @@ shot({
   render(lb, t) {
     // ---- the flash settles into the stage ----
     const sp = ease.outQuart(prog(lb, -LEADB, 1.0));
-    const X0 = lerp(-60, 760, sp), Y0 = lerp(-60, 452, sp), R = lerp(0, 230, sp);
+    const X0 = lerp(-60, 640, sp), Y0 = lerp(-60, 430, sp), R = lerp(0, 184, sp);
     // rectangle to the bottom right with a concave quarter-circle notch at (X0, Y0)
     this.stagePath.setAttribute('d', `M${f2(X0 + R)} ${f2(Y0)} H${W + 400} V${H + 400} H${f2(X0)} V${f2(Y0 + R)} A${f2(R)} ${f2(R)} 0 0 0 ${f2(X0 + R)} ${f2(Y0)} Z`);
     op(this.flash, 1 - ease.outQuad(prog(lb, -LEADB, 0.12)));
@@ -91,7 +94,7 @@ shot({
     // ---- the shutter: the window opens from the bottom edge, its picture settling 1.12 -> 1 ----
     const sh = ease.inOutCubic(prog(lb, 0.2, 2.45));
     const settle = lerp(1.12, 1.0, ease.outCubic(prog(lb, 0.2, 2.9)));
-    const wx = 832, wy = 548, ws = 0.86;
+    const wx = 784, wy = 566, ws = 0.92;
     // push-in all shot long, then the dive into the map
     const dive = ease.inExpo(prog(lb, 6.6, 8 - LEADB));
     const push = lerp(1, 1.035, ease.inOutSine(prog(lb, 1, 6.6)));
@@ -125,6 +128,9 @@ shot({
     // ---- headline ----
     const p1 = ease.outQuart(prog(lb, 0.45, 1.6)), p2 = ease.outQuart(prog(lb, 0.8, 1.95));
     this.l1.set(p1, (1 - p1) * 12); this.l2.set(p2, (1 - p2) * 12);
+    op(this.l1, p1 > 0 ? 1 : 0); op(this.l2, p2 > 0 ? 1 : 0);
+    const ps = ease.outQuart(prog(lb, 1.5, 2.6));
+    op(this.sub, ps); css(this.sub, 'transform', `translateY(${f2((1 - ps) * 22)}px)`);
     css(this.head, 'transform', `translateY(${f2(-ease.inCubic(prog(lb, 6.4, 8)) * 260)}px)`);
   },
 });

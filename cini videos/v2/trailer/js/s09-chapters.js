@@ -28,7 +28,7 @@ shot({
         pal: { water: '#0b0d15', ground: '#14151b', coast: '#2b2f3c', park: '#16191a', road: '#252935', road2: '#323747' } }));
       else disc.appendChild(s('rect', { x: box.x, y: box.y, width: D, height: D, fill: '#121319' }));
       const geom = routeGeom(fit, r.line);
-      const rg = routeGroup(geom, ci.color, 8, 30, 0.3);
+      const rg = routeGroup(geom, ci.color, 10, 40, 0.3);
       disc.appendChild(rg);
       const ends = endsGroup(geom, ci.color, 13, '#14151b');
       disc.appendChild(ends);
@@ -40,9 +40,9 @@ shot({
       lay.appendChild(name);
       const air = r.id.split('-to-')[0].toUpperCase();
       const spot = ci.spots.find(sp => r.id.endsWith(sp.id))?.name || routeLabel(r);
-      const line = h('div', { class: 'abs', style: { left: '102px', top: '0', font: '500 36px/1.2 Inter', letterSpacing: '-0.01em', color: rgba('#0b0b10', 0.78), whiteSpace: 'nowrap' } });
+      const line = h('div', { class: 'abs', style: { left: '102px', top: '0', font: '500 44px/1.2 Inter', letterSpacing: '-0.01em', color: rgba('#0b0b10', 0.78), whiteSpace: 'nowrap' } });
       line.appendChild(document.createTextNode(`${air} `));
-      line.appendChild(arrowSvg(34, rgba('#0b0b10', 0.78), 2.4));
+      line.appendChild(arrowSvg(40, rgba('#0b0b10', 0.78), 2.6));
       line.appendChild(document.createTextNode(` ${spot} · ${miles(r).toFixed(1)} mi`));
       lay.appendChild(line);
       el.appendChild(lay);
@@ -55,7 +55,7 @@ shot({
       for (const c of this.ch) {
         show(c.lay, true);
         const w = c.name.getBoundingClientRect().width;
-        const size = Math.min(230, 230 * 900 / w);
+        const size = Math.min(230, 230 * 840 / w);
         c.name.style.fontSize = px(size);
         c.name.style.top = px(540 - size * 0.62);
         c.line.style.top = px(540 + size * 0.36);

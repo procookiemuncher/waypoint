@@ -34,9 +34,11 @@ shot({
     this.echo = this.con.addLine(`<span class="ps">waypoint ›</span> ${esc(CMD)}`, 'cmd');
     this.l_build = this.con.addLine(`building mia-to-faena-miami for drive…`, 'dim');
     this.l_play = this.con.addLine(`playing mia-to-faena-miami via drive — keep the phone unlocked`, 'accent');
-    this.conWrap = h('div', { class: 'wp', style: { width: '396px', height: '178px', borderRadius: '10px', overflow: 'hidden', transformOrigin: '0 0',
+    this.conWrap = h('div', { class: 'wp', style: { width: '396px', height: '260px', borderRadius: '10px', overflow: 'hidden', transformOrigin: '0 0',
       border: '1px solid #1e2230', display: 'flex', flexDirection: 'column' } }, [this.con]);
     this.con.style.flex = '1';
+    // the scrollback grows downward from under the label, like a fresh terminal
+    this.con.log.style.flex = 'none'; this.con.log.style.justifyContent = 'flex-start';
     this.world.appendChild(this.conWrap);
 
     // ring wipe into S7
@@ -74,7 +76,7 @@ shot({
 
     // hero card: top right, gently tilted; the play button presses on return
     const press = lb > en && lb < en + 0.5 ? Math.sin(Math.PI * (lb - en) / 0.5) : 0;
-    css(this.heroWrap, 'transform', `translate(1052px, 96px) perspective(1600px) rotateY(-8deg) rotateX(4deg) scale(1.42)`);
+    css(this.heroWrap, 'transform', `translate(960px, 84px) perspective(1600px) rotateY(-8deg) rotateX(4deg) scale(1.72)`);
     css(this.hero.act, 'transform', `scale(${(1 - 0.08 * press).toFixed(4)})`);
     css(this.hero.act, 'boxShadow', lb > en ? `0 0 ${f2(30 * Math.exp(-2 * (lb - en)))}px rgba(180,154,255,.6)` : 'none');
     this.hero.setTick((t * 80) % 360);
@@ -92,12 +94,12 @@ shot({
     const track = -Math.max(0, n - 22) * 2.6 * (done ? 0 : 1);
     const settleTrack = done ? lerp(-Math.max(0, CMD.length - 22) * 2.6, 0, ease.outCubic(prog(lb, en, en + 1))) : track;
     const push = lerp(1, 1.04, ease.inOutSine(prog(lb, 1, en)));
-    css(this.conWrap, 'transform', `translate(${f2(96 + settleTrack * cs)}px, ${f2(400 - (push - 1) * 300)}px) scale(${(cs * push).toFixed(4)})`);
+    css(this.conWrap, 'transform', `translate(${f2(96 + settleTrack * cs)}px, ${f2(436 - (push - 1) * 300)}px) scale(${(cs * push).toFixed(4)})`);
 
     // ---- ring wipe: out of the prompt, its hole showing S7 ----
     const rp = prog(lb, 6.85, 8 - LEADB);
     if (rp > 0) {
-      const ox = 96 + 120 * cs, oy = 400 + 160 * cs; // about where the prompt line sits
+      const ox = 96 + 150 * cs, oy = 436 + 132 * cs; // about where the prompt line sits after return
       const e = ease.inCubic(rp);
       const R = lerp(10, 2600, e), hole = R * lerp(0.44, 0.985, ease.inQuad(rp));
       this.ring.setAttribute('cx', f2(ox)); this.ring.setAttribute('cy', f2(oy));

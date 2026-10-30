@@ -21,13 +21,13 @@ shot({
     svg.appendChild(mapGroup('mia', fit, { lineScale: 1.6, rect: [-5000, -5000, 10000, 10000], pal: { water: '#0b0e17', ground: '#121318', coast: '#272b38', park: '#141a18', road: '#232838', road2: '#30364a' } }));
     this.ahead = s('path', { d: geom.d, fill: 'none', stroke: rgba(ci.color, 0.28), 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
     svg.appendChild(this.ahead);
-    this.done = routeGroup(geom, ci.color, 7, 26, 0.28);
+    this.done = routeGroup(geom, ci.color, 9, 34, 0.3);
     svg.appendChild(this.done);
     this.ends = endsGroup(geom, ci.color, 9, '#121318');
     svg.appendChild(this.ends);
     this.plane.appendChild(svg);
     this.marker = uiMarker(ci.color);
-    css(this.marker, 'transform', 'scale(2)');
+    css(this.marker, 'transform', 'scale(4.2)');
     this.markerWrap = h('div', { class: 'abs' }, [this.marker]);
     this.plane.appendChild(this.markerWrap);
     this.view = h('div', { class: 'layer', style: { perspective: '1300px', perspectiveOrigin: '50% 30%' } }, [this.plane]);
@@ -40,14 +40,14 @@ shot({
     this.hPos = uiHud([['POS', '25.7952, -80.2802']]);
     this.hSpd = uiHud([['SPD', '35.0 mph'], ['HDG', '090° E']]);
     this.hEta = uiHud([['ETA', '19:42']]);
-    for (const [e, l, tp] of [[this.hPos, 64, 236], [this.hSpd, 1380, 236], [this.hEta, 64, 960]]) {
-      e.style.left = px(l); e.style.top = px(tp); e.style.zoom = '2'; e.style.left = px(l / 2); e.style.top = px(tp / 2);
+    for (const [e, l, tp] of [[this.hPos, 64, 236], [this.hSpd, 1330, 236], [this.hEta, 64, 980]]) {
+      e.style.zoom = '2.4'; e.style.left = px(l / 2.4); e.style.top = px(tp / 2.4);
       hudWrap.appendChild(e);
     }
     el.appendChild(hudWrap);
     this.hud = hudWrap;
     this.np = uiNowPlaying('mia-to-faena-miami', 'drive');
-    this.npWrap = h('div', { class: 'wp', style: { width: '400px', zoom: '1.9', left: px(1180 / 1.9), top: px(840 / 1.9), position: 'absolute' } }, [this.np]);
+    this.npWrap = h('div', { class: 'wp', style: { width: '400px', zoom: '2.2', left: px(1000 / 2.2), top: px(800 / 2.2), position: 'absolute' } }, [this.np]);
     el.appendChild(this.npWrap);
     this.toast = uiToast('ARRIVED · Faena Hotel');
     this.toast.style.zoom = '2.2';
@@ -73,8 +73,8 @@ shot({
     const fx = lerp(p.x, cx, out), fy = lerp(p.y, cy, out);
     // smooth the heading so corners don't snap the camera, and blend to north-up on the way out
     const rot = lerp(-head / DEG - 90, -8, out);
-    const z = lerp(1.15, 0.2, ease.inOutCubic(out)) * lerp(1.06, 1, ease.outCubic(prog(lb, -1.2, 1.5)));
-    const tilt = lerp(56, 12, out);
+    const z = lerp(2.0, 0.34, ease.inOutCubic(out)) * lerp(1.06, 1, ease.outCubic(prog(lb, -1.2, 1.5)));
+    const tilt = lerp(58, 14, out);
     css(this.plane, 'transform', `translate(${W / 2}px, ${H * 0.62}px) rotateX(${f2(tilt)}deg) rotate(${f2(rot)}deg) scale(${z.toFixed(5)}) translate(${f2(-fx)}px, ${f2(-fy)}px)`);
     css(this.plane, 'transformOrigin', '0 0');
     this.done.draw(u);
@@ -107,7 +107,7 @@ shot({
     // arrival toast (app.css #toast: rises 16px and fades in)
     const tp = ease.outBack(clamp((lb - arrive) / 0.6), 2.2);
     show(this.toast, lb >= arrive);
-    css(this.toast, 'left', px((W / 2) / 2.2 - 150));
+    css(this.toast, 'left', px((W / 2) / 2.2 - this.toast.offsetWidth / 2));
     css(this.toast, 'top', px((H - 190) / 2.2 + (1 - tp) * 16));
     op(this.toast, clamp((lb - arrive) / 0.3));
   },

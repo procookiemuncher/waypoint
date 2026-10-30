@@ -221,7 +221,7 @@ function tvars(color) {
 // ---------- library helpers (the app's own derivations, app.js) ----------
 const LIBR = () => window.LIB.routes;
 const cityRoutes = c => Object.values(LIBR()).filter(r => r.city === c);
-const cityPlaces = c => LIB.places.filter(p => p.city === c);
+const cityPlaces = c => LIB.places.filter(p => p.city === c).sort((a, b) => !!b.kind - !!a.kind);
 const ACRONYMS = new Set(['jfk', 'mia', 'cdg', 'dxb', 'lax', 'lhr', 'nyc', 'sfo']);
 function routeLabel(r) {
   if (r.label) return r.label;
