@@ -24,7 +24,9 @@ shot({
       // zoom scales left/top too: pre-divide
       b.style.left = px(c.p[0] / 1.75); b.style.top = px(c.p[1] / 1.75);
       this.mapLayer.appendChild(b);
-      return { el: b, x: c.p[0] };
+      // tags that would sit behind the headline block are kept faint so the type stays clean
+      const under = c.p[0] > 40 && c.p[0] < 1160 && c.p[1] > 650 && c.p[1] < 990;
+      return { el: b, x: c.p[0], under };
     });
 
     // headline, bottom left
@@ -63,7 +65,7 @@ shot({
       const hit = (sx + 450 - tg.x) / 380; // >0 once the band's middle has passed
       const pop = hit > 0 ? spring(hit * 0.55, 1.9, 0.4) : 0;
       css(tg.el, 'transform', `translate(-50%, -50%) scale(${(0.82 + 0.18 * pop).toFixed(4)})`);
-      op(tg.el, 0.35 + 0.65 * clamp(hit * 2));
+      op(tg.el, (0.35 + 0.65 * clamp(hit * 2)) * (tg.under ? 0.12 : 1));
     }
     // map recedes a little when the panel arrives
     const pin = ease.outExpo(prog(lb, K.cardsIn - 24, K.cardsIn - 24 + 1.6));

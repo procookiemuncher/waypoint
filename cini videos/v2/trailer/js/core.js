@@ -390,6 +390,8 @@ function riseLine(text, style) {
   outer.set = (p, bl = 0, dy = 1.0) => {
     css(inner, 'transform', `translateY(${f2((1 - p) * dy * 100)}%)`);
     css(inner, 'filter', blurCss(bl));
+    // a blurred line still bleeds a few px over the mask's top edge: fully hidden until it moves
+    op(inner, p > 0.001 ? 1 : 0);
   };
   return outer;
 }

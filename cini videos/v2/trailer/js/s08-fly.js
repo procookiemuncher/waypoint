@@ -42,8 +42,16 @@ shot({
     this.arcC = [mx - nx * off, my - ny_ * off];
     this.arcR = R;
     const w = this.unit = 0.9; // px per Leap unit at this scale
-    this.flight = s('path', { d: `M${f2(a[0])} ${f2(a[1])}A${f2(R)} ${f2(R)} 0 0 1 ${f2(b[0])} ${f2(b[1])}`, fill: 'none', stroke: C.accent, 'stroke-width': LEAP.arcW * w, 'stroke-linecap': 'round' });
-    this.flightLen = R * sweep;
+    // like the mark, the arc leaves from just outside the ring and stops short of the dot: its round
+    // ends sit 49 units from the ring's centre and ~60 from the dot's (measured off icon.svg)
+    const C0 = this.arcC, ang = p => Math.atan2(p[1] - C0[1], p[0] - C0[0]);
+    let t0 = ang(a), t1 = ang(b);
+    if (t1 < t0) t1 += TAU;
+    t0 += (49 * w) / R; t1 -= (59.7 * w) / R;
+    const P = t => [C0[0] + R * Math.cos(t), C0[1] + R * Math.sin(t)];
+    const pa = P(t0), pb = P(t1);
+    this.flight = s('path', { d: `M${f2(pa[0])} ${f2(pa[1])}A${f2(R)} ${f2(R)} 0 0 1 ${f2(pb[0])} ${f2(pb[1])}`, fill: 'none', stroke: C.accent, 'stroke-width': LEAP.arcW * w, 'stroke-linecap': 'round' });
+    this.flightLen = R * (t1 - t0);
     this.ringA = s('circle', { cx: f2(a[0]), cy: f2(a[1]), r: LEAP.ringR * w, fill: 'none', stroke: C.accent, 'stroke-width': LEAP.ringW * w });
     this.dotB = s('circle', { cx: f2(b[0]), cy: f2(b[1]), r: LEAP.dotR * w, fill: C.accent });
     this.ping = s('circle', { cx: f2(b[0]), cy: f2(b[1]), r: 10, fill: 'none', stroke: C.accent, 'stroke-width': 3 });
@@ -151,7 +159,7 @@ shot({
     // ---- terminal ----
     const shows = [0.15, 0.35, 0.6, off, off + 0.25, on, on + 0.3];
     this.tl.forEach((l, i) => { const p = clamp((lb - shows[i]) / 0.15); op(l, p); });
-    css(this.term, 'transform', `translate(96px, 590px) scale(1.62)`);
+    css(this.term, 'transform', `translate(1110px, 712px) scale(1.18)`);
     op(this.term, ease.outCubic(prog(lb, 0, 0.6)) * (1 - ease.inCubic(prog(lb, arr - 0.6, arr + 0.2))));
 
     // ---- headline ----

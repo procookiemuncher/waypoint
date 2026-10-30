@@ -55,10 +55,13 @@ shot({
       for (const c of this.ch) {
         show(c.lay, true);
         const w = c.name.getBoundingClientRect().width;
-        const size = Math.min(230, 230 * 840 / w);
+        const size = Math.min(230, 230 * 800 / w);
         c.name.style.fontSize = px(size);
         c.name.style.top = px(540 - size * 0.62);
         c.line.style.top = px(540 + size * 0.36);
+        // the spot line keeps clear of the disc too (Monaco's hotel has a long name)
+        const lw = c.line.getBoundingClientRect().width;
+        if (lw > 860) c.line.style.fontSize = px(44 * 860 / lw);
         show(c.lay, false);
       }
       this._fitted = true;
