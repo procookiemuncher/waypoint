@@ -229,8 +229,9 @@ function dithered(w, h_, fn, amp = 0.02, seed = 1, scale = 1) {
 }
 
 // Film grain tile: each pixel nudges the image up or down by about +-levels (8-bit), seeded.
-// Laid over the whole frame and shifted per frame.
-function grainTile(size = 384, levels = 2.6, seed = 7, base = 24) {
+// Laid over the whole frame and shifted per frame. base is the grey the alphas are tuned for:
+// mid-grey keeps the speckle about as strong on white type as on the dark grounds.
+function grainTile(size = 384, levels = 2.6, seed = 7, base = 128) {
   const c = h('canvas', { width: size, height: size });
   const ctx = c.getContext('2d');
   const img = ctx.createImageData(size, size);

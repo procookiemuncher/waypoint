@@ -184,22 +184,22 @@ impact(B(K.dotLand), { lvl: -7, pre: 0.12, f: 50, dec: 0.38, crack: 0.45, swell:
 blip(B(K.dotLand) + 0.01, 1567.98, { lvl: -16, dec: 0.5, name: 'dot ping' });
 whoosh(B(8), { pre: 0.36, post: 0.4, from: 0.5, to: -0.3, lvl: -9, top: 3200, seed: 13, name: 'iris' });
 // S2: the wire lights, three checks climb a little arpeggio, then the riser into the drop
-riser(B(8.4), B(10.2), { lvl: -20, seed: 62, from: 900, top: 5000, name: 'wire' });
+riser(B(8.4), B(10.2), { lvl: -15, seed: 62, from: 900, top: 5000, name: 'wire' });
 K.checks.forEach((b, i) => { blip(B(b), [1046.5, 1318.5, 1568][i], { lvl: -12, dec: 0.12, p: (i - 1) * 0.3, name: 'check ' + (i + 1) }); click(B(b), { lvl: -16, f0: 4200, seed: 70 + i, name: '' }); });
 blip(B(K.ready), 2093, { lvl: -13, dec: 0.3, name: 'ready' });
 riser(B(14), B(16) - 0.02, { lvl: -12, seed: 63, from: 400, top: 9000, name: 'drop riser' });
 // S3: the drop and the shutter
 impact(B(K.drop), { lvl: -3, pre: 0.22, f: 44, dec: 0.6, crack: 0.6, swell: 0.4, seed: 21, name: 'DROP' });
 whoosh(B(17.6), { pre: 0.7, post: 0.5, from: 0, to: 0, lvl: -14, top: 1600, seed: 14, name: 'shutter' });
-whoosh(B(24), { pre: 0.5, post: 0.4, from: -0.5, to: 0.6, lvl: -8, top: 3400, seed: 15, name: 'into map' });
+whoosh(B(24), { pre: 0.5, post: 0.4, from: -0.5, to: 0.6, lvl: -6, top: 3400, seed: 15, name: 'into map' });
 // S4: the sweep, the panel, the click, the swell
-whoosh(B(25.9), { pre: 1.0, post: 0.6, from: -0.8, to: 0.8, lvl: -17, top: 5200, seed: 16, name: 'sweep' });
-whoosh(B(K.cardsIn + 0.6), { pre: 0.45, post: 0.5, from: 0.8, to: 0.2, lvl: -12, top: 2400, seed: 17, name: 'panel in' });
-click(B(K.clickCity), { lvl: -8, seed: 32, name: 'click Miami' });
-whoosh(B(32), { pre: 0.5, post: 0.4, from: -0.2, to: 0.3, lvl: -9, top: 3000, seed: 18, name: 'into city' });
+whoosh(B(25.9), { pre: 1.0, post: 0.6, from: -0.8, to: 0.8, lvl: -11, top: 5200, seed: 16, name: 'sweep' });
+whoosh(B(K.cardsIn + 0.6), { pre: 0.45, post: 0.5, from: 0.8, to: 0.2, lvl: -8, top: 2400, seed: 17, name: 'panel in' });
+click(B(K.clickCity), { lvl: -1, seed: 32, name: 'click Miami' });
+whoosh(B(32), { pre: 0.5, post: 0.4, from: -0.2, to: 0.3, lvl: -7, top: 3000, seed: 18, name: 'into city' });
 // S5: counters, chips
-for (let k = 0; k < 10; k++) click(B(33 + k * 0.16), { lvl: -21, f0: 5200, body: 2600, seed: 200 + k, p: 0.3, name: k ? '' : 'count' });
-for (let k = 0; k < 4; k++) whoosh(B(33.9 + k * 0.3), { pre: 0.12, post: 0.15, from: 0.6, to: 0.2, lvl: -21, top: 4000, seed: 120 + k, name: k ? '' : 'chips' });
+for (let k = 0; k < 10; k++) click(B(33 + k * 0.16), { lvl: -7, f0: 5200, body: 2600, seed: 200 + k, p: 0.3, name: k ? '' : 'count' });
+for (let k = 0; k < 4; k++) whoosh(B(33.9 + k * 0.3), { pre: 0.12, post: 0.15, from: 0.6, to: 0.2, lvl: -10, top: 4000, seed: 120 + k, name: k ? '' : 'chips' });
 // S6: whip, typing, return, the ring
 whoosh(B(40), { pre: 0.3, post: 0.35, from: 0.8, to: -0.4, lvl: -8, top: 3600, seed: 19, name: 'whip' });
 {
@@ -212,10 +212,10 @@ whoosh(B(40), { pre: 0.3, post: 0.35, from: 0.8, to: -0.4, lvl: -8, top: 3600, s
   gaps.forEach((g, j) => {
     acc += g;
     const tb_ = acc / tot * (b - a) + a; // the beat the j-th character appears (same as s06 typed())
-    click(B(tb_ - 40 + 40) - 0.004, { lvl: -15 - 3 * r(), f0: 3000 + 2000 * r(), body: 1000 + 400 * r(), dec: 0.0035 + 0.0015 * r(), seed: 300 + j, p: (r() - 0.5) * 0.5, name: j ? '' : 'keys' });
+    click(B(tb_ - 40 + 40) - 0.004, { lvl: -3 - 3 * r(), f0: 3000 + 2000 * r(), body: 1000 + 400 * r(), dec: 0.0035 + 0.0015 * r(), seed: 300 + j, p: (r() - 0.5) * 0.5, name: j ? '' : 'keys' });
   });
 }
-click(B(K.enter), { lvl: -7, f0: 2600, body: 900, dec: 0.004, seed: 33, name: 'return' });
+click(B(K.enter), { lvl: -2, f0: 2600, body: 900, dec: 0.004, seed: 33, name: 'return' });
 blip(B(K.enter) + 0.03, 1318.5, { lvl: -14, dec: 0.2, name: 'play' });
 whoosh(B(48), { pre: 0.55, post: 0.45, from: -0.3, to: 0.5, lvl: -8, top: 2800, seed: 20, name: 'ring wipe' });
 // S7: arrival chime
@@ -240,7 +240,7 @@ whoosh(B(K.online + 1.2), { pre: 0.6, post: 0.5, from: 0.4, to: -0.4, lvl: -12, 
 blip(B(K.arrive2), 1568, { lvl: -12, dec: 0.25, p: -0.2, name: 'arrived 2' });
 blip(B(K.arrive2) + 0.12, 2093, { lvl: -13, dec: 0.35, p: 0.2, name: '' });
 // S9: a swish on every chapter cut, alternating sides
-for (let k = 0; k < 8; k++) whoosh(B(64 + k), { pre: 0.14, post: 0.2, from: k % 2 ? 0.7 : -0.7, to: k % 2 ? -0.2 : 0.2, lvl: -14, top: 5200, seed: 140 + k, name: k ? '' : 'chapters' });
+for (let k = 0; k < 8; k++) whoosh(B(64 + k), { pre: 0.14, post: 0.2, from: k % 2 ? 0.7 : -0.7, to: k % 2 ? -0.2 : 0.2, lvl: -9, top: 5200, seed: 140 + k, name: k ? '' : 'chapters' });
 // S10: each figure rolls in
 for (let k = 0; k < 4; k++) {
   for (let j = 0; j < 4; j++) click(B(72 + 2 * k) + j * 0.022, { lvl: -16 - j * 2, f0: 3800, body: 1400, seed: 400 + k * 4 + j, name: '' });

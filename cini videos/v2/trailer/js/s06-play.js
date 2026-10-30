@@ -29,8 +29,9 @@ shot({
 
     // the console, poster size
     this.con = uiConsole();
-    this.con.addLine('pick a route or place, or click the map to drop a pin.');
-    this.con.addLine('phone unlocked — developer disk image is on', 'ok');
+    // what was run before: a pin held at a saved place (the app's `set <place>`)
+    this.con.addLine(`<span class="ps">waypoint ›</span> set eiffel`, 'cmd');
+    this.con.addLine('holding at Eiffel Tower (48.85840, 2.29450)', 'accent');
     this.echo = this.con.addLine(`<span class="ps">waypoint ›</span> ${esc(CMD)}`, 'cmd');
     this.l_build = this.con.addLine(`building mia-to-faena-miami for drive…`, 'dim');
     this.l_play = this.con.addLine(`playing mia-to-faena-miami via drive — keep the phone unlocked`, 'accent');
@@ -76,7 +77,7 @@ shot({
 
     // hero card: top right, gently tilted; the play button presses on return
     const press = lb > en && lb < en + 0.5 ? Math.sin(Math.PI * (lb - en) / 0.5) : 0;
-    css(this.heroWrap, 'transform', `translate(960px, 84px) perspective(1600px) rotateY(-8deg) rotateX(4deg) scale(1.72)`);
+    css(this.heroWrap, 'transform', `translate(900px, 84px) perspective(1600px) rotateY(-8deg) rotateX(4deg) scale(1.6)`);
     css(this.hero.act, 'transform', `scale(${(1 - 0.08 * press).toFixed(4)})`);
     css(this.hero.act, 'boxShadow', lb > en ? `0 0 ${f2(30 * Math.exp(-2 * (lb - en)))}px rgba(180,154,255,.6)` : 'none');
     this.hero.setTick((t * 80) % 360);

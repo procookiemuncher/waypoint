@@ -49,7 +49,7 @@ shot({
     // lockup geometry, centred on the frame as a whole
     const lockW = TILE + gap + this._m.ww;
     const lx = (W - lockW) / 2 - (box - TILE) / 2;             // icon box left so the tile starts the lockup
-    const iconCx = W / 2, iconCy = H / 2 - 30;
+    const iconCx = W / 2, iconCy = H / 2 - 66;
     // the icon starts centred alone, then slides left as the word comes out of it
     const slide = ease.inOutCubic(prog(lb, wm, wm + 1.4));
     const ix = lerp(iconCx - box / 2, lx, slide), iy = iconCy - box / 2;
@@ -73,7 +73,11 @@ shot({
     // wordmark: revealed from the icon's edge (clip slides with the icon)
     const tileRight = ix + (box + TILE) / 2;
     const wx = tileRight + gap;
-    const wy = iconCy - 0.36 * 172 - 172 * 0.5 + 6;           // cap band centred on the tile
+    // Inter: ascender 0.96875em, descender 0.2421875em, cap height 0.727em. With line-height 1 the
+    // baseline sits 0.96875em - (1.2109em - 1em) / 2 below the line box top; put the cap band's
+    // middle on the tile's centre
+    const fs = 172, base = fs * (0.96875 - (1.2109375 - 1) / 2);
+    const wy = iconCy + 0.727 * fs / 2 - base;
     css(this.wordClip, 'transform', `translate(${f2(wx)}px, ${f2(wy - 20)}px)`);
     css(this.wordClip, 'width', px(Math.max(0, (this._m.ww + 30) * slide)));
     const wIn = ease.outCubic(prog(lb, wm + 0.2, wm + 1.5));
