@@ -21,6 +21,13 @@ what changed, what was decided, what broke, what's next.
 - Tested in the real app with a dry run and an 8 s delay patched into the clear (sitecustomize via
   `open --env PYTHONPATH=...`): close, Dock click, window back, still up after the clear, second close exits,
   fresh launch fine. Not tested with the phone attached.
+- **That wasn't the whole story (owner: still broke with no phone at all).** My tests quit through AppleScript, which
+  skips the page. The real titlebar x calls `api.close()` over pywebview's JS bridge, on a non-daemon thread that, once
+  close() returns, `evaluate_js`'s the result back and blocks on a semaphore the dead main loop never releases. So
+  after the window closed the process sat in `threading._shutdown` until the 45 s `give_up` killed it, with the Dock
+  icon still showing, and clicking it went nowhere. Found with a faulthandler stack dump (SIGUSR1 via sitecustomize).
+  Fix: `os._exit(0)` at the end of `main()` after `cleanup()`. Verified with real synthetic clicks on the x
+  (CGEvent, click state 1): exits in ~1 s, reopen shows the window, three rounds.
 - Edge: anything you click during those few seconds of clearing is dropped (the session ignores actions while
   `closing`), same as before.
 
