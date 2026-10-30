@@ -56,8 +56,9 @@ REGIONS = {
                 roads=["motorway", "trunk", "primary", "secondary"], counties=False, road_tiles=2),
     "dxb": dict(bbox=(25.074, 55.146, 25.303, 55.399), tol=20, min_area=60_000,
                 roads=["motorway", "trunk", "primary", "secondary"], counties=False),
+    # Tokyo's road net is too dense for one query (504s): no secondaries, and a 3x3 grid of tiles
     "tyo": dict(bbox=(35.498, 139.636, 35.724, 139.914), tol=20, min_area=60_000,
-                roads=["motorway", "trunk", "primary", "secondary"], counties=False, road_tiles=2),
+                roads=["motorway", "trunk", "primary"], counties=False, road_tiles=3),
     "cpt": dict(bbox=(-34.044, 18.383, -33.833, 18.637), tol=20, min_area=60_000,
                 roads=["motorway", "trunk", "primary", "secondary"], counties=False),
     "rio": dict(bbox=(-23.016, -43.340, -22.776, -43.080), tol=20, min_area=60_000,
