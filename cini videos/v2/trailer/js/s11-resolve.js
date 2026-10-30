@@ -36,6 +36,10 @@ shot({
     this.group.appendChild(this.mac);
     this.shine = h('div', { class: 'abs', style: { width: '260px', height: '230px', background: 'linear-gradient(100deg, transparent, rgba(255,255,255,.55), transparent)', mixBlendMode: 'overlay' } });
     this.wordClip.appendChild(this.shine);
+    // billing line: the map data's required attribution and the music
+    this.credits = h('div', { class: 'abs', text: 'Map data \u00a9 OpenStreetMap contributors \u00b7 Natural Earth \u00b7 Music \u201cRising Forest\u201d by Diego Nava (Mixkit)',
+      style: { left: '0', width: px(W), top: '1014px', textAlign: 'center', font: '500 17px/1 Inter', letterSpacing: '0.01em', color: '#5b606c' } });
+    el.appendChild(this.credits);
     this.black = layer('', { background: '#000', opacity: 0 });
     el.appendChild(this.black);
   },
@@ -94,6 +98,7 @@ shot({
     const mp = ease.outQuart(prog(lb, tg + 0.9, tg + 2.0));
     css(this.mac, 'transform', `translate(${f2(lx + (box - TILE) / 2)}px, ${f2(iconCy + TILE / 2 + 132 + (1 - mp) * 20)}px)`);
     op(this.mac, mp);
+    op(this.credits, ease.outCubic(prog(lb, tg + 1.6, tg + 2.6)));
     // fade to black over the last beat and a half
     op(this.black, ease.inQuad(prog(lb, 11.4, 13 - LEADB)));
   },

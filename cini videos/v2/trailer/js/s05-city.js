@@ -57,6 +57,7 @@ shot({
     const mz = lerp(1.08, 1.0, ease.outCubic(prog(lb, 0, 2))) * lerp(1, 1.05, drift);
     camera(this.mapLayer, W / 2, H / 2, mz);
     op(this.mapLayer, ease.outCubic(prog(lb, 0.2, 1.4)));
+    css(this.mapLayer, 'filter', blurCss(2.6 * focus));
     // routes draw in, staggered
     this.routes.forEach((g, i) => {
       const p = ease.inOutCubic(prog(lb, 0.5 + i * 0.28, 2.6 + i * 0.28));
@@ -79,6 +80,11 @@ shot({
     }
 
     // ---- headline ----
+    // whip out: everything slides left, smeared, into S6's whip from the right
+    const wo = ease.inCubic(prog(lb, 7.45, 8 - LEADB));
+    css(this.world, 'transform', `translateX(${f2(-wo * 900)}px)`);
+    if (!this.mb) this.mb = dirBlur(0.2);
+    this.mb.set(this.world, wo * 40, 0);
     const p1 = ease.outQuart(prog(lb, 1.2, 2.3)), p2 = ease.outQuart(prog(lb, 2.2, 3.3));
     this.l1.set(p1, (1 - p1) * 12); this.l2.set(p2, (1 - p2) * 12);
     op(this.l1, p1 > 0 ? 1 : 0); op(this.l2, p2 > 0 ? 1 : 0);
