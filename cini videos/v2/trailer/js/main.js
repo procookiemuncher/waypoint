@@ -39,6 +39,11 @@
   }, 0, 3, 2);
   vig.id = 'vignette';
   stage.appendChild(vig);
+  // flat fields stay flat: the lavender stage (S3) and the colour chapters (S9) get a light touch
+  POST.push((t, b) => {
+    const flat = Math.max(prog(b, 16 - 0.1, 16.6) * (1 - prog(b, 23.2, 24)), prog(b, 64 - 0.1, 64) * (1 - prog(b, 72 - 0.1, 72)));
+    op(vig, 1 - 0.65 * flat);
+  });
 
   // grain: one seeded tile, a new offset every frame
   const grain = h('div', { id: 'grain', style: { backgroundImage: `url(${grainTile()})`, backgroundSize: '384px 384px' } });

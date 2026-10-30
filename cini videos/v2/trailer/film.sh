@@ -5,11 +5,16 @@
 #   ./film.sh            render, build the sound, encode
 #   ./film.sh encode     encode only (frames and out/audio/trailer.wav already there)
 #   ./film.sh preview    half-res, every 2nd frame (30 fps) to out/preview.mp4, for timing checks
+#   SCALE=2 ./film.sh    the same film at 3840x2160 (everything is vector, so it renders crisp)
+#
+# Writes the master (CRF 14, ~120 MB at 1080p) and a share copy (CRF 20, a fraction of the size).
 set -e
 cd "$(dirname "$0")"
 FF=node_modules/ffmpeg-static/ffmpeg
 # ~4 GB of PNGs: kept out of the project, which sits in an iCloud-synced Desktop
-FRAMES=${FRAMES:-${TMPDIR:-/tmp}/waypoint-trailer-frames}
+SCALE=${SCALE:-1}
+SUF=$([ "$SCALE" = 2 ] && echo "-4k" || echo "")
+FRAMES=${FRAMES:-${TMPDIR:-/tmp}/waypoint-trailer-frames$SUF}
 mkdir -p out
 
 if [ "$1" = "preview" ]; then
@@ -27,7 +32,7 @@ fi
 if [ "$1" != "encode" ]; then
   rm -rf "$FRAMES" && mkdir -p "$FRAMES"
   for r in 0-449 450-899 900-1349 1350-1799 1800-2249 2250-2699; do
-    node render.mjs --frames "$r" --dir "$FRAMES" > "out/render-$r.log" 2>&1 &
+    node render.mjs --frames "$r" --scale "$SCALE" --dir "$FRAMES" > "out/render-$r.log" 2>&1 &
   done
   wait
   n=$(ls "$FRAMES" | grep -cE '^[0-9]{5}\.png$')
@@ -43,5 +48,13 @@ $FF -v error -y -framerate 60 -i "$FRAMES/%05d.png" -i out/audio/trailer.wav \
   -c:v libx264 -preset slow -crf 14 -x264-params aq-mode=3 -profile:v high -g 120 \
   -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
   -c:a aac -b:a 320k -ar 48000 \
-  -movflags +faststart out/waypoint-trailer.mp4
-echo out/waypoint-trailer.mp4
+  -movflags +faststart out/waypoint-trailer$SUF.mp4
+# share copy: same picture, re-encoded from the frames at a sane size for messages and uploads
+$FF -v error -y -framerate 60 -i "$FRAMES/%05d.png" -i out/audio/trailer.wav \
+  -map 0:v -map 1:a \
+  -vf "scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int,format=yuv420p" \
+  -c:v libx264 -preset slow -crf 20 -x264-params aq-mode=3 -profile:v high -g 120 \
+  -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
+  -c:a aac -b:a 256k -ar 48000 \
+  -movflags +faststart out/waypoint-trailer$SUF-share.mp4
+ls -la out/waypoint-trailer$SUF.mp4 out/waypoint-trailer$SUF-share.mp4
