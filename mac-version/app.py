@@ -222,6 +222,12 @@ def main():
     from PyObjCTools import AppHelper
     webview.start(lambda: AppHelper.callAfter(watch_presses))
     cleanup()
+    # Exit hard. The titlebar x reaches us through a pywebview bridge thread (not a daemon) that,
+    # once close() returns, waits forever to hand the result back to a page that's already gone,
+    # so a normal exit hung until give_up — and a Dock click meanwhile went to the stuck process.
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(0)
 
 
 if __name__ == "__main__":
