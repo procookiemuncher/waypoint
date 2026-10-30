@@ -7,6 +7,51 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-30 — Waypoint trailer (v2): 45 s cinematic trailer
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner asked for a 45 s trailer showing most of Waypoint's features, made
+with the newly installed skills, "like it cost 20k": lots of movement, modern and upbeat.
+
+**Output:** `cini videos/v2/trailer/out/waypoint-trailer.mp4` (1920x1080, 60 fps, 45.000 s, H.264 CRF 14 + AAC 320k),
+plus `-share.mp4` (CRF 20) and the 4K pair (`waypoint-trailer-4k*.mp4`, `SCALE=2 ./film.sh`). All under `out/`,
+which is gitignored. The treatment (idea, shots, copy, rebuild steps) is `cini videos/v2/brief.md`.
+
+**How it was made**
+- Same method as the v1 sting: every frame is `seek(t)` on an HTML page, screenshotted by Playwright, then encoded.
+  v1's engine was reworked for 1920x1080 at 60 fps on a 124 BPM beat clock. Every shot and every sound cue keys off
+  one table (`js/timeline.js`), so retiming a moment moves its sound with it.
+- Skills: `design-taste-frontend` dealt direction **one-motif** (seed 663483750, brand palette and type kept). The
+  idea: the Leap (ring, arc, landing dot) is every transition and stage. The dot swells into a ring that opens the
+  next shot, a ring wipes out of the console's return, the MIA->JFK flight is the arc itself, and every route starts
+  on a ring and lands on a dot. From `logo-design`: motion built from the mark's construction, an end card that
+  resolves on the exact master icon, a wordmark gap equal to the landing dot's diameter, and the cap band centred on
+  the tile.
+- Everything shown is real. The UI is rebuilt from app.css (no transitions, every state posed per frame). Lines,
+  miles and minutes come from `backend.routes.summary()` with the snap cache (`prep/library.py`). The 35 spots /
+  28 cities / 21 countries / 6 continents come from destinations.json. The console text and `fly nyc` phases are
+  the real log lines. No Life360 name or logo, no owner name, no home coordinates.
+- Maps: OSM via Overpass (`prep/osm.py`, cache shared with v1 in `v1/sting/cache/osm`), Natural Earth for the
+  world (`prep/world.py`). The end card carries the OSM attribution and the music credit.
+- Sound: Rising Forest cut from source bar 20, so the drop lands on beat 16, the shutter. Synth SFX on every cue,
+  levels checked per band with `audio/cues.mjs`. Airplane mode muffles the whole track behind a low-pass until
+  landing. Mastered to -14 LUFS / -1.6 dBTP.
+
+**Gotchas**
+- Never read layout after a frame-wide transform from the previous frame. Reset, measure, then apply, or parallel
+  render workers draw different frames.
+- World rings that cross the antimeridian have to be unwrapped, or they streak across the Arctic.
+- A city layer that the camera dives 100x into needs its own fit. Paths are rounded to 0.1 px, so drawing it in
+  the wide fit stair-steps the streets.
+- Overpass from this connection (VPN, 10.2.0.x) is flaky: overpass-api.de resets, kumi times out, mail.ru has a
+  self-signed cert. Tokyo, Rio and Cape Town needed lighter, 3x3-tiled road queries.
+- The connect screen's laptop in the real app still draws the old arrowhead (`core/web/index.html`,
+  `#link-scene .mark`). The trailer shows the Leap there.
+
+**Next:** owner watches it. Easy revisions: copy and beats in `js/timeline.js` / the shot files, the music cut in
+`audio/build.mjs`, and `./film.sh` to re-render (~5 min at 1080p, ~15 min at 4K).
+
+---
+
 ## 2026-10-29 — Installed the `design-taste-frontend` skill (tasteskill v2)
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner asked for it: `npx skills add https://github.com/Leonxlnx/taste-skill --skill "design-taste-frontend"`.
