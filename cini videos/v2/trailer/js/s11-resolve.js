@@ -57,13 +57,17 @@ shot({
     // the icon starts centred alone, then slides left as the word comes out of it
     const slide = ease.inOutCubic(prog(lb, wm, wm + 1.4));
     const ix = lerp(iconCx - box / 2, lx, slide), iy = iconCy - box / 2;
-    css(this.iconWrap, 'transform', `translate(${f2(ix)}px, ${f2(iy)}px)`);
-    // build: ring, arc, dot (the mark's own order), then the tile grows behind it
-    const ringT = ease.outCubic(prog(lb, 0.1, 1.0));
+    // build big: ring, arc, dot (the mark's own order) at 2.6x in the middle of the frame; once the
+    // dot has landed the whole mark settles down to icon size as the tile forms around it
+    const settle = ease.inOutCubic(prog(lb, 2.05, 3.05));
+    const big = lerp(2.6, 1, settle);
+    css(this.iconWrap, 'transformOrigin', '50% 50%');
+    css(this.iconWrap, 'transform', `translate(${f2(ix)}px, ${f2(iy)}px) scale(${big.toFixed(4)})`);
+    const ringT = ease.outCubic(prog(lb, 0.05, 0.95));
     const arcT = ease.inOutCubic(prog(lb, 0.7, 1.75));
     const land = lb - 1.85;
     const dotS = land > 0 ? spring(land, 1.5, 0.42) : 0;
-    const tileP = ease.outExpo(prog(lb, 1.95, 3.0));
+    const tileP = ease.outExpo(prog(lb, 2.15, 3.2));
     const settled = lb > 4.5;
     this.leap.set(ringT, arcT, settled ? 1 : dotS, { solid: settled, ringSpin: lerp(-120, 0, ringT) });
     this.tile.setAttribute('transform', `translate(512 512) scale(${tileP.toFixed(4)}) translate(-512 -512)`);
