@@ -7,6 +7,37 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-30 — Where the Waypoint app's CPU actually goes (WebKit), and what didn't help
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner asked for less CPU/GPU and a smoother feel with nothing visual changed.
+
+**Measured in the real app** (`VIDA_DRY_RUN=1`, pywebview/WebKit, gallery, window shown, cputime deltas from `ps` over
+20–25 s, WebKit processes started by the app + python, % of one core, ±5 noise). The ring is basically all of it:
+
+| ring.js variant | app total |
+|---|---|
+| no ring (empty file) | ~2% |
+| 30 fps timer loop, draws nothing (rAF or plain setTimeout, same) | ~14% |
+| one 10x10 canvas patch changed per frame | ~21% |
+| four 40px edge strips, cleared only | ~32% |
+| outline only / comet only / full ring | ~36–39% |
+| full ring with backdrop-filter off, #crt off, map hidden, or #browse hidden | ~36–38% (no change) |
+
+- WebKit's cost is producing a frame at all plus a fixed cost per canvas that changes. What's drawn and how big the
+  canvas is barely matter. A route playing adds ~1 point over idle, so the marker ping / live pulses are cheap here.
+- Headless Chromium tells a different story (there the canvas is GPU-rasterised and the 120 Hz CSS loops look expensive).
+  Don't trust it for this app.
+- **Tried, reverted:** ring split into four edge-strip canvases (pixel diff vs old ≤1/255). No CPU change in WebKit, the
+  area saving went to per-canvas overhead. Memory wasn't clearly better either (too noisy while the owner used the Mac).
+  Drawing straight from the timer instead of via rAF: no change.
+- **Kept:** the status-bar speed gauge animates `transform: scaleX` instead of `width` (no layout/paint per frame while
+  playing). Same pixels except the fill's end is antialiased instead of snapped.
+- **The only real lever left changes the look:** ring frame rate (cost should scale roughly with it, 15 fps ≈ half,
+  unmeasured) or pausing it in more situations. Owner's call. It already pauses on blur, hidden, pan and list scroll.
+- Gotcha: a locked screen throttles WebKit to ~0, so measurements then read as zero.
+
+---
+
 ## 2026-10-30 — Waypoint trailer (v2): 45 s cinematic trailer
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner asked for a 45 s trailer showing most of Waypoint's features, made
