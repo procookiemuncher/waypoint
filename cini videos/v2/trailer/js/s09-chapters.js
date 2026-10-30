@@ -3,9 +3,10 @@
 // the real airport -> spot drive on a night map of that city, drawn within the beat.
 'use strict';
 
+// the four red-pink cities alternate with the cool and gold ones so every cut changes colour
 const CHAPTERS = [
-  ['Paris', 'cdg-to-ritz-paris'], ['London', 'lhr-to-the-dorchester'], ['Dubai', 'dxb-to-burj-al-arab'],
-  ['Tokyo', 'hnd-to-aman-tokyo'], ['Sydney', 'syd-to-bondi-icebergs'], ['Cape Town', 'cpt-to-the-silo'],
+  ['Paris', 'cdg-to-ritz-paris'], ['London', 'lhr-to-the-dorchester'], ['Tokyo', 'hnd-to-aman-tokyo'],
+  ['Dubai', 'dxb-to-burj-al-arab'], ['Saint-Tropez', 'cheval-blanc-st-tropez-to-club-55'], ['Sydney', 'syd-to-bondi-icebergs'],
   ['Monaco', 'nce-to-hotel-de-paris-monte-carlo'], ['Rio de Janeiro', 'gig-to-copacabana-palace'],
 ];
 
@@ -38,7 +39,9 @@ shot({
       // name, fitted to the left column
       const name = h('div', { class: 'abs', text: city, style: { left: '96px', top: '0', font: '700 230px/0.9 Inter', letterSpacing: '-0.055em', color: '#0b0b10', whiteSpace: 'nowrap' } });
       lay.appendChild(name);
-      const air = r.id.split('-to-')[0].toUpperCase();
+      // airport routes start on their code (CDG), spot-to-spot ones on the spot's name
+      const from = r.id.split('-to-')[0];
+      const air = /^[a-z]{3}$/.test(from) ? from.toUpperCase() : (ci.spots.find(sp => sp.id === from)?.name || from);
       const spot = ci.spots.find(sp => r.id.endsWith(sp.id))?.name || routeLabel(r);
       const line = h('div', { class: 'abs', style: { left: '102px', top: '0', font: '500 44px/1.2 Inter', letterSpacing: '-0.01em', color: rgba('#0b0b10', 0.78), whiteSpace: 'nowrap' } });
       line.appendChild(document.createTextNode(`${air} `));
