@@ -7,6 +7,25 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-30 — Waypoint wouldn't reopen right after closing it
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner: the x closes fine but opening the app again does nothing.
+
+- Cause: the x hides the window, then the process stays alive until the phone clear finishes (devicectl, can be
+  seconds, once hit the 45 s limit). A Dock click in that window goes to the old process, which is still running,
+  instead of starting a new one, and pywebview's app delegate has no reopen handler, so nothing happened.
+- Fix (`mac-version/app.py`): `handle_reopen` adds `applicationShouldHandleReopen:hasVisibleWindows:` to pywebview's
+  delegate. A reopen during a quit cancels the 45 s give-up timer and shows the window right away. The clear still
+  finishes (the phone ends up on real GPS), then the session is unlocked and the app stays open instead of exiting.
+  Close it again and it quits normally.
+- Tested in the real app with a dry run and an 8 s delay patched into the clear (sitecustomize via
+  `open --env PYTHONPATH=...`): close, Dock click, window back, still up after the clear, second close exits,
+  fresh launch fine. Not tested with the phone attached.
+- Edge: anything you click during those few seconds of clearing is dropped (the session ignores actions while
+  `closing`), same as before.
+
+---
+
 ## 2026-10-30 — Where the Waypoint app's CPU actually goes (WebKit), and what didn't help
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner asked for less CPU/GPU and a smoother feel with nothing visual changed.
