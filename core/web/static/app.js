@@ -192,7 +192,7 @@ function syncLive(active){
   live=null;
   $('nowplaying').classList.remove('on');
   $('v-leg').textContent='—'; $('v-hdg').textContent='—'; $('v-speed').textContent='0.0 mph';
-  $('sb-elapsed').textContent='--:--'; $('gauge-fill').style.width='0%';
+  $('sb-elapsed').textContent='--:--'; $('gauge-fill').style.transform='scaleX(0)';
   if(!active){ setMode('IDLE'); markLive(); return; }
 
   live = { key, kind:active.kind, label:active.label, started:active.started, engine:active.engine, mph:active.mph };
@@ -272,7 +272,7 @@ function tick(now){
       if(s.hdg!==null) setText('v-hdg', Math.round(s.hdg)+'° '+compass(s.hdg));
       setText('v-leg', el>=live.total ? 'arrived' : fmtT(live.total-el));
       $('np-fill').style.width=Math.min(100, el/live.total*100).toFixed(1)+'%';
-      $('gauge-fill').style.width=Math.min(100, mph/90*100)+'%';
+      $('gauge-fill').style.transform='scaleX('+Math.min(1, mph/90)+')';
     }
     if(el-lastLogAt>=30 && el<live.total){
       lastLogAt=el;
