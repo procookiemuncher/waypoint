@@ -20,7 +20,17 @@
   const RGB = RAINBOW.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)));
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const cv = document.getElementById('ring'), ctx = cv.getContext('2d');
+  // the ring only ever paints the outer ~35px (the head's flare is the widest thing), so instead of one
+  // full-window canvas it's four strips round the edge. clearing and compositing a whole retina window
+  // 30 times a second was most of what the ring cost. each strip draws the same scene in window
+  // coordinates, shifted to its own corner, so the pixels come out the same as the one big canvas
+  const BAND = 40;   // css px, > the flare's reach (G * 1.3 + w * 3 from a line 2px in)
+  const host = document.getElementById('ring');
+  const strips = ['top', 'bottom', 'left', 'right'].map(() => {
+    const c = document.createElement('canvas'); host.appendChild(c);
+    return { c, ctx: c.getContext('2d') };
+  });
+  let ctx = strips[0].ctx;   // the strip being drawn
   let W = 0, H = 0, dpr = 1, t = 0, last = performance.now();
 
   // ring centre line as a rounded rect, walked at constant speed so the light doesn't rush the corners
@@ -99,25 +109,19 @@
     return dots[k] = c;
   }
 
-  function draw() {
-    const w = S.w, rot = (t / (S.rot * 1000)) * 2 * Math.PI;
-    const grad = ctx.createConicGradient(rot, cx, cy);
-    RAINBOW.forEach((c, i) => grad.addColorStop(i / 6, c));
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-    ctx.lineJoin = 'round';
+  // one frame is worked out once as a list of [x0, y0, x1, y1, draw] (window px, the box the draw can
+  // touch), then each strip replays the ones that reach it, in the same order
+  function scene() {
+    const w = S.w, rot = (t / (S.rot * 1000)) * 2 * Math.PI, ops = [];
 
-    // the rainbow ring, with a little soft glow under it
-    ctx.globalCompositeOperation = 'source-over';
-    ringPath(); ctx.strokeStyle = grad;
-    ctx.globalAlpha = S.base * .18; ctx.lineWidth = w * 4; ctx.stroke();
-    ctx.globalAlpha = S.base;       ctx.lineWidth = w;     ctx.stroke();
-
-    // the light, added on top so it brightens the colours already there
+    // the light, added on top of the ring so it brightens the colours already there
     const head = (t / (S.lap * 1000)) * L % L, tail = L * S.tail / 100, lead = L * S.lead / 100, Lt = S.light, G = S.glow;
     const fall = d => d >= 0 ? Math.pow(Math.max(1 - d / tail, 0), 1.7) : Math.pow(Math.max(1 + d / lead, 0), 2);   // d = px behind the head
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.lineCap = 'butt';
+    const box = (pts, m) => {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const [x, y] of pts) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
+      return [x0 - m, y0 - m, x1 + m, y1 + m];
+    };
 
     // the tail fades along its length in the rainbow's own colours: a wide soft pass, the line, and
     // white-hot only right at the head. along a straight edge each pass is one stroke whose linear
@@ -128,32 +132,38 @@
       [f => Math.min(f * 1.1 * Lt, 1), w, false],
       [f => Math.min(Math.pow(f, 5) * .85 * Lt, 1), w * .75, true],
     ];
-    ctx.globalAlpha = 1;   // the fade is in the gradients (straight) or set per chunk (corners)
+    const reach = w * 1.6 + 1;   // half the widest pass, plus a pixel of antialiasing
     for (const [s0, s1, g] of pieces(head - tail, head + lead)) {
       if (g.k === 'l') {
         const [ax, ay] = at(s0), [bx, by] = at(s1), n = Math.max(Math.ceil((s1 - s0) / 8), 1), stops = [];
         for (let j = 0; j <= n; j++) { const s = s0 + (s1 - s0) * j / n; stops.push([j / n, fall(head - s), colorAt(...at(s), rot)]); }
-        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
-        for (const [alpha, lw, white] of passes) {
-          if (white && !stops.some(([, f]) => alpha(f) > .01)) continue;
-          const lg = ctx.createLinearGradient(ax, ay, bx, by);
-          for (const [p, f, c] of stops) lg.addColorStop(p, `rgba(${white ? '255,255,255' : c},${alpha(f)})`);
-          ctx.strokeStyle = lg; ctx.lineWidth = lw; ctx.stroke();
-        }
+        ops.push([...box([[ax, ay], [bx, by]], reach), () => {
+          ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+          for (const [alpha, lw, white] of passes) {
+            if (white && !stops.some(([, f]) => alpha(f) > .01)) continue;
+            const lg = ctx.createLinearGradient(ax, ay, bx, by);
+            for (const [p, f, c] of stops) lg.addColorStop(p, `rgba(${white ? '255,255,255' : c},${alpha(f)})`);
+            ctx.strokeStyle = lg; ctx.lineWidth = lw; ctx.stroke();
+          }
+        }]);
       } else {
         const n = Math.max(Math.ceil((s1 - s0) / 10), 1);
         for (let c = 0; c < n; c++) {
           const a = s0 + c * (s1 - s0) / n, b = s0 + (c + 1) * (s1 - s0) / n, f = fall(head - (a + b) / 2);
           if (f <= .002) continue;
-          ctx.beginPath(); ctx.moveTo(...at(a));
-          for (let s = a + 2; s < b; s += 2) ctx.lineTo(...at(s));
-          ctx.lineTo(...at(b));   // end exactly where the next piece starts, no gap
+          const pts = [at(a)];
+          for (let s = a + 2; s < b; s += 2) pts.push(at(s));
+          pts.push(at(b));   // end exactly where the next piece starts, no gap
           const col = `rgb(${colorAt(...at((a + b) / 2), rot)})`;
-          for (const [alpha, lw, white] of passes) {
-            if (white && alpha(f) <= .01) continue;
-            ctx.strokeStyle = white ? '#fff' : col; ctx.globalAlpha = alpha(f); ctx.lineWidth = lw; ctx.stroke();
-          }
-          ctx.globalAlpha = 1;
+          ops.push([...box(pts, reach), () => {
+            ctx.beginPath(); ctx.moveTo(...pts[0]);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(...pts[i]);
+            for (const [alpha, lw, white] of passes) {
+              if (white && alpha(f) <= .01) continue;
+              ctx.strokeStyle = white ? '#fff' : col; ctx.globalAlpha = alpha(f); ctx.lineWidth = lw; ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+          }]);
         }
       }
     }
@@ -162,23 +172,63 @@
     if (G > 0) {
       for (let d = -lead; d <= tail; d += Math.max(G / 3, 4)) {
         const f = fall(d); if (f < .02) continue;
-        const [x, y] = at(head - d);
-        ctx.globalAlpha = f; ctx.drawImage(dot(uAt(x, y, rot)), x - G, y - G, G * 2, G * 2);
+        const [x, y] = at(head - d), img = dot(uAt(x, y, rot));
+        ops.push([x - G, y - G, x + G, y + G, () => { ctx.globalAlpha = f; ctx.drawImage(img, x - G, y - G, G * 2, G * 2); ctx.globalAlpha = 1; }]);
       }
-      ctx.globalAlpha = 1;
       const [x, y] = at(head), [r, g, bl] = colorAt(x, y, rot), F = G * 1.3 + w * 3;
-      const rg = ctx.createRadialGradient(x, y, 0, x, y, F);
-      rg.addColorStop(0, `rgba(255,255,255,${.5 * Lt})`);
-      rg.addColorStop(.12, `rgba(${r},${g},${bl},${.35 * Lt})`);
-      rg.addColorStop(1, `rgba(${r},${g},${bl},0)`);
-      ctx.fillStyle = rg; ctx.fillRect(x - F, y - F, F * 2, F * 2);
+      ops.push([x - F, y - F, x + F, y + F, () => {
+        const rg = ctx.createRadialGradient(x, y, 0, x, y, F);
+        rg.addColorStop(0, `rgba(255,255,255,${.5 * Lt})`);
+        rg.addColorStop(.12, `rgba(${r},${g},${bl},${.35 * Lt})`);
+        rg.addColorStop(1, `rgba(${r},${g},${bl},0)`);
+        ctx.fillStyle = rg; ctx.fillRect(x - F, y - F, F * 2, F * 2);
+      }]);
     }
-    ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    return { rot, ops };
+  }
+
+  function draw() {
+    const { rot, ops } = scene(), w = S.w;
+    for (const st of strips) {
+      if (!st.w || !st.h) continue;
+      ctx = st.ctx;
+      // window coordinates, moved so this strip's corner is the canvas origin
+      ctx.setTransform(dpr, 0, 0, dpr, -st.dx, -st.dy);
+      ctx.clearRect(st.x0, st.y0, st.x1 - st.x0, st.y1 - st.y0);
+      ctx.lineJoin = 'round';
+
+      // the rainbow ring, with a little soft glow under it
+      const grad = ctx.createConicGradient(rot, cx, cy);
+      RAINBOW.forEach((c, i) => grad.addColorStop(i / 6, c));
+      ctx.globalCompositeOperation = 'source-over';
+      ringPath(); ctx.strokeStyle = grad;
+      ctx.globalAlpha = S.base * .18; ctx.lineWidth = w * 4; ctx.stroke();
+      ctx.globalAlpha = S.base;       ctx.lineWidth = w;     ctx.stroke();
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.lineCap = 'butt';
+      ctx.globalAlpha = 1;   // the fade is in the gradients (straight) or set per chunk (corners)
+      for (const [x0, y0, x1, y1, fn] of ops)
+        if (x1 > st.x0 && x0 < st.x1 && y1 > st.y0 && y0 < st.y1) fn();
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    }
   }
 
   function resize() {
     W = innerWidth; H = innerHeight; dpr = devicePixelRatio || 1; dots = [];
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    // in device px, so the seams land on whole pixels: top and bottom run the full width, the
+    // sides fill in between them (no overlap, or the corners would be drawn twice). every strip
+    // starts on a multiple of 8 so the gradients' dither noise lines up with the one-canvas version
+    const Wd = Math.round(W * dpr), Hd = Math.round(H * dpr), snap = v => Math.floor(v / 8) * 8;
+    const B = Math.ceil(BAND * dpr / 8) * 8;
+    const yb = Math.max(snap(Hd - B), B), xr = Math.max(snap(Wd - B), B);   // bottom / right strip origins
+    const rects = [[0, 0, Wd, Math.min(B, Hd)], [0, yb, Wd, Hd - yb], [0, B, Math.min(B, Wd), yb - B], [xr, B, Wd - xr, yb - B]];
+    strips.forEach((st, i) => {
+      const [x, y] = rects[i], w = Math.max(rects[i][2], 0), h = Math.max(rects[i][3], 0);
+      Object.assign(st, { w, h, dx: x, dy: y, x0: x / dpr, y0: y / dpr, x1: (x + w) / dpr, y1: (y + h) / dpr });
+      st.c.width = w; st.c.height = h;
+      Object.assign(st.c.style, { left: x / dpr + 'px', top: y / dpr + 'px', width: w / dpr + 'px', height: h / dpr + 'px' });
+    });
     geometry(); draw();
   }
 
