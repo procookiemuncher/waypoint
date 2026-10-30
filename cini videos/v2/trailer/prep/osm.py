@@ -62,7 +62,7 @@ REGIONS = {
     "cpt": dict(bbox=(-34.044, 18.383, -33.833, 18.637), tol=20, min_area=60_000,
                 roads=["motorway", "trunk", "primary"], counties=False, road_tiles=3),
     "rio": dict(bbox=(-23.016, -43.340, -22.776, -43.080), tol=20, min_area=60_000,
-                roads=["motorway", "trunk", "primary"], counties=False, road_tiles=3),
+                roads=["motorway", "trunk", "primary", "secondary"], counties=False),
     "syd": dict(bbox=(-33.993, 151.126, -33.847, 151.302), tol=15, min_area=40_000,
                 roads=["motorway", "trunk", "primary", "secondary"], counties=False),
 }
