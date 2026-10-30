@@ -1,0 +1,10 @@
+{
+  "name": "waypoint-trailer",
+  "private": true,
+  "type": "module",
+  "description": "45s Waypoint trailer, rendered frame by frame with Playwright (node_modules can be a link to ../../v1/sting/node_modules)",
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "playwright": "^1.55.0"
+  }
+}

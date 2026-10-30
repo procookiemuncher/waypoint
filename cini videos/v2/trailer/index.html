@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Waypoint trailer</title>
+<style>
+  /* the repo's own woff2 files, both variable, so every weight is real */
+  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: block;
+    src: url('/core/web/static/fonts/inter-latin.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 100 800; font-display: block;
+    src: url('/core/web/static/fonts/jetbrains-mono-latin.woff2') format('woff2'); }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #050609; overflow: hidden; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #050609;
+    font-family: 'Inter', sans-serif; color: #f4f4f5; -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision; font-kerning: normal; font-feature-settings: 'cv11', 'ss01'; }
+  .shot { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; }
+  .layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+  .abs { position: absolute; left: 0; top: 0; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .nowrap { white-space: nowrap; }
+  .rise { overflow: hidden; display: inline-block; vertical-align: top; padding: 0 0.04em 0.12em; margin: 0 -0.04em -0.12em; }
+  .rise-in { display: block; will-change: transform; }
+  .cursor { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 50; }
+  .cursor-spin { position: absolute; left: -80px; top: -80px; width: 160px; height: 160px; transform-origin: 80px 80px; }
+  .cursor-body { position: absolute; left: 80px; top: 80px; width: 0; height: 0; transform-origin: 0 0;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .55)); }
+  #grain { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; z-index: 1000; }
+  #vignette { position: absolute; left: 0; top: 0; z-index: 999; pointer-events: none; }
+  #bars { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; z-index: 998; }
+  #bars i { position: absolute; left: 0; width: 1920px; background: #000; display: block; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<svg id="fx" width="0" height="0" style="position:absolute;left:0;top:0" aria-hidden="true"></svg>
+<script src="data/icon.js"></script>
+<script src="data/library.js"></script>
+<script src="data/maps.js"></script>
+<script src="data/world.js"></script>
+<script src="js/timeline.js"></script>
+<script src="js/core.js"></script>
+<script src="js/maps.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/s01-from-here.js"></script>
+<script src="js/s02-plug-in.js"></script>
+<script src="js/s03-anywhere.js"></script>
+<script src="js/s04-pick.js"></script>
+<script src="js/s05-city.js"></script>
+<script src="js/s06-play.js"></script>
+<script src="js/s07-drive.js"></script>
+<script src="js/s08-fly.js"></script>
+<script src="js/s09-chapters.js"></script>
+<script src="js/s10-numbers.js"></script>
+<script src="js/s11-resolve.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
