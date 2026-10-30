@@ -56,7 +56,7 @@ shot({
     // map: fades up under the panel, slow push
     const mz = lerp(1.08, 1.0, ease.outCubic(prog(lb, 0, 2))) * lerp(1, 1.05, drift);
     camera(this.mapLayer, W / 2, H / 2, mz);
-    op(this.mapLayer, ease.outCubic(prog(lb, 0.2, 1.4)));
+    op(this.mapLayer, ease.outCubic(prog(lb, -LEADB, 0.9)));
     css(this.mapLayer, 'filter', blurCss(2.6 * focus));
     // routes draw in, staggered
     this.routes.forEach((g, i) => {

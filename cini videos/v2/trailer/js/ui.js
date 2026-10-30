@@ -374,7 +374,7 @@ function uiHero(r, engine = 'drive', mph = 35) {
   const seg = h('div', { class: 'wp-seg' }, [h('span', { text: 'SPOOF' }), h('span', { text: 'DRIVE' })]);
   const mphEl = h('div', { class: 'wp-mph', html: `MPH <b>${mph}</b>` });
   inn.appendChild(h('div', { class: 'wp-opts' }, [seg, mphEl]));
-  inn.appendChild(h('div', { class: 'wp-note', text: engine === 'drive' ? 'real speed: the phone reports mph like a real drive.' : 'position only: follows the route’s slow-downs and stops.' }));
+  inn.appendChild(h('div', { class: 'wp-note', text: engine === 'drive' ? 'real speed, held steady at the mph you typed. no stops.' : 'position only — follows the route’s slow-downs and stops.' }));
   el.appendChild(inn);
   el.setEngine = e => { seg.children[0].className = e === 'spoof' ? 'on' : ''; seg.children[1].className = e === 'drive' ? 'on' : ''; };
   el.setEngine(engine);

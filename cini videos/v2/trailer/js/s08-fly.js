@@ -15,7 +15,10 @@ shot({
     // coast view: both airports in frame, a little east for the arc's swing over the water
     const fit = this.fit = fitBox([[23.6, -84.6], [42.6, -64.0]], { x: 560, y: 110, w: 1260, h: 880 }, 10);
     this.base = s('svg', { width: W, height: H, style: { position: 'absolute', left: 0, top: 0, overflow: 'visible' } });
-    this.base.appendChild(worldGroup(fit, { pal: { water: '#07080c', land: '#1b1d26', coast: '#3d4457', border: '#2a2f42' }, lineScale: 1.5 }));
+    this.worldG = worldGroup(fit, { pal: { water: '#07080c', land: '#1b1d26', coast: '#3d4457', border: '#2a2f42' }, lineScale: 1.5 });
+    this.base.appendChild(this.worldG);
+    // coast + border strokes, kept hairline while the camera zooms (they'd swell 40x in the dive)
+    this.worldStrokes = [...this.worldG.querySelectorAll('path')].map(p => [p, parseFloat(p.getAttribute('stroke-width'))]);
     // New York detail for the dive, faded in near the bottom of the zoom. Drawn in its own fit
     // (the one the dive ends on) and mapped into the coast view by one transform, so the 0.1 px
     // path rounding happens at street scale, not at 2 km a pixel.
@@ -137,13 +140,16 @@ shot({
     }
     css(this.base, 'transformOrigin', '0 0');
     css(this.base, 'transform', `translate(${f2(sx)}px, ${f2(sy)}px) scale(${zoomV.toFixed(5)}) translate(${f2(-fx)}px, ${f2(-fy)}px)`);
-    css(this.base, 'filter', blurCss((1 - io) * 9));
+    // the fast middle of the dive is smeared, which also hides the coarse 1:50m coastline
+    css(this.base, 'filter', blurCss((1 - io) * 9 + 7 * Math.sin(Math.PI * clamp(dive / 0.8)) ** 2));
+    for (const [p, w0] of this.worldStrokes) p.setAttribute('stroke-width', f2(w0 / zoomV));
     const lw = 1 / zoom; // keep the flight strokes from ballooning
     this.flight.setAttribute('stroke-width', f2(LEAP.arcW * this.unit * Math.max(lw, 0.02)));
     op(this.flight, 1 - ease.inCubic(prog(dive, 0.2, 0.6)));
     op(this.ringA, 1 - ease.inCubic(prog(dive, 0.2, 0.6)));
     op(this.dotB, 1 - ease.inCubic(prog(dive, 0.5, 0.85)));
-    op(this.nyG, ease.inOutCubic(prog(dive, 0.55, 0.95)));
+    op(this.nyG, ease.inOutCubic(prog(dive, 0.4, 0.85)));
+    op(this.worldG, 1 - 0.75 * ease.inOutCubic(prog(dive, 0.45, 0.9)));
     for (const l of [this.labA, this.labB]) {
       const p = project(this.fit, ...(l === this.labA ? this.A : this.B));
       const qx = (p[0] - fx) * zoomV + sx, qy = (p[1] - fy) * zoomV + sy;

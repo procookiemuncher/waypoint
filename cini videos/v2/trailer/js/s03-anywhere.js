@@ -98,8 +98,8 @@ shot({
     // push-in all shot long, then the dive into the map
     const dive = ease.inExpo(prog(lb, 6.6, 8 - LEADB));
     const push = lerp(1, 1.035, ease.inOutSine(prog(lb, 1, 6.6)));
-    // the dive aims at the map's middle (window coords ~(436, 470))
-    const tx = 436, ty = 470;
+    // the dive aims at the London tag (window coords), so the cut passes through light, not ocean
+    const tx = 470, ty = 300;
     const dz = lerp(1, 7.5, dive);
     const sx = wx + tx * ws, sy = wy + ty * ws;           // that point on screen before the dive
     const ex = lerp(sx, W / 2, ease.outCubic(dive)), ey = lerp(sy, H / 2, ease.outCubic(dive));
