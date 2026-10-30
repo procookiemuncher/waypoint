@@ -11,18 +11,18 @@ shot({
     el.appendChild(this.world);
     const fit = this.fit = fitCentre(24, 6, W / 2, H / 2, 19500);
     const msvg = s('svg', { width: W, height: H, style: { position: 'absolute', left: 0, top: 0, overflow: 'visible' } });
-    msvg.appendChild(worldGroup(fit, { pal: { water: '#08090d', land: '#14151b', coast: '#262a37', border: '#1c202b' }, lineScale: 1.2 }));
+    msvg.appendChild(worldGroup(fit, { pal: { water: '#08090d', land: '#17181f', coast: '#2e3342', border: '#20242f' }, lineScale: 1.2 }));
     this.mapLayer = h('div', { class: 'layer' }, [msvg]);
     this.world.appendChild(this.mapLayer);
     // the sweep (app.css #sweep): a soft lavender band crossing the map once
     this.sweep = layer('', { background: `linear-gradient(105deg, transparent 0%, ${rgba(C.accent, 0.10)} 40%, ${rgba(C.accent, 0.22)} 50%, ${rgba(C.accent, 0.10)} 60%, transparent 100%)`, width: '900px' });
     this.mapLayer.appendChild(this.sweep);
-    this.tags = clusterCities(fit, 78).map(c => {
+    this.tags = clusterCities(fit, 104).map(c => {
       const b = uiBub(c.name, c.c.color, c.c.flag, c.more, c.total);
       b.style.left = px(c.p[0]); b.style.top = px(c.p[1]);
-      b.style.zoom = '1.35';
+      b.style.zoom = '1.75';
       // zoom scales left/top too: pre-divide
-      b.style.left = px(c.p[0] / 1.35); b.style.top = px(c.p[1] / 1.35);
+      b.style.left = px(c.p[0] / 1.75); b.style.top = px(c.p[1] / 1.75);
       this.mapLayer.appendChild(b);
       return { el: b, x: c.p[0] };
     });
@@ -60,7 +60,7 @@ shot({
     css(this.sweep, 'transform', `translateX(${f2(sx)}px)`);
     op(this.sweep, prog(lb, 0.3, 3.1) > 0 && prog(lb, 0.3, 3.1) < 1 ? 1 : 0);
     for (const tg of this.tags) {
-      const hit = (tg.x + 450 - sx) / 380; // >0 once the band's middle has passed
+      const hit = (sx + 450 - tg.x) / 380; // >0 once the band's middle has passed
       const pop = hit > 0 ? spring(hit * 0.55, 1.9, 0.4) : 0;
       css(tg.el, 'transform', `translate(-50%, -50%) scale(${(0.82 + 0.18 * pop).toFixed(4)})`);
       op(tg.el, 0.35 + 0.65 * clamp(hit * 2));
@@ -79,8 +79,8 @@ shot({
     op(this.head, 1 - hout);
 
     // ---- the panel floats in from the right, tilted ----
-    const pz = lerp(1.5, 1.22, pin);
-    const px_ = lerp(W + 200, 1150, pin), py = lerp(140, 64, pin);
+    const pz = lerp(1.7, 1.42, pin);
+    const px_ = lerp(W + 200, 1060, pin), py = lerp(140, 36, pin);
     // the click on Miami and the swell toward the camera
     const click = lb - (K.clickCity - 24);
     const press = click > 0 && click < 0.5 ? Math.sin(Math.PI * click / 0.5) : 0;

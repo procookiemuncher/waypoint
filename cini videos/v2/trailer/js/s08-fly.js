@@ -13,9 +13,9 @@ shot({
     this.world = h('div', { class: 'layer' });
     el.appendChild(this.world);
     // coast view: both airports in frame, a little east for the arc's swing over the water
-    const fit = this.fit = fitBox([[24.2, -84.0], [41.6, -66.5]], { x: 520, y: 40, w: 1300, h: 1000 }, 20);
+    const fit = this.fit = fitBox([[23.6, -84.6], [42.6, -64.0]], { x: 560, y: 110, w: 1260, h: 880 }, 10);
     this.base = s('svg', { width: W, height: H, style: { position: 'absolute', left: 0, top: 0, overflow: 'visible' } });
-    this.base.appendChild(worldGroup(fit, { pal: { water: '#07080c', land: '#121319', coast: '#2a2f3e', border: '#1c2030' }, lineScale: 1.4 }));
+    this.base.appendChild(worldGroup(fit, { pal: { water: '#07080c', land: '#1b1d26', coast: '#3d4457', border: '#2a2f42' }, lineScale: 1.5 }));
     // New York detail for the dive, faded in near the bottom of the zoom. Drawn in its own fit
     // (the one the dive ends on) and mapped into the coast view by one transform, so the 0.1 px
     // path rounding happens at street scale, not at 2 km a pixel.
@@ -79,6 +79,9 @@ shot({
   },
   render(lb, t) {
     const K = TL.K, off = K.offline - 56, on = K.online - 56, arr = K.arrive2 - 56;
+    // the dive's zoom first: the flight marks are sized against it
+    const dive = ease.inOutCubic(prog(lb, on + 0.25, arr - 0.2));
+    const zoom = Math.exp(lerp(0, Math.log(this.nyFit.k / this.fit.k), dive));
     // ---- the flight ----
     const ringT = ease.outCubic(prog(lb, 0.2, 1.2));
     this.ringA.setAttribute('stroke-dasharray', `${f2(TAU * LEAP.ringR * this.unit * ringT)} 999`);
@@ -99,7 +102,7 @@ shot({
       this.flight.setAttribute('stroke-dasharray', fl > 0 ? arr2 : `0 ${f2(L * 2)}`);
     }
     const land = lb - on;
-    this.dotB.setAttribute('r', f2(LEAP.dotR * this.unit * (land > 0 ? spring(land, 1.5, 0.38) : 0)));
+    this.dotB.setAttribute('r', f2(LEAP.dotR * this.unit * (land > 0 ? spring(land, 1.5, 0.38) : 0) / Math.pow(zoom, 0.92)));
     const pp = prog(lb, on, on + 1.6);
     this.ping.setAttribute('r', f2(LEAP.dotR * this.unit * lerp(1, 3, ease.outCubic(pp))));
     this.ping.setAttribute('opacity', pp > 0 && pp < 1 ? f2(0.6 * (1 - pp)) : 0);
@@ -107,12 +110,9 @@ shot({
     op(this.labB, ease.outCubic(prog(lb, on, on + 0.6)));
 
     // ---- camera: hold on the coast, then dive into New York ----
-    const dive = ease.inOutCubic(prog(lb, on + 0.25, arr - 0.2));
     const r = this.r, pe = r.line[r.line.length - 1];
     // the dive ends exactly on the city layer's own fit (scale 1, the route framed right of centre)
     const nyFit = this.nyFit;
-    const kEnd = nyFit.k / this.fit.k;
-    const zoom = Math.exp(lerp(0, Math.log(kEnd), dive));
     const c0 = [W / 2, H / 2];
     // the stage point that ends up at (1160, 550): where that pixel of the city fit sits in the coast fit
     const [elat, elon] = unproject(nyFit, 1160, 550);
@@ -142,7 +142,7 @@ shot({
     // ---- terminal ----
     const shows = [0.15, 0.35, 0.6, off, off + 0.25, on, on + 0.3];
     this.tl.forEach((l, i) => { const p = clamp((lb - shows[i]) / 0.15); op(l, p); });
-    css(this.term, 'transform', `translate(96px, ${f2(660 - 10)}px) scale(1.42)`);
+    css(this.term, 'transform', `translate(96px, 590px) scale(1.62)`);
     op(this.term, ease.outCubic(prog(lb, 0, 0.6)) * (1 - ease.inCubic(prog(lb, arr - 0.6, arr + 0.2))));
 
     // ---- headline ----

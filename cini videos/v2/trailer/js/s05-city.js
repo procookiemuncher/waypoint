@@ -45,8 +45,10 @@ shot({
   render(lb, t) {
     // ---- arrive: the panel comes in big (we were diving into the Miami card) and settles ----
     const arr = ease.outExpo(prog(lb, -LEADB, 1.5));
-    const sc = lerp(2.1, 1.3, arr);
-    const x = lerp(700, 1150, arr), y = lerp(-180, 60, arr);
+    // then a push onto the places row and the local time (the shot's point)
+    const focus = ease.inOutCubic(prog(lb, 3.4, 6.2));
+    const sc = lerp(2.3, 1.62, arr) * lerp(1, 1.42, focus);
+    const x = lerp(lerp(640, 1010, arr), 980, focus), y = lerp(lerp(-200, 26, arr), -170, focus);
     const ry = lerp(0, -10, arr);
     const drift = ease.inOutSine(prog(lb, 1.5, 8));
     css(this.panel, 'transform', `translate(${f2(x - drift * 14)}px, ${f2(y)}px) perspective(1800px) rotateY(${f2(ry + drift * 3)}deg) scale(${sc.toFixed(4)})`);

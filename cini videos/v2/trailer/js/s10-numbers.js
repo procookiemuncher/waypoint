@@ -11,7 +11,7 @@ shot({
     el.appendChild(layer('', { background: '#050609' }));
     const fit = this.fit = fitCentre(18, 12, W / 2, H / 2 + 40, 21500);
     const svg = s('svg', { width: W, height: H, style: { position: 'absolute', left: 0, top: 0, overflow: 'visible' } });
-    svg.appendChild(worldGroup(fit, { water: false, pal: { land: '#101118', coast: '#1d202b', border: '#171a24' } }));
+    svg.appendChild(worldGroup(fit, { water: false, pal: { land: '#15161d', coast: '#272b39', border: '#1c1f2b' } }));
     this.dots = [];
     for (const [name, c] of Object.entries(LIB.cities)) {
       for (const sp of c.spots) {

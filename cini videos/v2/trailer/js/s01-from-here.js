@@ -61,11 +61,25 @@ shot({
     const A = [420, 14], B = [this.dotW[0] + 520, this.dotW[1] + 10];
     // follow the arc's curve, not a straight line: bend the path through the arc's mid point
     const mid = LEAP.at(0.55).map((v, i) => (v - LEAP.ring[i]) * k);
-    const bx = (1 - u) ** 2 * A[0] + 2 * (1 - u) * u * (mid[0] + 330) + u * u * B[0];
-    const by = (1 - u) ** 2 * A[1] + 2 * (1 - u) * u * (mid[1] + 40) + u * u * B[1];
-    // a slow push all shot, a little more after the landing; roll leans into the climb
-    const zoom = lerp(0.96, 1.06, lb / 8) + 0.05 * ease.outCubic(prog(lb, K.dotLand, 8));
+    let bx = (1 - u) ** 2 * A[0] + 2 * (1 - u) * u * (mid[0] + 330) + u * u * B[0];
+    let by = (1 - u) ** 2 * A[1] + 2 * (1 - u) * u * (mid[1] + 40) + u * u * B[1];
+    // a slow push while we travel; roll leans into the climb
+    let zoom = lerp(0.96, 1.06, clamp(lb / 6));
     const roll = -2.2 * Math.sin(Math.PI * clamp(u));
+    // after the landing the camera pulls back to the whole line: ring + "From here" low left,
+    // dot + "to anywhere." high right, the mark between them (the frame the iris opens from)
+    const back = ease.inOutCubic(prog(lb, K.dotLand + 0.25, K.irisOpen + 0.1));
+    if (back > 0) {
+      const card = this._card || (this._card = (() => {
+        const fw = this.from.getBoundingClientRect ? this.from.scrollWidth : 760, aw = this.any.scrollWidth;
+        const x0 = -34 * k, x1 = this.dotW[0] + 34 * k + 64 + aw;
+        const y0 = this.dotW[1] - 34 * k, y1 = 34 * k;
+        void fw;
+        return { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, z: Math.min(W * 0.86 / (x1 - x0), (H - 276) * 0.9 / (y1 - y0)) };
+      })());
+      bx = lerp(bx, card.cx, back); by = lerp(by, card.cy, back);
+      zoom = lerp(zoom, card.z, back);
+    }
     // impact shake on the landing, decaying
     const sh = land > 0 && land < 0.8 ? Math.exp(-6 * land) * 7 : 0;
     const shx = sh * vnoise(t * 40, 3), shy = sh * vnoise(t * 40, 4);
