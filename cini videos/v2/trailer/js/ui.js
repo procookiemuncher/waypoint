@@ -259,7 +259,7 @@ function mapArt(lines, w, h_, color, pad = 26, region = null, opts = {}) {
 }
 // which baked region covers a city (for card art)
 const REGION_OF = { 'Miami': 'mia', 'New York': 'nyc', 'Paris': 'par', 'Monaco': 'mco', 'London': 'lon', 'Dubai': 'dxb',
-  'Tokyo': 'tyo', 'Cape Town': 'cpt', 'Rio de Janeiro': 'rio', 'Sydney': 'syd' };
+  'Tokyo': 'tyo', 'Cape Town': 'cpt', 'Rio de Janeiro': 'rio', 'Sydney': 'syd', 'Saint-Tropez': 'stt' };
 const regionFor = c => (REGION_OF[c] && window.MAPS[REGION_OF[c]] ? REGION_OF[c] : null);
 
 // ---------- components ----------

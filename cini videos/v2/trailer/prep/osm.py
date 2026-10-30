@@ -60,9 +60,9 @@ REGIONS = {
     "tyo": dict(bbox=(35.498, 139.636, 35.724, 139.914), tol=20, min_area=60_000,
                 roads=["motorway", "trunk", "primary"], counties=False, road_tiles=3),
     "cpt": dict(bbox=(-34.044, 18.383, -33.833, 18.637), tol=20, min_area=60_000,
-                roads=["motorway", "trunk", "primary", "secondary"], counties=False),
+                roads=["motorway", "trunk", "primary"], counties=False, road_tiles=3),
     "rio": dict(bbox=(-23.016, -43.340, -22.776, -43.080), tol=20, min_area=60_000,
-                roads=["motorway", "trunk", "primary", "secondary"], counties=False),
+                roads=["motorway", "trunk", "primary"], counties=False, road_tiles=3),
     "syd": dict(bbox=(-33.993, 151.126, -33.847, 151.302), tol=15, min_area=40_000,
                 roads=["motorway", "trunk", "primary", "secondary"], counties=False),
 }
@@ -88,7 +88,7 @@ def overpass(query, tag):
         with open(path) as f:
             return json.load(f)
     body = urllib.parse.urlencode({"data": query}).encode()
-    for attempt in range(6):
+    for attempt in range(int(os.environ.get("OVERPASS_TRIES", 6))):
         url = OVERPASS_URLS[attempt % len(OVERPASS_URLS)]
         try:
             req = urllib.request.Request(url, data=body, headers={"User-Agent": UA})
