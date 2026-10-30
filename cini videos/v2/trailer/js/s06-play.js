@@ -35,7 +35,7 @@ shot({
     this.echo = this.con.addLine(`<span class="ps">waypoint ›</span> ${esc(CMD)}`, 'cmd');
     this.l_build = this.con.addLine(`building mia-to-faena-miami for drive…`, 'dim');
     this.l_play = this.con.addLine(`playing mia-to-faena-miami via drive — keep the phone unlocked`, 'accent');
-    this.conWrap = h('div', { class: 'wp', style: { width: '396px', height: '260px', borderRadius: '10px', overflow: 'hidden', transformOrigin: '0 0',
+    this.conWrap = h('div', { class: 'wp', style: { width: '452px', height: '260px', borderRadius: '10px', overflow: 'hidden', transformOrigin: '0 0',
       border: '1px solid #1e2230', display: 'flex', flexDirection: 'column' } }, [this.con]);
     this.con.style.flex = '1';
     // the scrollback grows downward from under the label, like a fresh terminal
@@ -91,9 +91,9 @@ shot({
     this.con.caret(typing || Math.floor(t / 0.525) % 2 === 0);
     show(this.echo, done); show(this.l_build, lb >= en + 0.15); show(this.l_play, lb >= en + 0.9);
     // camera: the console sits low and large, tracking the caret a little as the line grows
-    const cs = 4.25;
-    const track = -Math.max(0, n - 22) * 2.6 * (done ? 0 : 1);
-    const settleTrack = done ? lerp(-Math.max(0, CMD.length - 22) * 2.6, 0, ease.outCubic(prog(lb, en, en + 1))) : track;
+    // big enough to read across the room, small enough that the longest log line still fits
+    const cs = 3.9;
+    const settleTrack = 0;
     const push = lerp(1, 1.04, ease.inOutSine(prog(lb, 1, en)));
     css(this.conWrap, 'transform', `translate(${f2(96 + settleTrack * cs)}px, ${f2(436 - (push - 1) * 300)}px) scale(${(cs * push).toFixed(4)})`);
 

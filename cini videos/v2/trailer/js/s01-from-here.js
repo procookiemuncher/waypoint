@@ -64,7 +64,7 @@ shot({
       return u;
     };
     const u = travel(lb);
-    const A = [420, 14], B = [this.dotW[0] + 520, this.dotW[1] + 10];
+    const A = [420, 14], B = [this.dotW[0] + 330, this.dotW[1] + 4];
     // follow the arc's curve, not a straight line: bend the path through the arc's mid point
     const mid = LEAP.at(0.55).map((v, i) => (v - LEAP.ring[i]) * k);
     let bx = (1 - u) ** 2 * A[0] + 2 * (1 - u) * u * (mid[0] + 330) + u * u * B[0];
