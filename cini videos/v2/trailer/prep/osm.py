@@ -87,6 +87,9 @@ def overpass(query, tag):
     if os.path.exists(path):
         with open(path) as f:
             return json.load(f)
+    if os.environ.get("OSM_CACHE_ONLY"):  # build from whatever is cached, skip what isn't
+        print(f"  {tag}: not cached, skipped (OSM_CACHE_ONLY)")
+        return {"elements": []}
     body = urllib.parse.urlencode({"data": query}).encode()
     for attempt in range(int(os.environ.get("OVERPASS_TRIES", 6))):
         url = OVERPASS_URLS[attempt % len(OVERPASS_URLS)]
@@ -336,6 +339,10 @@ def process_region(name, cfg):
     road_re = "|".join(cfg["roads"])
     nt = cfg.get("road_tiles", 1)
     road_els, seen_ways = [], set()
+    # OSM_NO_ROADS=tyo,...: build those regions without their road queries (cache-only fallback
+    # for when overpass won't serve a dense road net)
+    if name in os.environ.get("OSM_NO_ROADS", "").split(","):
+        nt = 0
     for i in range(nt):
         for j in range(nt):
             tb = (s + (n - s) * i / nt, w + (e - w) * j / nt, s + (n - s) * (i + 1) / nt, w + (e - w) * (j + 1) / nt)
