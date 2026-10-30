@@ -13,6 +13,12 @@ shot({
       o[0] = lerp(5, 13, v); o[1] = lerp(6, 11, v); o[2] = lerp(9, 20, v);
     }, 0.018, 21, 2);
     el.appendChild(this.bg);
+    // far plane: Manhattan's streets, barely there, moving at a third of the camera
+    const deep = s('svg', { width: 10, height: 10, style: { position: 'absolute', left: 0, top: 0, overflow: 'visible' } });
+    deep.appendChild(mapGroup('mnh', fitCentre(40.758, -73.985, 0, 0, 7), { lineScale: 1.4, rect: [-4000, -4000, 8000, 8000],
+      pal: { water: 'transparent', ground: 'transparent', coast: '#3a3550', park: 'transparent', road: '#2e2a40', road2: '#3a3550' } }));
+    this.deep = h('div', { class: 'layer', style: { opacity: '0.16', filter: 'blur(1.2px)' } }, [deep]);
+    el.appendChild(this.deep);
     this.world = h('div', { class: 'layer' });
     el.appendChild(this.world);
 
@@ -84,6 +90,8 @@ shot({
     const sh = land > 0 && land < 0.8 ? Math.exp(-6 * land) * 7 : 0;
     const shx = sh * vnoise(t * 40, 3), shy = sh * vnoise(t * 40, 4);
     camera(this.world, bx + shx, by + shy, zoom, roll);
+    camera(this.deep, (bx + shx) * 0.33, (by + shy) * 0.33, 0.9 + (zoom - 1) * 0.3, roll * 0.5);
+    op(this.deep, 0.16 * ease.outCubic(prog(lb, -0.1, 2.5)));
     // motion blur along the travel
     const vx = rate(b => spline(b, [[K.arcGo - 0.4, 0], [K.arcGo + 0.6, 0.06], [K.dotLand - 1.2, 0.8], [K.dotLand - 0.1, 1.0]], { v0: 0, v1: 0 }), lb);
     const speedPx = perFrame(vx * Math.hypot(B[0] - A[0], B[1] - A[1]) * zoom);

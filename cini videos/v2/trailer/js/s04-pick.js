@@ -68,6 +68,7 @@ shot({
     // map recedes a little when the panel arrives
     const pin = ease.outExpo(prog(lb, K.cardsIn - 24, K.cardsIn - 24 + 1.6));
     op(this.mapLayer, lerp(1, 0.55, pin));
+    if (arr >= 1) css(this.mapLayer, 'filter', blurCss(3 * pin));
 
     // ---- headline ----
     const p1 = ease.outQuart(prog(lb, 0.6, 1.7));

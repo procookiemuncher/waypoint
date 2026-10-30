@@ -117,10 +117,19 @@ shot({
     // the stage point that ends up at (1160, 550): where that pixel of the city fit sits in the coast fit
     const [elat, elon] = unproject(nyFit, 1160, 550);
     const c1 = project(this.fit, elat, elon);
-    const fx = lerp(c0[0], c1[0], ease.inOutCubic(prog(dive, 0, 0.6))), fy = lerp(c0[1], c1[1], ease.inOutCubic(prog(dive, 0, 0.6)));
+    let fx = lerp(c0[0], c1[0], ease.inOutCubic(prog(dive, 0, 0.6))), fy = lerp(c0[1], c1[1], ease.inOutCubic(prog(dive, 0, 0.6)));
     const sx = lerp(W / 2, 1160, dive), sy = lerp(H / 2, 550, dive);
+    // the opening: still down in Miami where S7 left us, pulling out to the whole coast
+    const io = ease.outExpo(prog(lb, -LEADB, 1.25));
+    let zoomV = zoom;
+    if (io < 1) {
+      const mia = project(this.fit, 25.80, -80.20);
+      zoomV = Math.exp(lerp(Math.log(22), 0, io));
+      fx = lerp(mia[0], c0[0], io); fy = lerp(mia[1], c0[1], io);
+    }
     css(this.base, 'transformOrigin', '0 0');
-    css(this.base, 'transform', `translate(${f2(sx)}px, ${f2(sy)}px) scale(${zoom.toFixed(5)}) translate(${f2(-fx)}px, ${f2(-fy)}px)`);
+    css(this.base, 'transform', `translate(${f2(sx)}px, ${f2(sy)}px) scale(${zoomV.toFixed(5)}) translate(${f2(-fx)}px, ${f2(-fy)}px)`);
+    css(this.base, 'filter', blurCss((1 - io) * 9));
     const lw = 1 / zoom; // keep the flight strokes from ballooning
     this.flight.setAttribute('stroke-width', f2(LEAP.arcW * this.unit * Math.max(lw, 0.02)));
     op(this.flight, 1 - ease.inCubic(prog(dive, 0.2, 0.6)));
@@ -129,7 +138,7 @@ shot({
     op(this.nyG, ease.inOutCubic(prog(dive, 0.55, 0.95)));
     for (const l of [this.labA, this.labB]) {
       const p = project(this.fit, ...(l === this.labA ? this.A : this.B));
-      const qx = (p[0] - fx) * zoom + sx, qy = (p[1] - fy) * zoom + sy;
+      const qx = (p[0] - fx) * zoomV + sx, qy = (p[1] - fy) * zoomV + sy;
       css(l, 'transform', `translate(${f2(qx - p[0])}px, ${f2(qy - p[1])}px)`);
       if (dive > 0.3) op(l, 1 - prog(dive, 0.3, 0.5));
     }
