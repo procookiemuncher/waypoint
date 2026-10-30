@@ -44,7 +44,7 @@ whole track sits behind a low-pass (the cabin) and snaps open on landing.
 | S6 | 40-48 | Press play. | Hero card (Drive, 35 mph) and the console typing `play mia-to-faena-miami --drive --mph 35`. Return on beat 44, the app's log lines |
 | S7 | 48-56 | Real roads. / Real speed. | The drive on a tilted night map, heading-up, with the HUD. Pull-out and ARRIVED · Faena Hotel |
 | S8 | 56-64 | Or fly. | `fly nyc`: the Leap's arc from MIA to JFK while the phone is offline. Dive into New York, JFK to The Plaza, ARRIVED |
-| S9 | 64-72 | (city names) | One city a beat, each in its own catalog colour: Paris, London, Dubai, Tokyo, Sydney, Cape Town, Monaco, Rio |
+| S9 | 64-72 | (city names) | One city a beat, each in its own catalog colour: Paris, London, Tokyo, Dubai, Saint-Tropez, Sydney, Monaco, Rio (warm and cool alternate). Saint-Tropez took Cape Town's slot when Cape Town's OSM data wouldn't download |
 | S10 | 72-80 | 35 spots / 28 cities / 21 countries / 6 continents | Figures roll in over a world map where every spot lights up |
 | S11 | 80-93 | Waypoint / From here to anywhere. / for Mac | The Leap builds on the real icon, the wordmark slides out of it, fade |
 
