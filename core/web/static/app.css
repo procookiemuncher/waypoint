@@ -770,77 +770,312 @@ path.glowcase { filter: blur(5px); }
 }
 
 /* ============ ACCESS KEY ============ */
-/* over the intro the finished icon lifts and the card sits under it; on its own (reduced motion,
-   or a key turned off mid-session) it gets the connect screen's backdrop and a small mark */
+/* its own screen between the intro and the boot log (and over the app if a key gets turned off
+   mid-session). Layers back to front: drifting stars (canvas), aurora blobs, a grid floor running
+   toward you, then a glass card that tilts with the pointer. The key is a hidden input over 16
+   painted slots, so typing and pasting stay plain input behaviour. */
+@property --kg-a { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
 #keygate {
-  position: absolute; inset: 40px 0 0 0; z-index: 1003;
+  position: absolute; inset: 40px 0 0 0; z-index: 1003; overflow: hidden;
   display: flex; align-items: center; justify-content: center; padding: 0 16px;
-  background:
-    radial-gradient(60% 55% at 50% 42%, rgba(var(--accent-rgb),.07) 0%, transparent 70%),
-    #0c0e13;
-  opacity: 0; transition: opacity .5s ease;
+  background: radial-gradient(80% 70% at 50% 40%, #110f1a 0%, #07080c 70%);
+  opacity: 0; transition: opacity .7s ease;
+  perspective: 1400px;
 }
 #keygate[hidden] { display: none; }
 #keygate.in { opacity: 1; }
-#keygate.over-warp { background: transparent; }
-/* the icon is drawn by glass.js on a full-screen canvas, so it can't be moved: the word fades
-   instead and the card hangs under the icon (slot centre = 50% - 38px, half the slot = 84px) */
-#warp .word { transition: opacity .5s ease; }
-#warp.keyed .word { opacity: 0; }
+#keygate.out { opacity: 0; pointer-events: none; transition: opacity .9s ease .25s; }
+#frame.keyed #crt, #frame.keyed #flicker { opacity: 0; }
 
+#kg-stars, #kg-burst { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#kg-burst { z-index: 3; }
+
+/* three slow blobs, blurred into an aurora behind the card */
+.kg-aurora { position: absolute; inset: -20%; pointer-events: none; filter: blur(70px); opacity: .55; }
+.kg-aurora i { position: absolute; border-radius: 50%; mix-blend-mode: screen; }
+.kg-aurora i:nth-child(1) { width: 46%; height: 46%; left: 22%; top: 18%; background: rgba(var(--accent-rgb),.55); animation: kg-drift1 18s ease-in-out infinite alternate; }
+.kg-aurora i:nth-child(2) { width: 38%; height: 38%; left: 46%; top: 36%; background: rgba(255,122,184,.32); animation: kg-drift2 23s ease-in-out infinite alternate; }
+.kg-aurora i:nth-child(3) { width: 42%; height: 40%; left: 30%; top: 46%; background: rgba(122,140,255,.34); animation: kg-drift3 27s ease-in-out infinite alternate; }
+#keygate[data-state="ok"] .kg-aurora i:nth-child(1) { background: rgba(126,231,135,.4); transition: background 1s; }
+#keygate[data-state="bad"] .kg-aurora i:nth-child(2),
+#keygate[data-state="revoked"] .kg-aurora i:nth-child(2) { background: rgba(244,124,124,.38); }
+@keyframes kg-drift1 { to { transform: translate(14%, 10%) scale(1.15); } }
+@keyframes kg-drift2 { to { transform: translate(-22%, -12%) scale(.9); } }
+@keyframes kg-drift3 { to { transform: translate(12%, -16%) scale(1.2); } }
+
+/* a grid floor running toward the viewer, faded out at the horizon */
+.kg-grid {
+  position: absolute; left: -50%; right: -50%; bottom: -10%; height: 60%; pointer-events: none;
+  background:
+    linear-gradient(rgba(var(--accent-rgb),.16) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(90deg, rgba(var(--accent-rgb),.16) 1px, transparent 1px) 0 0 / 56px 56px;
+  transform: rotateX(72deg); transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgba(0,0,0,.5) 45%, transparent 85%);
+          mask-image: linear-gradient(to top, #000 0%, rgba(0,0,0,.5) 45%, transparent 85%);
+  animation: kg-run 3.2s linear infinite;
+}
+#keygate.checking .kg-grid { animation-duration: .7s; }
+@keyframes kg-run { to { background-position: 0 56px, 0 56px; } }
+
+/* ---- the card ---- */
 #key-card {
-  width: min(400px, 100%);
+  --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 0%;
+  position: relative; z-index: 2;
+  width: min(480px, 100%); padding: 30px 30px 24px; border-radius: 26px;
   display: flex; flex-direction: column; align-items: center; text-align: center;
-  transform: translateY(10px); transition: transform .7s cubic-bezier(.2,.8,.2,1);
+  background: linear-gradient(180deg, rgba(26,23,38,.72), rgba(12,11,18,.78));
+  backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: 0 40px 120px -20px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.04) inset, 0 1px 0 rgba(255,255,255,.07) inset;
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transform-style: preserve-3d;
+  opacity: 0; translate: 0 34px; scale: .94; filter: blur(12px);
+  transition: translate 1s cubic-bezier(.16,1,.3,1), scale 1s cubic-bezier(.16,1,.3,1), opacity .7s ease, filter .8s ease, transform .25s ease-out;
 }
-#keygate.in #key-card { transform: none; }
-#keygate.over-warp #key-card { position: absolute; top: calc(50% + 78px); left: 50%; translate: -50% 0; width: min(400px, calc(100% - 32px)); }
-.kg-mark { width: 46px; height: 46px; fill: var(--accent); margin-bottom: 18px; filter: drop-shadow(0 4px 18px rgba(var(--accent-rgb),.4)); }
-#keygate.over-warp .kg-mark { display: none; }
+#keygate.in #key-card { opacity: 1; translate: 0 0; scale: 1; filter: none; }
+/* unlocked: the card falls away into the app, as if you walked through it */
+#keygate.out #key-card { opacity: 0; scale: 1.12; filter: blur(14px); transition-duration: .9s, .9s, .7s, .8s, .25s; }
 
-#key-title { font: 600 20px/1.2 'Inter', sans-serif; color: #f4f1ff; letter-spacing: -0.01em; }
-#key-sub { margin: 7px 0 20px; font: 400 13px/1.45 'Inter', sans-serif; color: #8b93a3; min-height: 19px; }
+/* a rainbow light chasing round the rim; flat accent at rest, the wire colours while checking */
+.kg-rim {
+  position: absolute; inset: 0; border-radius: inherit; padding: 1.2px; pointer-events: none;
+  background: conic-gradient(from var(--kg-a), transparent 0deg, rgba(var(--accent-rgb),.9) 50deg, transparent 110deg, transparent 180deg, rgba(var(--accent-rgb),.5) 230deg, transparent 290deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: kg-rim 6s linear infinite;
+}
+#keygate.checking .kg-rim {
+  background: conic-gradient(from var(--kg-a), #b49aff, #7a8cff, #c47aff, #ff7ab8, #ffb37a, #b8e67a, #b49aff);
+  animation-duration: 1.2s;
+}
+#keygate[data-state="ok"] .kg-rim { background: conic-gradient(from var(--kg-a), #7ee787, rgba(126,231,135,.3), #7ee787); }
+#keygate[data-state="bad"] .kg-rim,
+#keygate[data-state="revoked"] .kg-rim { background: conic-gradient(from var(--kg-a), transparent, rgba(244,124,124,.85) 60deg, transparent 140deg, transparent 200deg, rgba(244,124,124,.5) 260deg, transparent); }
+@keyframes kg-rim { to { --kg-a: 360deg; } }
 
-/* the field's 1.5px border is a background, so it can run the connect wire's rainbow while checking */
+/* a soft light that follows the pointer across the glass */
+.kg-spot {
+  position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(260px circle at var(--mx) var(--my), rgba(var(--accent-rgb),.13), transparent 70%);
+  opacity: 0; transition: opacity .4s;
+}
+#keygate.hover .kg-spot { opacity: 1; }
+
+/* the pieces rise in one after another. Zero-specificity on purpose: once settled, the shake,
+   wiggle and glow animations on the same elements have to win */
+:where(#key-card > .kp) { opacity: 0; }
+:where(#keygate.in #key-card > .kp) { animation: kg-rise .9s cubic-bezier(.16,1,.3,1) forwards; animation-delay: calc(.25s + var(--n, 0) * 70ms); }
+:where(#keygate.settled #key-card > .kp) { opacity: 1; animation: none; }
+#kg-lock { --n: 0; } #key-eyebrow { --n: 1; } #key-title { --n: 2; } #key-sub { --n: 3; }
+#key-box { --n: 4; } #key-meter { --n: 5; } #key-go { --n: 6; } #key-hint { --n: 7; }
+@keyframes kg-rise { from { opacity: 0; transform: translateY(16px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+
+/* ---- the lock ---- */
+#kg-lock { width: 118px; height: 118px; overflow: visible; margin: -6px 0 6px; transform: translateZ(40px); }
+#kg-lock .orbit { fill: none; stroke: rgba(var(--accent-rgb),.22); stroke-width: 1; stroke-dasharray: 2 7; transform-origin: 80px 84px; }
+#kg-lock .o1 { animation: kg-turn 40s linear infinite; }
+#kg-lock .o2 { stroke-dasharray: 26 14 3 14; stroke: rgba(var(--accent-rgb),.14); animation: kg-turn 26s linear infinite reverse; }
+#kg-lock .sat { transform-origin: 80px 84px; animation: kg-turn 9s linear infinite; }
+#kg-lock .sat circle { fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent)); }
+#kg-lock .s2 { animation-duration: 6s; animation-direction: reverse; }
+#kg-lock .s2 circle { fill: #ff7ab8; filter: drop-shadow(0 0 4px #ff7ab8); }
+#keygate.checking #kg-lock .sat { animation-duration: 1.1s; }
+#keygate.checking #kg-lock .s2 { animation-duration: .8s; }
+#keygate.checking #kg-lock .orbit { stroke: rgba(var(--accent-rgb),.45); }
+#kg-lock .halo { fill: rgba(var(--accent-rgb),.45); transform-origin: 80px 96px; animation: kg-breathe 3.6s ease-in-out infinite; transition: fill .5s; }
+#kg-lock .shackle {
+  fill: none; stroke: #3b3651; stroke-width: 9; stroke-linecap: round;
+  transition: transform .75s cubic-bezier(.34,1.56,.64,1), stroke .4s;
+}
+#kg-lock .body { fill: url(#kg-body); }
+#kg-lock .body-rim { fill: none; stroke: rgba(var(--accent-rgb),.38); stroke-width: 1.5; transition: stroke .4s; }
+#kg-lock .leap { fill: var(--accent); filter: drop-shadow(0 0 6px rgba(var(--accent-rgb),.7)); transition: fill .4s, filter .4s; }
+#kg-lock .slash { fill: none; stroke: #f47c7c; stroke-width: 6; stroke-linecap: round; stroke-dasharray: 92; stroke-dashoffset: 92; transition: stroke-dashoffset .55s cubic-bezier(.6,0,.2,1); filter: drop-shadow(0 0 6px rgba(244,124,124,.6)); }
+#keygate.checking #kg-lock .shackle { animation: kg-jiggle .5s ease-in-out infinite; }
+#keygate[data-state="ok"] #kg-lock .shackle { transform: translate(0, -15px) rotate(-14deg); transform-origin: 102px 82px; stroke: #7ee787; }
+#keygate[data-state="ok"] #kg-lock .body-rim { stroke: rgba(126,231,135,.8); }
+#keygate[data-state="ok"] #kg-lock .leap { fill: #7ee787; filter: drop-shadow(0 0 10px rgba(126,231,135,.9)); }
+#keygate[data-state="ok"] #kg-lock .halo { fill: rgba(126,231,135,.6); }
+#keygate[data-state="bad"] #kg-lock .halo,
+#keygate[data-state="revoked"] #kg-lock .halo { fill: rgba(244,124,124,.5); }
+#keygate[data-state="bad"] #kg-lock .body-rim,
+#keygate[data-state="revoked"] #kg-lock .body-rim { stroke: rgba(244,124,124,.6); }
+#keygate[data-state="revoked"] #kg-lock .leap { fill: #5a4f6e; filter: none; }
+#keygate[data-state="revoked"] #kg-lock .slash { stroke-dashoffset: 0; }
+#keygate[data-state="offline"] #kg-lock .halo { fill: rgba(227,179,65,.4); }
+#keygate[data-state="offline"] #kg-lock .sat,
+#keygate[data-state="offline"] #kg-lock .orbit { animation-play-state: paused; }
+#kg-lock.wiggle { animation: kg-wiggle .55s cubic-bezier(.36,.07,.19,.97); }
+@keyframes kg-turn { to { transform: rotate(360deg); } }
+@keyframes kg-breathe { 50% { transform: scale(1.18); opacity: .7; } }
+@keyframes kg-jiggle { 50% { transform: translateY(-3px); } }
+@keyframes kg-wiggle { 15% { rotate: -9deg; } 35% { rotate: 7deg; } 55% { rotate: -5deg; } 75% { rotate: 3deg; } }
+#kg-lock { transform-origin: 50% 70%; }
+
+/* ---- copy ---- */
+#key-eyebrow {
+  display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 8px; border-radius: 99px;
+  background: rgba(var(--accent-rgb),.08); border: 1px solid rgba(var(--accent-rgb),.22);
+  font: 600 9.5px 'JetBrains Mono', monospace; letter-spacing: .18em; text-transform: uppercase; color: var(--accent);
+}
+#key-eyebrow span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+#keygate[data-state="ok"] #key-eyebrow { color: #7ee787; border-color: rgba(126,231,135,.3); background: rgba(126,231,135,.08); }
+#keygate[data-state="ok"] #key-eyebrow span { background: #7ee787; box-shadow: 0 0 8px #7ee787; }
+
+#key-title {
+  margin-top: 14px;
+  font: 650 25px/1.15 'Inter', sans-serif; letter-spacing: -0.025em;
+  background: linear-gradient(100deg, #f4f1ff 0%, #f4f1ff 40%, #d9ccff 50%, #f4f1ff 60%, #f4f1ff 100%) 0 0 / 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+#keygate.settled #key-title { animation: kg-sheen 5s ease-in-out infinite; }
+#keygate[data-state="ok"] #key-title { background-image: linear-gradient(100deg, #7ee787, #c8f7cc, #7ee787); }
+@keyframes kg-sheen { 0%, 60% { background-position: 120% 0; } 100% { background-position: -30% 0; } }
+#key-sub { margin: 7px 0 22px; font: 400 13.5px/1.45 'Inter', sans-serif; color: #8b93a3; min-height: 20px; max-width: 360px; }
+#keygate[data-state="bad"] #key-sub, #keygate[data-state="revoked"] #key-sub { color: #f0a0a0; }
+#keygate[data-state="offline"] #key-sub { color: #e3c27a; }
+/* a new title/sub cross-fades in, rather than snapping */
+#key-sub.kg-swap { animation: kg-swap .45s cubic-bezier(.16,1,.3,1); }
+#keygate #key-title.kg-swap { animation: kg-swap .45s cubic-bezier(.16,1,.3,1), kg-sheen 5s ease-in-out infinite; }
+@keyframes kg-swap { from { opacity: 0; transform: translateY(6px); filter: blur(5px); } }
+
+/* ---- the key: WPT, then four groups of four slots ---- */
 #key-box {
-  position: relative; width: 100%; padding: 1.5px; border-radius: 13px;
-  background: #232836; transition: background .3s;
+  position: relative; width: 100%; padding: 12px 12px; border-radius: 16px; cursor: text;
+  background: rgba(6,6,10,.65); border: 1px solid #262335;
+  box-shadow: 0 1px 0 rgba(255,255,255,.04), inset 0 2px 10px rgba(0,0,0,.5);
+  transition: border-color .3s, box-shadow .3s;
+  transform: translateZ(24px);
 }
-#key-box:focus-within { background: rgba(var(--accent-rgb),.55); }
-#keygate.checking #key-box {
-  background: linear-gradient(90deg, #b49aff, #7a8cff, #c47aff, #ff7ab8, #ffb37a, #b8e67a, #b49aff) 0 0 / 200% 100%;
-  animation: kg-flow 1.1s linear infinite;
-}
-#keygate[data-state="ok"] #key-box { background: #7ee787; box-shadow: 0 0 22px rgba(126,231,135,.25); }
-#keygate[data-state="bad"] #key-box,
-#keygate[data-state="revoked"] #key-box { background: rgba(244,124,124,.6); }
-#key-box.shake { animation: kg-shake .4s cubic-bezier(.36,.07,.19,.97); }
+#key-box.focus { border-color: rgba(var(--accent-rgb),.5); box-shadow: 0 0 0 4px rgba(var(--accent-rgb),.1), 0 0 30px rgba(var(--accent-rgb),.12), inset 0 2px 10px rgba(0,0,0,.5); }
+#keygate[data-state="ok"] #key-box { border-color: rgba(126,231,135,.7); box-shadow: 0 0 0 4px rgba(126,231,135,.12), 0 0 40px rgba(126,231,135,.22); }
+#keygate[data-state="bad"] #key-box, #keygate[data-state="revoked"] #key-box { border-color: rgba(244,124,124,.6); box-shadow: 0 0 0 4px rgba(244,124,124,.08); }
+#key-box.shake { animation: kg-shake .45s cubic-bezier(.36,.07,.19,.97); }
+@keyframes kg-shake { 15%, 55% { translate: -8px 0; } 35%, 75% { translate: 7px 0; } 90% { translate: -2px 0; } }
+
+/* the real input sits invisibly on top: it takes the typing, the paste and the focus */
 #key-in {
-  display: block; width: 100%; height: 50px; padding: 0 44px 0 16px; border: none; outline: none; border-radius: 11.5px;
-  background: #0a0b0f; color: var(--accent); caret-color: var(--accent);
-  font: 500 15px 'JetBrains Mono', monospace; letter-spacing: .06em; text-align: center; user-select: text;
+  position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: none; outline: none;
+  background: transparent; color: transparent; caret-color: transparent; font-size: 16px; cursor: text; user-select: text;
 }
-#key-in::placeholder { color: #3a4050; }
-.kg-ok {
-  position: absolute; right: 15px; top: 50%; width: 20px; height: 20px; margin-top: -10px;
-  stroke: #7ee787; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round;
-  stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset .45s ease .1s;
-}
-#keygate[data-state="ok"] .kg-ok { stroke-dashoffset: 0; }
 
-#key-go {
-  margin-top: 14px; width: 100%; height: 46px; border-radius: 12px; cursor: pointer;
-  border: 1px solid rgba(var(--accent-rgb),.45);
-  background: linear-gradient(180deg, rgba(var(--accent-rgb),.26), rgba(var(--accent-rgb),.12));
-  color: #f4f1ff; font: 600 14px 'Inter', sans-serif; letter-spacing: .01em;
-  transition: filter .15s, transform .1s, opacity .2s;
+#key-cells { display: flex; align-items: center; gap: 8px; }
+.kc-pre {
+  flex: none; padding: 0 2px 0 4px;
+  font: 600 13px 'JetBrains Mono', monospace; letter-spacing: .08em; color: #5a5470;
+  transition: color .3s;
 }
-#key-go:hover { filter: brightness(1.15); }
-#key-go:active { transform: scale(.985); }
-#key-go:disabled { opacity: .5; cursor: default; filter: none; transform: none; }
-#keygate[data-state="ok"] #key-go { opacity: 0; }
-#keygate.out { opacity: 0; pointer-events: none; }
+#key-box.has .kc-pre { color: var(--accent); }
+.kc-seg {
+  flex: 1; min-width: 0; display: flex; justify-content: center; gap: 1px; padding: 8px 0; border-radius: 10px;
+  background: #0d0c14; border: 1px solid #1f1c2b; position: relative;
+  transition: border-color .3s, background .3s;
+}
+.kc-seg.full { border-color: rgba(var(--accent-rgb),.35); background: rgba(var(--accent-rgb),.06); }
+.kc-seg.ping::after {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; border: 1.5px solid var(--accent);
+  animation: kg-ping .6s ease-out forwards; pointer-events: none;
+}
+@keyframes kg-ping { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.18, 1.5); } }
+.kc {
+  position: relative; width: 1.15em; height: 1.45em; display: grid; place-items: center;
+  font: 600 clamp(13px, 3.4vw, 17px) 'JetBrains Mono', monospace; color: var(--accent);
+  text-shadow: 0 0 12px rgba(var(--accent-rgb),.55);
+  transition: color .35s, text-shadow .35s;
+  transition-delay: calc(var(--i) * 28ms);
+}
+.kc:empty::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #2c2840; }
+.kc.cur::after {
+  content: ''; position: absolute; left: 50%; top: 15%; bottom: 15%; width: 2px; margin-left: -1px; border-radius: 2px;
+  background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: blink 1s steps(1) infinite;
+}
+.kc.cur:empty::before { display: none; }
+#key-box:not(.focus) .kc.cur::after { display: none; }
+#key-box:not(.focus) .kc.cur:empty::before { display: block; }
+.kc.pop { animation: kg-pop .42s cubic-bezier(.34,1.56,.64,1) both; animation-delay: var(--pd, 0ms); }
+@keyframes kg-pop { from { opacity: 0; transform: translateY(9px) scale(.5); filter: blur(4px); color: #fff; } 60% { color: #fff; } }
+/* checking: the letters ride a wave; ok: they go green left to right; bad: red */
+#keygate.checking .kc { animation: kg-wave 1s ease-in-out infinite; animation-delay: calc(var(--i) * 55ms); }
+@keyframes kg-wave { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-4px); color: #fff; text-shadow: 0 0 14px #fff; } }
+#keygate[data-state="ok"] .kc { color: #7ee787; text-shadow: 0 0 12px rgba(126,231,135,.6); }
+#keygate[data-state="ok"] .kc-seg { border-color: rgba(126,231,135,.35); background: rgba(126,231,135,.06); transition-delay: calc(var(--g) * 90ms); }
+#keygate[data-state="ok"] .kc-pre { color: #7ee787; }
+#keygate[data-state="bad"] .kc, #keygate[data-state="revoked"] .kc { color: #f47c7c; text-shadow: 0 0 12px rgba(244,124,124,.5); }
 
+/* a beam that sweeps the slots while the dashboard is asked */
+.kg-scan {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 70px; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb),.28), rgba(255,255,255,.45) 50%, rgba(var(--accent-rgb),.28), transparent);
+  mix-blend-mode: screen; border-radius: 16px;
+}
+#keygate.checking .kg-scan { opacity: 1; animation: kg-scan 1.1s cubic-bezier(.45,0,.55,1) infinite alternate; }
+@keyframes kg-scan { from { left: -40px; } to { left: calc(100% - 30px); } }
+
+/* how much of the key is in */
+#key-meter { width: calc(100% - 24px); height: 2px; margin-top: 10px; border-radius: 2px; background: #1a1825; overflow: hidden; }
+#key-meter i {
+  display: block; height: 100%; width: 100%; border-radius: inherit; transform-origin: left; transform: scaleX(var(--fill, 0));
+  background: linear-gradient(90deg, var(--accent-dim), var(--accent), #ff7ab8);
+  box-shadow: 0 0 10px rgba(var(--accent-rgb),.7);
+  transition: transform .4s cubic-bezier(.16,1,.3,1);
+}
+#key-meter.full i {
+  background: linear-gradient(90deg, #b49aff, #7a8cff, #c47aff, #ff7ab8, #ffb37a, #b8e67a, #b49aff) 0 0 / 200% 100%;
+  animation: kg-flow 1.4s linear infinite;
+}
+#keygate[data-state="ok"] #key-meter i { background: #7ee787; box-shadow: 0 0 10px #7ee787; animation: none; }
 @keyframes kg-flow { to { background-position: -200% 0; } }
-@keyframes kg-shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
-@media (prefers-reduced-motion: reduce) { #keygate.checking #key-box { animation: none; } #key-box.shake { animation: none; } }
+
+/* ---- the button ---- */
+#key-go {
+  position: relative; overflow: hidden; margin-top: 18px; width: 100%; height: 48px; border-radius: 14px; cursor: pointer;
+  border: 1px solid rgba(var(--accent-rgb),.5);
+  background: linear-gradient(180deg, rgba(var(--accent-rgb),.32), rgba(var(--accent-rgb),.14));
+  color: #f4f1ff; font: 600 14.5px 'Inter', sans-serif; letter-spacing: .01em;
+  box-shadow: 0 10px 30px -10px rgba(var(--accent-rgb),.5), inset 0 1px 0 rgba(255,255,255,.12);
+  transition: filter .2s, transform .15s, opacity .3s, box-shadow .3s;
+  transform: translateZ(18px);
+}
+#key-go:hover { filter: brightness(1.18); box-shadow: 0 14px 40px -10px rgba(var(--accent-rgb),.75), inset 0 1px 0 rgba(255,255,255,.16); }
+#key-go:active { transform: translateZ(18px) scale(.98); }
+#key-go:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(var(--accent-rgb),.35); }
+#key-go:disabled { cursor: default; filter: none; }
+#key-go .lbl { display: inline-block; transition: opacity .25s, transform .25s; }
+#key-go .spin {
+  position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.2); border-top-color: #fff; opacity: 0; transition: opacity .25s;
+}
+#keygate.checking #key-go .lbl { opacity: 0; transform: translateY(-8px); }
+#keygate.checking #key-go .spin { opacity: 1; animation: linkspin .7s linear infinite; }
+#key-go .shine {
+  position: absolute; top: 0; bottom: 0; width: 60%; left: -70%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,.28), transparent);
+  transform: skewX(-18deg);
+}
+#key-go:hover .shine, #key-go.primed .shine { animation: kg-shine 1.1s ease-in-out; }
+#key-go.primed { animation: kg-glow 2.2s ease-in-out infinite; }
+#key-go.primed .shine { animation: kg-shine 2.2s ease-in-out infinite; }
+@keyframes kg-shine { 0% { left: -70%; } 60%, 100% { left: 130%; } }
+@keyframes kg-glow { 50% { box-shadow: 0 14px 44px -8px rgba(var(--accent-rgb),.9), inset 0 1px 0 rgba(255,255,255,.16); } }
+#keygate[data-state="ok"] #key-go { opacity: 0; transform: translateZ(18px) scale(.9); }
+
+#key-hint { margin-top: 14px; font: 400 11px/1.5 'Inter', sans-serif; color: #5d6575; }
+#key-hint b { font: 500 10.5px 'JetBrains Mono', monospace; color: #7c8496; letter-spacing: .03em; }
+#key-hint kbd {
+  display: inline-block; padding: 1px 5px; border-radius: 5px; border: 1px solid #2a2738; border-bottom-width: 2px;
+  background: #12111a; font: 500 10px 'JetBrains Mono', monospace; color: #9aa1b2;
+}
+#keygate[data-state="ok"] #key-hint { opacity: 0; transition: opacity .3s; }
+
+@media (max-width: 460px) {
+  #key-card { padding: 26px 18px 20px; }
+  #key-box { padding: 10px 8px; }
+  #key-cells { gap: 5px; }
+  .kc-pre { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #keygate *, #keygate *::before, #keygate *::after { animation: none !important; }
+  #key-card { transition: opacity .3s; filter: none; translate: none; scale: none; }
+  :where(#key-card > .kp) { opacity: 1; }
+  #kg-stars { display: none; }
+}
