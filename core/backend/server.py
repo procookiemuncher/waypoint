@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend.destinations import city_info
+from backend.license import License
 from backend.places import load_places
 from backend.routes import RouteError, route_files, summary
 from backend.session import Session
@@ -31,13 +32,22 @@ class PlaceReq(BaseModel):
     label: str | None = None
 
 
+class KeyReq(BaseModel):
+    key: str = ""
+
+
 class PlayReq(BaseModel):
     route: str
     engine: str = "spoof"
     mph: float | None = None
 
 
-def create_app(session: Session) -> FastAPI:
+# reachable without an access key: the page itself, checking/entering a key, and stop (nobody
+# should ever be stuck holding a fake location)
+OPEN_API = ("/api/license", "/api/stop")
+
+
+def create_app(session: Session, license: License | None = None) -> FastAPI:
     app = FastAPI(title="vida-360", docs_url=None, redoc_url=None)
     app.mount("/static", StaticFiles(directory=os.path.join(WEB, "static")), name="static")
     route_cache = {}   # path -> (mtime, summary)
@@ -53,11 +63,28 @@ def create_app(session: Session) -> FastAPI:
         origin = request.headers.get("origin")
         if request.method != "GET" and origin and origin != f"http://{request.headers.get('host')}":
             return JSONResponse({"detail": "cross-origin request refused"}, status_code=403)
+        # The key gate lives here, not in the page: hiding a card in JS is undone with the inspector,
+        # and curl from the same Mac never sees the page at all.
+        path = request.url.path
+        if license and not license.ok() and path.startswith("/api/") and path not in OPEN_API:
+            return JSONResponse({"detail": "access key needed"}, status_code=402)
         return await call_next(request)
 
     @app.get("/")
     def index():
         return FileResponse(os.path.join(WEB, "index.html"), headers={"Cache-Control": "no-store"})
+
+    @app.get("/api/license")
+    def license_status(wait: int = 0):
+        if not license:
+            return {"required": False, "state": "ok"}
+        return license.status(wait=min(wait, 10))
+
+    @app.post("/api/license")
+    def license_activate(req: KeyReq):
+        if not license:
+            return {"required": False, "state": "ok"}
+        return license.activate(req.key[:64])
 
     @app.get("/api/status")
     def status():
@@ -133,8 +160,11 @@ if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("VIDA_PORT") or free_port())
     session = Session()
+    lic = License.from_config()
+    if lic:
+        lic.start()
     print(f"vida-360 → http://127.0.0.1:{port}")
     try:
-        uvicorn.run(create_app(session), host="127.0.0.1", port=port, log_level="warning")
+        uvicorn.run(create_app(session, lic), host="127.0.0.1", port=port, log_level="warning")
     finally:
         session.shutdown()
