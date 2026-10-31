@@ -35,6 +35,14 @@
         <stop offset=".45" stop-color="#fff" stop-opacity=".04"></stop>
         <stop offset="1" stop-color="#fff" stop-opacity=".14"></stop>
       </linearGradient>
+      <!-- liquid glass: the backdrop under a .liquid control, bent by blurred noise (21st.dev LiquidButton) -->
+      <filter id="container-glass" x="0%" y="0%" width="100%" height="100%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="0.05 0.05" numOctaves="1" seed="1" result="turbulence"></feTurbulence>
+        <feGaussianBlur in="turbulence" stdDeviation="2" result="blurredNoise"></feGaussianBlur>
+        <feDisplacementMap in="SourceGraphic" in2="blurredNoise" scale="70" xChannelSelector="R" yChannelSelector="B" result="displaced"></feDisplacementMap>
+        <feGaussianBlur in="displaced" stdDeviation="4" result="finalBlur"></feGaussianBlur>
+        <feComposite in="finalBlur" in2="finalBlur" operator="over"></feComposite>
+      </filter>
     </defs>
   </svg>
 
@@ -172,7 +180,8 @@
     <canvas id="kg-silk" aria-hidden="true"></canvas>
     <form id="key-card" onsubmit="submitKey(event)" autocomplete="off">
       <div class="kg-gloss" aria-hidden="true"></div>
-      <div id="kg-icon" class="kp" aria-hidden="true">
+      <div id="kg-icon" class="kp liquid" aria-hidden="true">
+        <span class="lq-rim"></span><span class="lq-glass"></span>
         <svg class="leap" viewBox="0 0 258 254"><path fill-rule="evenodd" d="M62 162a32 32 0 1 1 0 64a32 32 0 1 1 0-64zM62 180a14 14 0 1 0 0 28a14 14 0 1 0 0-28zM58.090 140.37A151 151 0 0 1 129.15 62.65A15 15 0 0 1 142.85 89.35A121 121 0 0 0 85.90 151.63A15 15 0 0 1 58.09 140.37ZM194 28a34 34 0 1 1 0 68a34 34 0 1 1 0-68z"></path></svg>
         <svg class="tick" viewBox="0 0 24 24"><path d="M5 12.5 L10 17 L19 7"></path></svg>
       </div>
@@ -183,7 +192,7 @@
         <div class="kg-scan" aria-hidden="true"></div>
         <input id="key-in" type="text" spellcheck="false" autocapitalize="characters" aria-label="Access key" maxlength="40">
       </div>
-      <button id="key-go" class="kp" type="submit"><span class="lbl">Unlock</span><span class="spin" aria-hidden="true"></span></button>
+      <button id="key-go" class="kp liquid" type="submit"><span class="lq-rim" aria-hidden="true"></span><span class="lq-glass" aria-hidden="true"></span><span class="lbl">Unlock</span><span class="spin" aria-hidden="true"></span></button>
       <div id="key-hint" class="kp"><kbd>⌘V</kbd> to paste</div>
     </form>
   </div>

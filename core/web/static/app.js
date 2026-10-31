@@ -1169,7 +1169,6 @@ function paintKey(){
     s.classList.toggle('full', full);
     s.classList.toggle('now', n>=g*4 && n<(g+1)*4);
   });
-  $('key-go').classList.toggle('primed', n===16 && !keyBusy);
   keyShown = n;
 }
 
@@ -1217,7 +1216,6 @@ async function submitKey(e){
   if(!key && el.dataset.state!=='offline'){ shakeKey(); $('key-in').focus(); return; }
   keyBusy = true;
   $('key-go').disabled = true;
-  $('key-go').classList.remove('primed');
   el.classList.add('checking');
   renderKey('checking');
   el.dataset.state = 'none';   // the checking look is the class; keep the lock neutral meanwhile
