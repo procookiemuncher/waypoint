@@ -14,6 +14,9 @@ what changed, what was decided, what broke, what's next.
   window is hidden or the screen is down, one still frame under reduced motion.
 - Card is a single frosted pane: glass icon tile (mark → green tick on unlock), title, four glass
   key groups, glass button with a glint, ⌘V hint. The lock, orbits, aurora, grid, stars and confetti are gone.
+- Unlock button + icon tile are now "liquid glass" (21st.dev LiquidButton ported to plain CSS, `.liquid` +
+  the `#container-glass` SVG filter in index.html; no React/Tailwind added). WebKit skips the url()
+  backdrop distortion and gets a plain frost, the rim highlights look the same.
 - Checked again in headless Chrome (none/bad/ok/revoke/narrow/reduced motion) and Safari. rjsmin
   leaves the shader string byte-identical.
 
