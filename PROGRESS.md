@@ -7,6 +7,23 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-31 — Release build (Nuitka Waypoint.app) builds, signs and launches
+
+**Model: Claude Opus 5.5 (Claude Code).** Picking up after a cleared chat.
+
+- `mac-version/release/build.command` compiles `release/waypoint.py` + the app with Nuitka into a self-contained
+  `~/Library/Caches/Waypoint-release/Waypoint.app` (~221 MB). No repo or .venv needed on the tester's Mac.
+- Built outside the repo because ~/Desktop is in iCloud and its xattrs make codesign fail. IPython/jedi/tkinter are
+  left out (jedi stubs hung the copy step; pmd3 gets an empty IPython stand-in).
+- First build died on the first pmd3 call: Nuitka's self-execution guard blocked the app running itself as
+  `-c`/`-m pymobiledevice3`. Fixed with `--no-deployment-flag=self-execution`.
+- Current build (01:09, `--test`, 0.1.0-beta.1): `codesign --verify --deep --strict` passes. Launched with
+  `VIDA_DRY_RUN=1`: splash, server up in 0.5 s, dry-run DDI mount goes through the self-exec path fine, quits cleanly.
+- **Not done yet:** test with the phone attached (real pmd3 tunnel/mount from the compiled binary), a non-`--test`
+  release build, and distribution (notarization / how testers get past Gatekeeper; it's only ad-hoc/locally signed).
+
+---
+
 ## 2026-10-30 — Waypoint wouldn't reopen right after closing it
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner: the x closes fine but opening the app again does nothing.
