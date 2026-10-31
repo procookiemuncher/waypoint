@@ -986,7 +986,13 @@ async function boot(){
   await Warp.in();
   await Warp.finished();
   const lic = await access;
-  if(lic.state!=='ok'){ await keyGate(lic.state); load(); }   // the card comes in under the finished icon
+  if(lic.state!=='ok'){
+    // the key screen fades in over the finished icon, and the intro is taken down behind it
+    const gate = keyGate(lic.state);
+    setTimeout(()=>Warp.out(), 700);
+    await gate;
+    load();
+  }
   await Warp.out();
   await wait(250);
   const native = !!window.pywebview || navigator.userAgent.includes('Macintosh') && !navigator.userAgent.includes('Chrome');
@@ -1111,15 +1117,17 @@ function leaveLink(){
 }
 
 /* ============ ACCESS KEY ============ */
-/* After the intro, before the boot log, when this build needs a key (backend/license.py, the key
-   dashboard) and the saved one didn't check out; or later, if the key gets deleted while the app is
-   open. The server is what actually locks, with 402 on the api; this card is just the way in. */
+/* Its own screen after the intro, before the boot log and the connect screen, when this build needs a
+   key (backend/license.py, the key dashboard) and the saved one didn't check out; or later, over the
+   app, if the key gets deleted while it's open. The server is what actually locks, with 402 on the
+   api; this screen is just the way in. */
 const KEY_COPY = {
   none:     ['Enter your access key', 'Paste the key you were sent to unlock Waypoint.'],
   bad:      ['That key didn\'t work', 'Check it against the one you were sent and try again.'],
   revoked:  ['Your key was turned off', 'Ask for a new key to keep using Waypoint.'],
   offline:  ['Can\'t reach Waypoint', 'Check your internet connection, then try again.'],
-  checking: ['Checking your key…', 'One moment.'],
+  checking: ['Checking your key…', 'Asking the key server. One moment.'],
+  ok:       ['Unlocked', 'Welcome to Waypoint.'],
 };
 let keyOpen = null, keyBusy = false;
 // WPT-XXXX-XXXX-XXXX-XXXX as you type or paste; the dashboard cleans it up again anyway
@@ -1131,30 +1139,82 @@ function fmtKey(v){
   r = r.slice(0,16);
   return r ? 'WPT-'+r.match(/.{1,4}/g).join('-') : '';
 }
+const keyChars = v => v.replace(/^WPT-/,'').replace(/-/g,'');
+
+// the slots: WPT, then four groups of four, painted from the hidden input
+(function buildKeyCells(){
+  let h = '<span class="kc-pre">WPT</span>';
+  for(let g=0; g<4; g++){
+    h += `<span class="kc-seg" style="--g:${g}">`;
+    for(let j=0; j<4; j++) h += `<span class="kc" style="--i:${g*4+j}"></span>`;
+    h += '</span>';
+  }
+  $('key-cells').innerHTML = h;
+})();
+let keyShown = 0;
+function paintKey(){
+  const chars = keyChars($('key-in').value), n = chars.length, was = keyShown;
+  document.querySelectorAll('#key-cells .kc').forEach((c, i)=>{
+    const ch = chars[i] || '';
+    if(c.textContent !== ch) c.textContent = ch;
+    c.classList.toggle('cur', i===n);
+    if(ch && i>=was){   // new ones pop in; a paste cascades left to right
+      c.classList.remove('pop'); void c.offsetWidth;
+      c.style.setProperty('--pd', (i-was)*32+'ms');
+      c.classList.add('pop');
+    }
+  });
+  document.querySelectorAll('#key-cells .kc-seg').forEach((s, g)=>{
+    const full = n >= (g+1)*4;
+    if(full && !s.classList.contains('full') && !RM){
+      s.classList.remove('ping'); void s.offsetWidth; s.classList.add('ping');
+      setTimeout(()=>s.classList.remove('ping'), 700);
+    }
+    s.classList.toggle('full', full);
+  });
+  $('key-box').classList.toggle('has', n>0);
+  $('key-meter').style.setProperty('--fill', n/16);
+  $('key-meter').classList.toggle('full', n===16);
+  $('key-go').classList.toggle('primed', n===16 && !keyBusy);
+  keyShown = n;
+}
+
+function setKeyText(id, text){
+  const el = $(id);
+  if(el.textContent === text) return;
+  el.textContent = text;
+  if(RM || !$('keygate').classList.contains('settled')) return;   // still rising in
+  el.classList.remove('kg-swap'); void el.offsetWidth; el.classList.add('kg-swap');
+}
 function renderKey(state){
   const el = $('keygate');
   el.dataset.state = state;
   const [title, sub] = KEY_COPY[state] || KEY_COPY.none;
-  $('key-title').textContent = title;
-  $('key-sub').textContent = sub;
-  $('key-go').textContent = state==='offline' && !$('key-in').value ? 'Try again' : 'Unlock';
+  setKeyText('key-title', title);
+  setKeyText('key-sub', sub);
+  $('key-go').querySelector('.lbl').textContent = state==='offline' && !$('key-in').value ? 'Try again' : 'Unlock';
 }
 function keyGate(state){
-  const el = $('keygate'), warp = $('warp');
+  const el = $('keygate');
   clearTimeout(keyGate.hide);
-  el.classList.remove('out','in','checking');
-  el.classList.toggle('over-warp', !!warp);
-  warp?.classList.add('keyed');
+  el.classList.remove('out','in','checking','settled');
+  clearTimeout(keyGate.settle);
   $('key-in').value = '';
+  keyShown = 0;
+  paintKey();
   renderKey(state==='checking' ? 'none' : state);
   el.hidden = false;
+  $('frame').classList.add('keyed');
+  KeyFX.start();
   requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('in')));
-  setTimeout(()=>$('key-in').focus(), 350);
+  keyGate.settle = setTimeout(()=>el.classList.add('settled'), RM ? 0 : 1900);   // the last piece is in by then
+  setTimeout(()=>$('key-in').focus(), RM ? 0 : 700);
   return new Promise(res => keyOpen = res);
 }
 function shakeKey(){
-  const b = $('key-box');
-  b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+  const b = $('key-box'), l = $('kg-lock');
+  b.classList.remove('shake'); l.classList.remove('wiggle'); void b.offsetWidth;
+  b.classList.add('shake'); l.classList.add('wiggle');
 }
 async function submitKey(e){
   e.preventDefault();
@@ -1163,24 +1223,28 @@ async function submitKey(e){
   if(!key && el.dataset.state!=='offline'){ shakeKey(); $('key-in').focus(); return; }
   keyBusy = true;
   $('key-go').disabled = true;
+  $('key-go').classList.remove('primed');
   el.classList.add('checking');
   renderKey('checking');
+  el.dataset.state = 'none';   // the checking look is the class; keep the lock neutral meanwhile
   let st;
   try{ st = await api('/api/license', { key }); }catch{ st = { state:'offline' }; }
-  await new Promise(r=>setTimeout(r, 700));   // long enough to see the wire run, even when it's instant
+  await new Promise(r=>setTimeout(r, 1100));   // long enough to see the scan run, even when it's instant
   el.classList.remove('checking');
   keyBusy = false;
   $('key-go').disabled = false;
   if(st.state==='ok'){
-    el.dataset.state = 'ok';
-    $('key-title').textContent = 'Unlocked';
-    $('key-sub').textContent = 'Welcome to Waypoint.';
+    renderKey('ok');
     $('key-in').blur();
-    await new Promise(r=>setTimeout(r, 1000));
+    $('key-box').classList.remove('focus');
+    setTimeout(()=>KeyFX.burst(), 180);   // as the shackle pops
+    await new Promise(r=>setTimeout(r, 1700));
     return closeKey();
   }
   renderKey(st.state);
   shakeKey();
+  paintKey();
+  $('key-in').focus();
   $('key-in').select();
 }
 function closeKey(){
@@ -1188,8 +1252,8 @@ function closeKey(){
   keyOpen = null;
   el.classList.add('out');
   el.classList.remove('in');
-  $('warp')?.classList.remove('keyed');
-  keyGate.hide = setTimeout(()=>{ el.hidden = true; el.classList.remove('out'); }, 550);
+  $('frame').classList.remove('keyed');
+  keyGate.hide = setTimeout(()=>{ el.hidden = true; el.classList.remove('out'); KeyFX.stop(); }, 1200);
   done?.();
 }
 // a 402 once the app is up: the key got deleted. Whatever's on the phone keeps going (stopping it
@@ -1202,9 +1266,145 @@ function keyLost(){
 $('key-in').addEventListener('input', e=>{
   const i = e.target, v = fmtKey(i.value);
   if(i.value!==v) i.value = v;
+  paintKey();
   if(['bad','revoked'].includes($('keygate').dataset.state)) renderKey('none');
   else if($('keygate').dataset.state==='offline') renderKey('offline');
 });
+// the caret is painted, so the real one always stays at the end
+['keydown','click','select'].forEach(t=>$('key-in').addEventListener(t, e=>{
+  const i = e.target;
+  if(e.type==='keydown' && !/^Arrow|Home|End/.test(e.key)) return;
+  if(e.type==='keydown') e.preventDefault();
+  requestAnimationFrame(()=>{ if(i.selectionStart===i.selectionEnd) i.setSelectionRange(i.value.length, i.value.length); });
+}));
+// typing (or ⌘V) anywhere on the screen lands in the key, even before the field took focus
+document.addEventListener('keydown', e=>{
+  if(keyOpen && !keyBusy && document.activeElement!==$('key-in') && !e.target.closest?.('button')) $('key-in').focus();
+}, true);
+$('key-in').addEventListener('focus', ()=>$('key-box').classList.add('focus'));
+$('key-in').addEventListener('blur', ()=>$('key-box').classList.remove('focus'));
+
+/* the screen's motion: the card tilts toward the pointer with a light under it, stars drift and
+   join up near the pointer, and an unlock throws sparks off the lock. One rAF loop, only while the
+   screen is up; none of it under reduced motion. */
+const KeyFX = (() => {
+  const gate = $('keygate'), card = $('key-card'), stars = $('kg-stars'), burstC = $('kg-burst');
+  const sx = stars.getContext('2d'), bx = burstC.getContext('2d');
+  const COLORS = ['#b49aff','#7a8cff','#c47aff','#ff7ab8','#ffb37a','#b8e67a','#7ee787','#ffffff'];
+  let raf = 0, w = 0, h = 0, dpr = 1, pts = [], sparks = [], rings = [];
+  let px = -1e4, py = -1e4, tx = 0, ty = 0, cx = 0, cy = 0;
+
+  function size(){
+    const r = gate.getBoundingClientRect();
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    w = r.width; h = r.height;
+    for(const c of [stars, burstC]){ c.width = w*dpr; c.height = h*dpr; }
+    sx.setTransform(dpr,0,0,dpr,0,0); bx.setTransform(dpr,0,0,dpr,0,0);
+    const n = Math.round(Math.min(110, w*h/9000));
+    pts = Array.from({length:n}, ()=>({
+      x: Math.random()*w, y: Math.random()*h, z: .3+Math.random()*.7,
+      vx: (Math.random()-.5)*.12, vy: -.05-Math.random()*.18, t: Math.random()*6.28,
+    }));
+  }
+  function frame(){
+    raf = requestAnimationFrame(frame);
+    // tilt eases toward the pointer
+    cx += (tx-cx)*.08; cy += (ty-cy)*.08;
+    card.style.setProperty('--rx', (-cy*7).toFixed(2)+'deg');
+    card.style.setProperty('--ry', (cx*9).toFixed(2)+'deg');
+
+    sx.clearRect(0,0,w,h);
+    const fast = gate.classList.contains('checking') ? 5 : 1;
+    for(const p of pts){
+      p.x += p.vx*fast; p.y += p.vy*fast*p.z; p.t += .03;
+      if(p.y < -5){ p.y = h+5; p.x = Math.random()*w; }
+      if(p.x < -5) p.x = w+5; else if(p.x > w+5) p.x = -5;
+      const a = (.25+.35*Math.sin(p.t))*p.z;
+      sx.fillStyle = `rgba(214,204,255,${a.toFixed(3)})`;
+      sx.beginPath(); sx.arc(p.x, p.y, p.z*1.4, 0, 6.283); sx.fill();
+    }
+    // threads between stars near the pointer
+    sx.lineWidth = .6;
+    for(let i=0; i<pts.length; i++){
+      const a = pts[i], da = Math.hypot(a.x-px, a.y-py);
+      if(da > 170) continue;
+      for(let j=i+1; j<pts.length; j++){
+        const b = pts[j], d = Math.hypot(a.x-b.x, a.y-b.y);
+        if(d > 90) continue;
+        sx.strokeStyle = `rgba(180,154,255,${((1-d/90)*(1-da/170)*.55).toFixed(3)})`;
+        sx.beginPath(); sx.moveTo(a.x,a.y); sx.lineTo(b.x,b.y); sx.stroke();
+      }
+    }
+
+    bx.clearRect(0,0,w,h);
+    for(const r of rings){
+      r.r += (r.max-r.r)*.07; r.a *= .94;
+      bx.strokeStyle = `rgba(${r.c},${r.a.toFixed(3)})`; bx.lineWidth = r.lw;
+      bx.beginPath(); bx.arc(r.x, r.y, r.r, 0, 6.283); bx.stroke();
+    }
+    rings = rings.filter(r => r.a > .01);
+    for(const s of sparks){
+      s.vx *= .975; s.vy = s.vy*.975 + .09; s.x += s.vx; s.y += s.vy; s.life -= s.decay; s.rot += s.vr;
+      if(s.life <= 0) continue;
+      bx.globalAlpha = Math.min(1, s.life*1.4);
+      bx.fillStyle = s.c;
+      if(s.kind){   // confetti: a little spinning card
+        bx.save(); bx.translate(s.x, s.y); bx.rotate(s.rot);
+        bx.fillRect(-s.size, -s.size*.4, s.size*2, s.size*.8 * Math.abs(Math.cos(s.rot*1.7)) + .4);
+        bx.restore();
+      } else {      // spark: a short streak along its path
+        bx.strokeStyle = s.c; bx.lineWidth = s.size; bx.lineCap = 'round';
+        bx.beginPath(); bx.moveTo(s.x, s.y); bx.lineTo(s.x - s.vx*3, s.y - s.vy*3); bx.stroke();
+      }
+    }
+    bx.globalAlpha = 1;
+    sparks = sparks.filter(s => s.life > 0);
+  }
+  function move(e){
+    const r = gate.getBoundingClientRect();
+    px = e.clientX - r.left; py = e.clientY - r.top;
+    tx = (px/w - .5)*2; ty = (py/h - .5)*2;
+    const c = card.getBoundingClientRect();
+    card.style.setProperty('--mx', (e.clientX - c.left)+'px');
+    card.style.setProperty('--my', (e.clientY - c.top)+'px');
+    gate.classList.add('hover');
+  }
+  function leave(){ px = py = -1e4; tx = ty = 0; gate.classList.remove('hover'); }
+
+  return {
+    start(){
+      if(RM || raf) return;
+      size();
+      addEventListener('resize', size);
+      gate.addEventListener('pointermove', move);
+      gate.addEventListener('pointerleave', leave);
+      raf = requestAnimationFrame(frame);
+    },
+    stop(){
+      cancelAnimationFrame(raf); raf = 0; sparks = []; rings = [];
+      removeEventListener('resize', size);
+      gate.removeEventListener('pointermove', move);
+      gate.removeEventListener('pointerleave', leave);
+      leave();
+    },
+    burst(){
+      if(!raf) return;
+      const g = gate.getBoundingClientRect(), l = $('kg-lock').getBoundingClientRect();
+      const x = l.left - g.left + l.width/2, y = l.top - g.top + l.height*.6;
+      rings.push({ x, y, r: 10, max: 260, a: .9, lw: 2.5, c: '126,231,135' });
+      rings.push({ x, y, r: 6, max: 160, a: .7, lw: 1.5, c: '180,154,255' });
+      for(let i=0; i<150; i++){
+        const ang = Math.random()*6.283, sp = 2 + Math.random()*7.5, kind = i%3 ? 1 : 0;
+        sparks.push({
+          x, y, vx: Math.cos(ang)*sp, vy: Math.sin(ang)*sp - 2.5, kind,
+          size: kind ? 2.5+Math.random()*3 : 1.2+Math.random()*1.6,
+          c: COLORS[i % COLORS.length], life: 1, decay: .006+Math.random()*.012,
+          rot: Math.random()*6.28, vr: (Math.random()-.5)*.35,
+        });
+      }
+    },
+  };
+})();
 
 /* ============ INIT ============ */
 initMap();
