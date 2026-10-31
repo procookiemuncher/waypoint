@@ -7,6 +7,10 @@
 #   ./mac-version/release/build.command                 # release build, dev switches ignored
 #   ./mac-version/release/build.command --test          # honours VIDA_DRY_RUN etc, for checking it
 #   VERSION=0.1.0-beta.2 ./mac-version/release/build.command
+#   LICENSE_URL=https://your-dashboard.vercel.app ./mac-version/release/build.command
+#
+# LICENSE_URL is the key dashboard (the "key dashboard" folder). With it, the app asks for an access
+# key before it does anything. A release build won't build without one; a --test build can skip it.
 #
 # For day to day use make-app.command instead, it's instant. This one takes a while.
 set -e
@@ -15,6 +19,12 @@ PY="$ROOT/.venv/bin/python"
 VERSION="${VERSION:-0.1.0-beta.1}"
 TEST=False
 [ "$1" = "--test" ] && TEST=True
+LICENSE_URL="${LICENSE_URL:-}"
+if [ -z "$LICENSE_URL" ] && [ "$TEST" = False ]; then
+  echo "LICENSE_URL isn't set: a release build needs the key dashboard's address, e.g."
+  echo "  LICENSE_URL=https://your-dashboard.vercel.app $0"
+  exit 1
+fi
 
 if ! "$PY" -c "import nuitka, rjsmin, rcssmin" 2>/dev/null; then
   echo "> installing build tools"
@@ -26,7 +36,7 @@ OUT="${OUT:-$HOME/Library/Caches/Waypoint-release}"
 STAGE="$OUT/stage"
 rm -rf "$STAGE" "$OUT/Waypoint.app" "$OUT/tmp.app"   # (Waypoint.app is waypoint.app too)
 mkdir -p "$STAGE"
-printf 'VERSION = "%s"\nTEST = %s\n' "$VERSION" "$TEST" > "$STAGE/waypoint_build.py"
+printf 'VERSION = "%s"\nTEST = %s\nLICENSE_URL = "%s"\n' "$VERSION" "$TEST" "$LICENSE_URL" > "$STAGE/waypoint_build.py"
 
 echo "> icon"
 "$PY" "$ROOT/mac-version/app/make_icon.py" >/dev/null

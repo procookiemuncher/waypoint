@@ -5,13 +5,14 @@ Three jobs app.py doesn't need in the repo:
 - the bundle is read-only, so generated GPX / snap cache go to ~/Library/Application Support/Waypoint
 - there's no python next to us: the backend runs pmd3 as `sys.executable -m pymobiledevice3 ...`
   (and dry runs as `sys.executable -c ...`), and sys.executable is now this binary, so handle those here
-- testers shouldn't be able to flip on the dev switches, unless this is a test build
+- testers shouldn't be able to flip on the dev switches, unless this is a test build (that includes
+  pointing the access key check somewhere else: the dashboard URL is baked in as LICENSE_URL)
 """
 import os
 import shutil
 import sys
 
-import waypoint_build   # written by build.command: VERSION, TEST
+import waypoint_build   # written by build.command: VERSION, TEST, LICENSE_URL
 
 HOME = os.path.expanduser("~")
 SUPPORT = os.path.join(HOME, "Library", "Application Support", "Waypoint")
@@ -50,7 +51,7 @@ def setup():
             if not os.path.exists(os.path.join(cache, name)):
                 shutil.copy2(os.path.join(BUNDLED_CACHE, name), cache)
     if not waypoint_build.TEST:
-        for k in ("VIDA_DRY_RUN", "VIDA_DRY_PHONE", "VIDA_PORT"):
+        for k in ("VIDA_DRY_RUN", "VIDA_DRY_PHONE", "VIDA_PORT", "VIDA_LICENSE_URL"):
             os.environ.pop(k, None)
     os.makedirs(os.path.dirname(LOG), exist_ok=True)
     fd = os.open(LOG, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
