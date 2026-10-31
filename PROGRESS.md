@@ -7,6 +7,30 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-31 — Access keys + a key dashboard
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner wants to send Waypoint to paying users and cut access
+by deleting their key. Brainstormed a full system (signed leases, machine binding, VPN flags), owner
+chose to start basic.
+
+- **Key dashboard** (new, `~/Desktop/projects/key dashboard`, its own git repo, no remote yet): Next.js 16 for
+  Vercel. One `ADMIN_PASSWORD`, make/copy/delete keys (`WPT-XXXX-XXXX-XXXX-XXXX`, 80 bits), shows last used
+  + last IP. `/api/check` is what Waypoint calls. Redis (Upstash) on Vercel, a JSON file locally.
+- **Waypoint:** `core/backend/license.py` (saved key in Application Support, checked at launch + every 5 min,
+  6 h offline grace, deleted key = locked). `server.py` middleware returns 402 for every /api route except
+  /api/license and /api/stop while locked, routes/places/cities included. Key card in the page after the
+  Warp intro (icon stays, word fades, card under it, rainbow border while checking); a 402 mid-session
+  brings it back without stopping what's on the phone. Release build bakes in `LICENSE_URL` and refuses to
+  build without it unless `--test`; the dev app is keyless unless `VIDA_LICENSE_URL` is set.
+- Tests: `core/tests/test_license.py` (fake dashboard: good/bad/deleted/offline, server gate) — 22/22 pass.
+  Checked in a browser against the real dashboard, dry run: wrong key → right key (typed lowercase, no
+  dashes) → boot log `checking access [ UNLOCKED ]` → library loads; deleted the key while open → card
+  "Your key was turned off", /api/routes 402. Dashboard checked at phone size.
+- **Not done:** dashboard isn't on Vercel yet (needs a GitHub repo + Upstash + ADMIN_PASSWORD), not tried in
+  the packaged app or with a real release build. Next steps if needed: signed answers, one Mac per key.
+
+---
+
 ## 2026-10-31 — Release build now ships minified JS/CSS and obfuscated data
 
 **Model: Claude Opus 5.5 (Claude Code).** The two "cheap wins" from the security chat.
