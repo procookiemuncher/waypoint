@@ -7,6 +7,15 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-31 — First tester DMG (with keys)
+
+- Real release build (`LICENSE_URL=https://waypoint-key-dashboard.vercel.app`, 0.1.0-beta.1, not --test): key URL is
+  in the binary, `codesign --strict` passes, launches. Packed with the new `release/make-dmg.command` →
+  `~/Desktop/Waypoint-0.1.0-beta.1.dmg` (~83 MB).
+- Gotcha: an HFS+ DMG broke the signature. Nuitka puts data files in Contents/MacOS, signed via xattrs, and the HFS+
+  image tacks FinderInfo on, so the dragged-out copy fails strict verify. APFS image is clean (mounted and dragged copy both pass).
+- Still not tried with a phone attached from the compiled app.
+
 ## 2026-10-31 — Dock app uses the key system too
 
 - `make-app.command` now bakes `LICENSE_URL` (default https://waypoint-key-dashboard.vercel.app) into the launcher,
