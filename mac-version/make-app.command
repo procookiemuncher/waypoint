@@ -3,10 +3,13 @@
 # (Xcode or its command line tools — you have Xcode anyway for drive.command).
 # The app is a thin wrapper that runs this repo's .venv + mac-version/app.py, so it has the repo
 # path baked in: if you move the repo, just run this again.
+# It also bakes in the key dashboard, so it asks for an access key like the release build does.
+# LICENSE_URL= ./mac-version/make-app.command builds a keyless one instead.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PY="$ROOT/.venv/bin/python"
 APP="${1:-$HOME/Applications}/Waypoint.app"
+LICENSE_URL="${LICENSE_URL-https://waypoint-key-dashboard.vercel.app}"
 
 if [ ! -x "$PY" ]; then
   echo "No .venv yet — run ./mac-version/setup.command first."
@@ -48,7 +51,7 @@ PLIST
 # A tiny compiled launcher that execs the venv python (same process → one Dock icon, not a
 # second "Python" one). Repo path is baked in; LaunchServices gives apps a bare PATH.
 REPO_C="${ROOT//\\/\\\\}"; REPO_C="${REPO_C//\"/\\\"}"
-/usr/bin/clang -O2 -mmacosx-version-min=13.0 -DREPO="\"$REPO_C\"" \
+/usr/bin/clang -O2 -mmacosx-version-min=13.0 -DREPO="\"$REPO_C\"" -DLICENSE_URL="\"$LICENSE_URL\"" \
   -o "$APP/Contents/MacOS/Waypoint" "$ROOT/mac-version/app/launcher.c"
 /usr/bin/codesign --force --sign - "$APP" >/dev/null 2>&1 || true
 
@@ -57,5 +60,6 @@ touch "$APP"
 /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "$APP" 2>/dev/null || true
 
 echo
+[ -n "$LICENSE_URL" ] && echo "Asks for an access key from $LICENSE_URL" || echo "No access key needed (LICENSE_URL is empty)"
 echo "Done. Open it from Launchpad / ~/Applications, then right-click its Dock icon →"
 echo "Options → Keep in Dock. Logs go to ~/Library/Logs/Waypoint.log."
