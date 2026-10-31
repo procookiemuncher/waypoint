@@ -7,6 +7,24 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-31 — Closed a DNS rebinding hole in the local server
+
+**Model: Claude Opus 5.5 (Claude Code).** Owner asked about security / reverse engineering.
+
+- Hole: the server's only guard was Origin == Host on writes. A page on evil.com that rebinds its DNS to 127.0.0.1
+  sends Origin and Host both evil.com, so it passed, and GETs (status/logs, i.e. location) had no guard at all.
+  The port is random per launch, which made it hard to exploit but not impossible.
+- Fix (`core/backend/server.py`): every request must have Host 127.0.0.1 or localhost, else 403. Tests in
+  `core/tests/test_server_hosts.py` (real uvicorn on a free port, dry run). Checked against a dry-run server too:
+  page and static load, a rebound Host gets 403.
+- The owner's running app instance predates the fix, picks it up on next launch. The release build needs a rebuild.
+- Decided: keep it all local, a hosted server can't reach a USB-connected phone. Not paying for Apple's $99
+  developer account yet; testers use "Open Anyway" in Privacy & Security or `xattr -dr com.apple.quarantine`.
+- Offered, not done: minify/obfuscate web/static JS and encrypt or compile in destinations.json/places.json/routes
+  for the release build (Python is already native code via Nuitka, the web files and JSON ship as plain text).
+
+---
+
 ## 2026-10-31 — Release build (Nuitka Waypoint.app) builds, signs and launches
 
 **Model: Claude Opus 5.5 (Claude Code).** Picking up after a cleared chat.
