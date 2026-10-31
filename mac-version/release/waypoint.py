@@ -24,6 +24,10 @@ def child():
     args = sys.argv[1:]
     if args[:2] == ["-m", "pymobiledevice3"]:
         sys.argv = ["pymobiledevice3", *args[2:]]
+        # pmd3's utils.py imports IPython up top, only its interactive shell commands use it, and
+        # it's left out of the build (it's big, and dragged in jedi). An empty stand-in does.
+        import types
+        sys.modules.setdefault("IPython", types.ModuleType("IPython"))
         from pymobiledevice3.__main__ import main
         main()
         return True
