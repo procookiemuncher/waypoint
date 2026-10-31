@@ -30,6 +30,8 @@ async function api(path, body){
   const opts = body === undefined ? {} : { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) };
   const r = await fetch(path, opts);
   const data = await r.json().catch(()=>({}));
+  // 402: the server wants an access key (the saved one was turned off while we were open)
+  if(r.status===402){ keyLost(); const e=new Error('access key needed'); e.locked=true; throw e; }
   if(!r.ok) throw new Error(data.detail || ('HTTP '+r.status));
   return data;
 }
@@ -329,6 +331,7 @@ async function pollStatus(){
     syncLive(st.active);
     refreshHeroButton();
   }catch(e){
+    if(e.locked) return;
     if(++statusFails===3) logLine('lost the local server — restart the app','warn');
   }
   renderDevice();
@@ -972,19 +975,25 @@ async function bootStep(label, work){
   return res;
 }
 async function boot(){
-  // ask for the library and the phone right away; the steps below just show them landing
-  const library = loadLibrary(), firstLook = pollStatus();
-  library.catch(()=>{});   // the step below reports a failure
+  // ask for the library and the phone right away (the steps below just show them landing), as soon
+  // as the access key has checked out: until then the server answers the api with 402
+  let library, firstLook;
+  const load = ()=>{ library = loadLibrary(); library.catch(()=>{}); firstLook = pollStatus(); };   // the step below reports a failure
+  const access = api('/api/license?wait=8').catch(()=>({ required:true, state:'offline' }));
+  access.then(a=>{ if(a.state==='ok') load(); });
   // the glass intro, all of it, before the terminal starts typing (no-op under reduced motion / no WebGL2)
   Warp.prep();
   await Warp.in();
   await Warp.finished();
+  const lic = await access;
+  if(lic.state!=='ok'){ await keyGate(lic.state); load(); }   // the card comes in under the finished icon
   await Warp.out();
   await wait(250);
   const native = !!window.pywebview || navigator.userAgent.includes('Macintosh') && !navigator.userAgent.includes('Chrome');
   const h=bootLine('','accent'); await typeInto(h,'▸ waypoint — vida-360 location console', 14);
   const c=bootLine('','dim'); await typeInto(c, native ? '  native window · local server 127.0.0.1' : '  browser · local server 127.0.0.1', 8);
   bootLine('');
+  if(lic.required) await bootStep('checking access', async()=>({ ok:true, text:'[ UNLOCKED ]' }));
   await bootStep('starting map engine', async()=>{
     for(let i=0;i<20 && !tilesReady;i++) await wait(100);
     renderDevice();
@@ -1100,6 +1109,102 @@ function leaveLink(){
   linkHideTimer = setTimeout(()=>{ el.hidden = true; }, 650);
   finish();
 }
+
+/* ============ ACCESS KEY ============ */
+/* After the intro, before the boot log, when this build needs a key (backend/license.py, the key
+   dashboard) and the saved one didn't check out; or later, if the key gets deleted while the app is
+   open. The server is what actually locks, with 402 on the api; this card is just the way in. */
+const KEY_COPY = {
+  none:     ['Enter your access key', 'Paste the key you were sent to unlock Waypoint.'],
+  bad:      ['That key didn\'t work', 'Check it against the one you were sent and try again.'],
+  revoked:  ['Your key was turned off', 'Ask for a new key to keep using Waypoint.'],
+  offline:  ['Can\'t reach Waypoint', 'Check your internet connection, then try again.'],
+  checking: ['Checking your key…', 'One moment.'],
+};
+let keyOpen = null, keyBusy = false;
+// WPT-XXXX-XXXX-XXXX-XXXX as you type or paste; the dashboard cleans it up again anyway
+function fmtKey(v){
+  let r = v.toUpperCase();
+  if(r.startsWith('WPT-')) r = r.slice(4);
+  r = r.replace(/[^0-9A-Z]/g,'');
+  if(r.length>16 && r.startsWith('WPT')) r = r.slice(3);
+  r = r.slice(0,16);
+  return r ? 'WPT-'+r.match(/.{1,4}/g).join('-') : '';
+}
+function renderKey(state){
+  const el = $('keygate');
+  el.dataset.state = state;
+  const [title, sub] = KEY_COPY[state] || KEY_COPY.none;
+  $('key-title').textContent = title;
+  $('key-sub').textContent = sub;
+  $('key-go').textContent = state==='offline' && !$('key-in').value ? 'Try again' : 'Unlock';
+}
+function keyGate(state){
+  const el = $('keygate'), warp = $('warp');
+  clearTimeout(keyGate.hide);
+  el.classList.remove('out','in','checking');
+  el.classList.toggle('over-warp', !!warp);
+  warp?.classList.add('keyed');
+  $('key-in').value = '';
+  renderKey(state==='checking' ? 'none' : state);
+  el.hidden = false;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>el.classList.add('in')));
+  setTimeout(()=>$('key-in').focus(), 350);
+  return new Promise(res => keyOpen = res);
+}
+function shakeKey(){
+  const b = $('key-box');
+  b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+}
+async function submitKey(e){
+  e.preventDefault();
+  if(keyBusy || !keyOpen) return;
+  const el = $('keygate'), key = $('key-in').value.trim();
+  if(!key && el.dataset.state!=='offline'){ shakeKey(); $('key-in').focus(); return; }
+  keyBusy = true;
+  $('key-go').disabled = true;
+  el.classList.add('checking');
+  renderKey('checking');
+  let st;
+  try{ st = await api('/api/license', { key }); }catch{ st = { state:'offline' }; }
+  await new Promise(r=>setTimeout(r, 700));   // long enough to see the wire run, even when it's instant
+  el.classList.remove('checking');
+  keyBusy = false;
+  $('key-go').disabled = false;
+  if(st.state==='ok'){
+    el.dataset.state = 'ok';
+    $('key-title').textContent = 'Unlocked';
+    $('key-sub').textContent = 'Welcome to Waypoint.';
+    $('key-in').blur();
+    await new Promise(r=>setTimeout(r, 1000));
+    return closeKey();
+  }
+  renderKey(st.state);
+  shakeKey();
+  $('key-in').select();
+}
+function closeKey(){
+  const el = $('keygate'), done = keyOpen;
+  keyOpen = null;
+  el.classList.add('out');
+  el.classList.remove('in');
+  $('warp')?.classList.remove('keyed');
+  keyGate.hide = setTimeout(()=>{ el.hidden = true; el.classList.remove('out'); }, 550);
+  done?.();
+}
+// a 402 once the app is up: the key got deleted. Whatever's on the phone keeps going (stopping it
+// would snap the pin back to real GPS in front of the circle); nothing new starts until a key works.
+function keyLost(){
+  if(!booted || keyOpen) return;
+  typeLine('access key turned off — nothing new will start until a key works.','warn');
+  keyGate('revoked').then(()=>{ typeLine('unlocked.','ok'); pollStatus(); });
+}
+$('key-in').addEventListener('input', e=>{
+  const i = e.target, v = fmtKey(i.value);
+  if(i.value!==v) i.value = v;
+  if(['bad','revoked'].includes($('keygate').dataset.state)) renderKey('none');
+  else if($('keygate').dataset.state==='offline') renderKey('offline');
+});
 
 /* ============ INIT ============ */
 initMap();
