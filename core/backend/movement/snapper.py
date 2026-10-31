@@ -20,7 +20,8 @@ from .model import Route, Segment, STOP
 
 DEFAULT_BASE_URL = "https://valhalla1.openstreetmap.de"
 _COSTING = {"walk": "pedestrian", "drive": "auto"}
-_CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "build", "snap-cache")
+_CACHE_DIR = os.path.join(os.environ.get("VIDA_BUILD_DIR") or os.path.join(os.path.dirname(__file__), "..", "..", "build"),
+                          "snap-cache")
 
 
 class SnapError(Exception):
