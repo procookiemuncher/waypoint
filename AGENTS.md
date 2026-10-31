@@ -214,7 +214,9 @@ Windows *should* be able to run `core/backend/server.py` and use a browser (spoo
 
 **Access keys (2026-10-31):** release builds ask for a key after the intro (before the boot log) and
 the server answers the API with 402 until one checks out — the gate is in `server.py`'s middleware,
-the card in the page is just the way in. Keys are made/deleted in the **key dashboard**, a separate
+the key screen in the page (`#keygate`, full screen over the finished intro) is just the way in. It only
+shows while no saved key checks out — to see it again, delete the key on the dashboard or remove
+`~/Library/Application Support/Waypoint/license.json`. Keys are made/deleted in the **key dashboard**, a separate
 Next.js app in `~/Desktop/projects/key dashboard` (GitHub `procookiemuncher/waypoint-key-dashboard`, private),
 live at **https://waypoint-key-dashboard.vercel.app** (Vercel team "cookie's projects", Upstash Redis, pushes to
 main auto-deploy). Release builds: `LICENSE_URL=https://waypoint-key-dashboard.vercel.app ./mac-version/release/build.command`.
