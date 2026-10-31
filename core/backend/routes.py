@@ -9,7 +9,9 @@ from backend.movement import load_route, RouteRenderer, validate, snap_route
 
 CORE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROUTES_DIR = os.path.join(CORE, "routes")
-BUILD_DIR = os.path.join(CORE, "build")
+# generated GPX + snap cache. The packaged app points this at ~/Library/Application Support/Waypoint
+# since its own bundle is read-only.
+BUILD_DIR = os.environ.get("VIDA_BUILD_DIR") or os.path.join(CORE, "build")
 
 
 class RouteError(Exception):

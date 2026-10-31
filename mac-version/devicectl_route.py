@@ -26,8 +26,7 @@ import time
 
 CORE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "core")
 sys.path.insert(0, CORE)                       # make `backend` importable
-ROUTES_DIR = os.path.join(CORE, "routes")
-BUILD_DIR = os.path.join(CORE, "build")
+from backend.routes import BUILD_DIR, ROUTES_DIR   # noqa: E402 (same dirs the app uses, packaged or not)
 
 MPH = 0.44704   # m/s per mph
 
