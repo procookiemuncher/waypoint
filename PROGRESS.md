@@ -17,6 +17,8 @@ what changed, what was decided, what broke, what's next.
   revoked = slash over the lock, ok = shackle pops, sparks, card falls away into the boot log.
 - Tested in headless Chrome against a mock dashboard (none → bad → ok → boot log → connect), at
   400px wide and under reduced motion (no animation, still works). Release minifiers leave it intact.
+- Also checked: renders right in Safari (same WebKit as the app window), and the mid-session revoke
+  (key turned off → screen over the app → good key → `unlocked.` in the console, prompt types again).
 - Not yet seen in the real pywebview window or with the live dashboard.
 
 ## 2026-10-31 — Key dashboard is live on Vercel
