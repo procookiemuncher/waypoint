@@ -7,6 +7,13 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-31 — Dock app uses the key system too
+
+- `make-app.command` now bakes `LICENSE_URL` (default https://waypoint-key-dashboard.vercel.app) into the launcher,
+  which sets `VIDA_LICENSE_URL` before exec'ing python, so the owner's ~/Applications Waypoint asks for a key like
+  the release build. `LICENSE_URL= ./mac-version/make-app.command` builds a keyless one; a hand-set env var still wins.
+- Rebuilt and launched: the python process has the env var. Tester setup steps written up as a page for the owner.
+
 ## 2026-10-31 — Key screen v2: Silk shader + minimal glass
 
 - Owner wanted it calmer: background is now the "Silk" flow shader (21st.dev Shader Builder, colours
