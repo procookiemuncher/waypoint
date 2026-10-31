@@ -1,7 +1,7 @@
 /* Main executable for Waypoint.app. macOS 26 won't launch a bundle whose executable is a shell
    script, so this is the smallest real binary that does the same job: exec (same process, so
    one Dock icon) the repo's .venv python on mac-version/app.py. REPO is baked in at build time
-   by make-app.command. */
+   by make-app.command, and so is LICENSE_URL (the key dashboard; empty = no key asked). */
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +9,9 @@
 
 #ifndef REPO
 #error "build with -DREPO='\"/path/to/vida-360\"'"
+#endif
+#ifndef LICENSE_URL
+#define LICENSE_URL ""
 #endif
 
 int main(void) {
@@ -29,6 +32,7 @@ int main(void) {
         int fd = open(logpath, O_WRONLY | O_CREAT | O_APPEND, 0644);
         if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); close(fd); }
     }
+    if (LICENSE_URL[0]) setenv("VIDA_LICENSE_URL", LICENSE_URL, 0);   /* an env var set by hand still wins */
     if (chdir(REPO) != 0) perror("chdir");
     execl(py, py, app, (char *)NULL);
     perror("exec python");
