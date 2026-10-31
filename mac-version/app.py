@@ -23,6 +23,7 @@ import webview
 
 from backend.server import create_app, free_port
 from backend.device import DRY_RUN
+from backend.license import License
 from backend.session import Session
 from drive_engine import DriveEngine
 from phone_check import DevicectlReadiness
@@ -132,8 +133,12 @@ def main():
     if not DRY_RUN:   # dry runs keep the fake phone so the connect screen can be worked on
         session.use_readiness(DevicectlReadiness())
 
+    lic = License.from_config()   # None unless this build (or VIDA_LICENSE_URL) names a key dashboard
+    if lic:
+        lic.start()   # checks the saved key while the intro plays
+
     port = free_port()
-    server = uvicorn.Server(uvicorn.Config(create_app(session), host="127.0.0.1", port=port,
+    server = uvicorn.Server(uvicorn.Config(create_app(session, lic), host="127.0.0.1", port=port,
                                            log_level="warning"))
     threading.Thread(target=server.run, daemon=True).start()
     for _ in range(100):
