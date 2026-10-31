@@ -16,7 +16,7 @@ VERSION="${VERSION:-0.1.0-beta.1}"
 TEST=False
 [ "$1" = "--test" ] && TEST=True
 
-if ! "$PY" -c "import nuitka" 2>/dev/null; then
+if ! "$PY" -c "import nuitka, rjsmin, rcssmin" 2>/dev/null; then
   echo "> installing build tools"
   "$HOME/.local/bin/uv" pip install --python "$PY" -r "$ROOT/mac-version/release/requirements.txt" 2>/dev/null \
     || uv pip install --python "$PY" -r "$ROOT/mac-version/release/requirements.txt"
@@ -30,6 +30,13 @@ printf 'VERSION = "%s"\nTEST = %s\n' "$VERSION" "$TEST" > "$STAGE/waypoint_build
 
 echo "> icon"
 "$PY" "$ROOT/mac-version/app/make_icon.py" >/dev/null
+
+# Minify the web JS/CSS and obfuscate the destination/route JSON into a staging tree, so the bundle
+# doesn't ship them as readable source (stops the casual Show-Package-Contents copy, not a determined
+# reverse-engineer). The repo copies stay plain; backend.secret.load_json reads either kind.
+echo "> protecting web + data assets"
+ASSETS="$STAGE/assets"
+PYTHONPATH="$ROOT/core" "$PY" "$ROOT/mac-version/release/stage_assets.py" "$ROOT/core" "$ASSETS"
 
 # Data lands next to the compiled modules, where the code already looks for it: backend/*.py go
 # up one level for web/, routes/ and the json files, app.py looks in app/ for the icon.
@@ -50,10 +57,10 @@ PYTHONPATH="$ROOT/core:$ROOT/mac-version:$STAGE" "$PY" -m nuitka \
   --noinclude-setuptools-mode=nofollow \
   --nofollow-import-to=jedi \
   --nofollow-import-to=tkinter \
-  --include-data-dir="$ROOT/core/web=web" \
-  --include-data-dir="$ROOT/core/routes=routes" \
-  --include-data-files="$ROOT/core/destinations.json=destinations.json" \
-  --include-data-files="$ROOT/core/places.json=places.json" \
+  --include-data-dir="$ASSETS/web=web" \
+  --include-data-dir="$ASSETS/routes=routes" \
+  --include-data-files="$ASSETS/destinations.json=destinations.json" \
+  --include-data-files="$ASSETS/places.json=places.json" \
   --include-data-dir="$ROOT/core/build/snap-cache=snap-cache" \
   --include-data-files="$ROOT/mac-version/app/Waypoint.icns=app/Waypoint.icns" \
   --no-deployment-flag=self-execution \

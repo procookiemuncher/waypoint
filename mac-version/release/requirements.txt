@@ -1,2 +1,5 @@
 # Build-only tools for mac-version/release/build.command (not needed to run the app).
 nuitka==4.3.3
+# Minify the web JS/CSS before bundling (pure-Python, conservative — whitespace + comments only).
+rjsmin==1.2.4
+rcssmin==1.2.1
