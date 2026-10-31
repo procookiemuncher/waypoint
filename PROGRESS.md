@@ -7,6 +7,28 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-31 — Release build now ships minified JS/CSS and obfuscated data
+
+**Model: Claude Opus 5.5 (Claude Code).** The two "cheap wins" from the security chat.
+
+- **Data obfuscation.** `core/backend/secret.py`: `obfuscate(bytes)` = magic `WPX1` + XOR(static key) over
+  zlib. `load_json(path)` reads a blob or plain JSON, so the four loaders (destinations, places,
+  movement/model.load_route, routes.read_name) go through it and don't care which they get. Repo + dev app stay
+  plain; only the release bundle is obfuscated. It's obfuscation not encryption — the key compiles into the binary;
+  it only stops the Show-Package-Contents copy. Round-trip + both-ways tests in `core/tests/test_secret.py`.
+- **Web minify.** `mac-version/release/stage_assets.py` (run by build.command) copies web/ + the JSON into
+  `stage/assets`, minifies our own static JS (icons/glass/warp/app/ring) with rjsmin and app.css with rcssmin
+  (leaflet/fonts untouched), and obfuscates the JSON. rjsmin is regex-based and app.js/glass.js have multiline
+  template literals, so each minified file is `node --check`'d and the build fails if one is corrupted. rjsmin keeps
+  var names (minify, not mangle); app.js 57k→46k. Deps pinned in release/requirements.txt (rjsmin 1.2.4, rcssmin 1.2.1).
+- build.command points Nuitka's include-data flags at stage/assets instead of core/.
+- **Verified in the packaged app** (fresh `--test` build, VIDA_DRY_RUN=1): bundled destinations.json starts `WPX1`,
+  app.js has 0 comment lines and passes node --check; server serves 28 cities / 38 places / 40 routes (so the blobs
+  decode at runtime), page + app.js 200, rebound Host → 403 (the host fix is in this build too).
+- Offered upsell not taken: full JS mangling via terser (needs a node/npm build dep, more breakage risk).
+
+---
+
 ## 2026-10-31 — Closed a DNS rebinding hole in the local server
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner asked about security / reverse engineering.
