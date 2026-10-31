@@ -43,3 +43,6 @@ skills-lock.json
 
 # Generated Mac app bits (make-app.command rebuilds them)
 mac-version/app/Waypoint.icns
+
+# Build logs
+*.log
