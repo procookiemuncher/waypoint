@@ -40,9 +40,13 @@ PYTHONPATH="$ROOT/core:$ROOT/mac-version:$STAGE" "$PY" -m nuitka \
   --macos-signed-app-name=com.procookiemuncher.waypoint \
   --macos-app-version="${VERSION%%-*}" \
   --macos-app-icon="$ROOT/mac-version/app/Waypoint.icns" \
-  --enable-plugin=pywebview \
   --include-package=pymobiledevice3 \
   --include-package=uvicorn \
+  --noinclude-IPython-mode=nofollow \
+  --noinclude-pytest-mode=nofollow \
+  --noinclude-setuptools-mode=nofollow \
+  --nofollow-import-to=jedi \
+  --nofollow-import-to=tkinter \
   --include-data-dir="$ROOT/core/web=web" \
   --include-data-dir="$ROOT/core/routes=routes" \
   --include-data-files="$ROOT/core/destinations.json=destinations.json" \
