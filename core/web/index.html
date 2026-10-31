@@ -169,49 +169,23 @@
 
   <!-- ACCESS KEY (after the intro, before the boot log and the connect screen, when the build needs a key) -->
   <div id="keygate" data-state="none" hidden>
-    <canvas id="kg-stars" aria-hidden="true"></canvas>
-    <div class="kg-aurora" aria-hidden="true"><i></i><i></i><i></i></div>
-    <div class="kg-grid" aria-hidden="true"></div>
-
+    <canvas id="kg-silk" aria-hidden="true"></canvas>
     <form id="key-card" onsubmit="submitKey(event)" autocomplete="off">
-      <div class="kg-rim" aria-hidden="true"></div>
-      <div class="kg-spot" aria-hidden="true"></div>
-
-      <svg id="kg-lock" class="kp" viewBox="0 0 160 160" aria-hidden="true">
-        <defs>
-          <linearGradient id="kg-body" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="#1d1a29"></stop>
-            <stop offset="1" stop-color="#121019"></stop>
-          </linearGradient>
-          <filter id="kg-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"></feGaussianBlur></filter>
-        </defs>
-        <circle class="orbit o1" cx="80" cy="84" r="70"></circle>
-        <circle class="orbit o2" cx="80" cy="84" r="58"></circle>
-        <g class="sat"><circle cx="80" cy="14" r="3"></circle></g>
-        <g class="sat s2"><circle cx="80" cy="26" r="2.2"></circle></g>
-        <circle class="halo" cx="80" cy="96" r="34" filter="url(#kg-blur)"></circle>
-        <path class="shackle" d="M58 82 V62 a22 22 0 0 1 44 0 V82"></path>
-        <rect class="body" x="44" y="76" width="72" height="56" rx="15"></rect>
-        <rect class="body-rim" x="44.75" y="76.75" width="70.5" height="54.5" rx="14.25"></rect>
-        <svg class="leap" x="62" y="86" width="36" height="36" viewBox="0 0 258 254"><path fill-rule="evenodd" d="M62 162a32 32 0 1 1 0 64a32 32 0 1 1 0-64zM62 180a14 14 0 1 0 0 28a14 14 0 1 0 0-28zM58.090 140.37A151 151 0 0 1 129.15 62.65A15 15 0 0 1 142.85 89.35A121 121 0 0 0 85.90 151.63A15 15 0 0 1 58.09 140.37ZM194 28a34 34 0 1 1 0 68a34 34 0 1 1 0-68z"></path></svg>
-        <path class="slash" d="M50 138 L110 70"></path>
-      </svg>
-
-      <div id="key-eyebrow" class="kp"><span></span>Access key</div>
+      <div class="kg-gloss" aria-hidden="true"></div>
+      <div id="kg-icon" class="kp" aria-hidden="true">
+        <svg class="leap" viewBox="0 0 258 254"><path fill-rule="evenodd" d="M62 162a32 32 0 1 1 0 64a32 32 0 1 1 0-64zM62 180a14 14 0 1 0 0 28a14 14 0 1 0 0-28zM58.090 140.37A151 151 0 0 1 129.15 62.65A15 15 0 0 1 142.85 89.35A121 121 0 0 0 85.90 151.63A15 15 0 0 1 58.09 140.37ZM194 28a34 34 0 1 1 0 68a34 34 0 1 1 0-68z"></path></svg>
+        <svg class="tick" viewBox="0 0 24 24"><path d="M5 12.5 L10 17 L19 7"></path></svg>
+      </div>
       <div id="key-title" class="kp">Enter your access key</div>
       <div id="key-sub" class="kp">Paste the key you were sent to unlock Waypoint.</div>
-
       <div id="key-box" class="kp">
         <div id="key-cells" aria-hidden="true"></div>
         <div class="kg-scan" aria-hidden="true"></div>
         <input id="key-in" type="text" spellcheck="false" autocapitalize="characters" aria-label="Access key" maxlength="40">
       </div>
-      <div id="key-meter" class="kp" aria-hidden="true"><i></i></div>
-
-      <button id="key-go" class="kp" type="submit"><span class="lbl">Unlock</span><span class="spin" aria-hidden="true"></span><span class="shine" aria-hidden="true"></span></button>
-      <div id="key-hint" class="kp">Keys look like <b>WPT-XXXX-XXXX-XXXX-XXXX</b> · <kbd>⌘V</kbd> to paste</div>
+      <button id="key-go" class="kp" type="submit"><span class="lbl">Unlock</span><span class="spin" aria-hidden="true"></span></button>
+      <div id="key-hint" class="kp"><kbd>⌘V</kbd> to paste</div>
     </form>
-    <canvas id="kg-burst" aria-hidden="true"></canvas>
   </div>
 
   <div id="crt"></div>
