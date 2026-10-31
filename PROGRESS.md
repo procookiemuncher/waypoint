@@ -7,6 +7,18 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-31 — Key screen redesigned
+
+- The access-key card is now a full screen of its own (between the intro and the boot log, so still
+  before the connect screen; same screen over the app if a key gets deleted mid-session). Glass card
+  that tilts with the pointer, a lock built round the Leap mark, aurora + starfield + grid floor behind.
+- The key is typed into 16 painted slots (WPT + 4×4); the real input sits invisibly on top so paste,
+  typing and focus are plain input behaviour. Checking = scan beam + rainbow rim, bad = shake + red,
+  revoked = slash over the lock, ok = shackle pops, sparks, card falls away into the boot log.
+- Tested in headless Chrome against a mock dashboard (none → bad → ok → boot log → connect), at
+  400px wide and under reduced motion (no animation, still works). Release minifiers leave it intact.
+- Not yet seen in the real pywebview window or with the live dashboard.
+
 ## 2026-10-31 — Key dashboard is live on Vercel
 
 - https://waypoint-key-dashboard.vercel.app — private repo `procookiemuncher/waypoint-key-dashboard` (repo identity +
