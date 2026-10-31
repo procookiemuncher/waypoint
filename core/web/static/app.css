@@ -818,14 +818,32 @@ path.glowcase { filter: blur(5px); }
 #kg-icon { --n: 0; } #key-title { --n: 1; } #key-sub { --n: 2; } #key-box { --n: 3; } #key-go { --n: 4; } #key-hint { --n: 5; }
 @keyframes kg-rise { from { opacity: 0; transform: translateY(12px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
 
-/* ---- the icon: a small glass tile; the mark turns into a tick once unlocked ---- */
+/* ---- liquid glass (the 21st.dev LiquidButton, ported to plain CSS) ----
+   .lq-rim is the stack of inset highlights that reads as a thick glass edge; .lq-glass bends whatever
+   sits behind through the #container-glass filter in index.html. WebKit ignores url() backdrop
+   filters, so it falls back to a plain frost there. */
+.liquid { position: relative; isolation: isolate; background: transparent; border: none; }
+.liquid .lq-rim {
+  position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none;
+  box-shadow:
+    0 0 8px rgba(0,0,0,.03), 0 2px 6px rgba(0,0,0,.08),
+    inset 3px 3px .5px -3.5px rgba(255,255,255,.09), inset -3px -3px .5px -3.5px rgba(255,255,255,.85),
+    inset 1px 1px 1px -.5px rgba(255,255,255,.6), inset -1px -1px 1px -.5px rgba(255,255,255,.6),
+    inset 0 0 6px 6px rgba(255,255,255,.12), inset 0 0 2px 2px rgba(255,255,255,.06),
+    0 0 12px rgba(0,0,0,.15);
+  transition: box-shadow .3s;
+}
+.liquid .lq-glass {
+  position: absolute; inset: 0; z-index: -1; border-radius: inherit; overflow: hidden; pointer-events: none;
+  -webkit-backdrop-filter: blur(6px) saturate(1.3);
+  backdrop-filter: url(#container-glass);
+}
+.liquid > :not(.lq-rim):not(.lq-glass) { position: relative; z-index: 1; }
+
+/* ---- the icon: a small liquid-glass tile; the mark turns into a tick once unlocked ---- */
 #kg-icon {
-  position: relative; width: 58px; height: 58px; border-radius: 18px; margin-bottom: 20px;
+  width: 60px; height: 60px; border-radius: 20px; margin-bottom: 20px;
   display: grid; place-items: center;
-  background: linear-gradient(160deg, rgba(255,255,255,.16), rgba(255,255,255,.04));
-  border: 1px solid rgba(255,255,255,.18);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 10px 30px -10px rgba(145,107,191,.6);
-  transition: background .5s, border-color .5s, box-shadow .5s;
 }
 #keygate.settled #kg-icon { animation: kg-float 5s ease-in-out infinite; }
 @keyframes kg-float { 50% { transform: translateY(-3px); } }
@@ -833,10 +851,11 @@ path.glowcase { filter: blur(5px); }
 #kg-icon .leap { width: 28px; height: 28px; fill: #ece6ff; filter: drop-shadow(0 0 8px rgba(145,107,191,.8)); }
 #kg-icon .tick { width: 26px; height: 26px; fill: none; stroke: #7ee787; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; opacity: 0; transition: stroke-dashoffset .5s ease .2s, opacity .2s; }
 #keygate.checking #kg-icon .leap { animation: pulse 1.1s ease-in-out infinite; }
-#keygate[data-state="ok"] #kg-icon { border-color: rgba(126,231,135,.45); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 10px 34px -8px rgba(126,231,135,.55); }
+#kg-icon { transition: box-shadow .5s; }
+#keygate[data-state="ok"] #kg-icon { box-shadow: 0 0 30px -4px rgba(126,231,135,.55); }
 #keygate[data-state="ok"] #kg-icon .leap { opacity: 0; transform: scale(.4) rotate(-30deg); }
 #keygate[data-state="ok"] #kg-icon .tick { opacity: 1; stroke-dashoffset: 0; }
-#keygate[data-state="bad"] #kg-icon, #keygate[data-state="revoked"] #kg-icon { border-color: rgba(244,124,124,.4); }
+#keygate[data-state="bad"] #kg-icon, #keygate[data-state="revoked"] #kg-icon { box-shadow: 0 0 26px -6px rgba(244,124,124,.65); }
 #kg-icon.wiggle { animation: kg-wiggle .5s cubic-bezier(.36,.07,.19,.97); }
 @keyframes kg-wiggle { 20% { rotate: -10deg; } 45% { rotate: 8deg; } 70% { rotate: -4deg; } }
 
@@ -898,27 +917,19 @@ path.glowcase { filter: blur(5px); }
 #keygate.checking .kg-scan { opacity: 1; animation: kg-scan 1.2s cubic-bezier(.45,0,.55,1) infinite alternate; }
 @keyframes kg-scan { from { left: -40px; } to { left: calc(100% - 40px); } }
 
-/* ---- the glass button ---- */
+/* ---- the button: a liquid-glass pill that swells a little on hover ---- */
 #key-go {
-  position: relative; overflow: hidden; margin-top: 16px; width: 100%; height: 48px; border-radius: 14px; cursor: pointer;
-  background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.06));
-  border: 1px solid rgba(255,255,255,.2);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 8px 24px -10px rgba(145,107,191,.7);
-  color: #fff; font: 600 14px 'Inter', sans-serif; letter-spacing: .01em;
-  transition: background .25s, border-color .25s, box-shadow .25s, transform .15s, opacity .3s,
-    height .6s cubic-bezier(.16,1,.3,1) .15s, margin .6s cubic-bezier(.16,1,.3,1) .15s, border-width .6s .15s;
+  margin-top: 18px; width: 100%; height: 52px; border-radius: 999px; cursor: pointer;
+  color: #fff; font: 500 14.5px 'Inter', sans-serif; letter-spacing: .01em;
+  transition: transform .3s ease, opacity .3s,
+    height .6s cubic-bezier(.16,1,.3,1) .15s, margin .6s cubic-bezier(.16,1,.3,1) .15s;
 }
-#key-go::before {   /* the glass highlight, and a glint that crosses it on hover */
-  content: ''; position: absolute; top: 0; bottom: 0; width: 50%; left: -60%; pointer-events: none;
-  background: linear-gradient(100deg, transparent, rgba(255,255,255,.3), transparent); transform: skewX(-18deg);
-}
-#key-go:hover { background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,.09)); border-color: rgba(255,255,255,.3); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 10px 30px -8px rgba(145,107,191,.9); }
-#key-go:hover::before, #key-go.primed::before { animation: kg-glint 1s ease-in-out; }
-#key-go.primed::before { animation: kg-glint 2.6s ease-in-out infinite; }
-@keyframes kg-glint { 0% { left: -60%; } 50%, 100% { left: 130%; } }
-#key-go:active { transform: scale(.985); }
-#key-go:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(145,107,191,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+#key-go:hover { transform: scale(1.03); }
+#key-go:active { transform: scale(.99); }
+#key-go:focus-visible { outline: none; }
+#key-go:focus-visible .lq-rim { box-shadow: 0 0 0 3px rgba(255,255,255,.25), inset -3px -3px .5px -3.5px rgba(255,255,255,.85), inset 1px 1px 1px -.5px rgba(255,255,255,.6), inset -1px -1px 1px -.5px rgba(255,255,255,.6), inset 0 0 6px 6px rgba(255,255,255,.12); }
 #key-go:disabled { cursor: default; }
+#key-go:disabled:not(:hover) { transform: none; }
 #key-go .lbl { display: inline-block; transition: opacity .25s, transform .25s; }
 #key-go .spin {
   position: absolute; left: 50%; top: 50%; width: 17px; height: 17px; margin: -8.5px 0 0 -8.5px; border-radius: 50%;
@@ -927,7 +938,7 @@ path.glowcase { filter: blur(5px); }
 #keygate.checking #key-go .lbl { opacity: 0; transform: translateY(-6px); }
 #keygate.checking #key-go .spin { opacity: 1; animation: linkspin .7s linear infinite; }
 /* unlocked: the button and hint fold away so the pane closes up round the key */
-#keygate[data-state="ok"] #key-go { opacity: 0; transform: scale(.96); height: 0; margin-top: 0; border-width: 0; }
+#keygate[data-state="ok"] #key-go { opacity: 0; transform: scale(.96); height: 0; margin-top: 0; }
 
 #key-hint { margin-top: 14px; max-height: 20px; font: 400 11px/1.5 'Inter', sans-serif; color: rgba(236,230,255,.4); transition: opacity .3s, max-height .6s cubic-bezier(.16,1,.3,1) .15s, margin .6s cubic-bezier(.16,1,.3,1) .15s; }
 #key-hint kbd {
