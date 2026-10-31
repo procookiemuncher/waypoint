@@ -12,14 +12,15 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from backend.secret import load_json
+
 CATALOG_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "destinations.json")
 
 
 def load_catalog() -> dict:
     """city name -> city dict (see destinations.json). Empty dict if the file is missing/broken."""
     try:
-        with open(CATALOG_FILE, encoding="utf-8") as f:
-            return json.load(f)["cities"]
+        return load_json(CATALOG_FILE)["cities"]
     except (OSError, json.JSONDecodeError, KeyError):
         return {}
 

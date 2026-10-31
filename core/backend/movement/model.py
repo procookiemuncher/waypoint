@@ -10,8 +10,9 @@ GPS σ≈5 m, and Life360's plausible-speed bands. See docs/MOVEMENT_ENGINE.md f
 """
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass, field
+
+from backend.secret import load_json
 
 # Travel modes. `stop` holds position for a dwell; walk/drive move along waypoints.
 WALK = "walk"
@@ -137,5 +138,4 @@ def parse_route(data: dict) -> Route:
 
 
 def load_route(path) -> Route:
-    with open(path, "r", encoding="utf-8") as f:
-        return parse_route(json.load(f))
+    return parse_route(load_json(path))

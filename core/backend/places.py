@@ -4,6 +4,7 @@ import json
 import os
 
 from backend.destinations import spot_places
+from backend.secret import load_json
 
 PLACES_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "places.json")
 
@@ -11,8 +12,7 @@ PLACES_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 def load_places() -> dict:
     """key -> {name, region, lat, lon, zoom, accent}. Missing/broken files just add nothing."""
     try:
-        with open(PLACES_FILE, encoding="utf-8") as f:
-            own = json.load(f)
+        own = load_json(PLACES_FILE)
     except (OSError, json.JSONDecodeError):
         own = {}
     return {**spot_places(), **own}

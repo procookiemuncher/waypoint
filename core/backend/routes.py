@@ -1,11 +1,11 @@
 """Route library helpers shared by the spoof CLI and the app: list core/routes/*.json, get a
 road-snapped preview line, and render + validate a route into a GPX the phone can replay."""
 import glob
-import json
 import math
 import os
 
 from backend.movement import load_route, RouteRenderer, validate, snap_route
+from backend.secret import load_json
 
 CORE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ROUTES_DIR = os.path.join(CORE, "routes")
@@ -94,6 +94,5 @@ def build_gpx(path: str, log=print):
 
 def read_name(path: str) -> tuple[str, str]:
     """(name, description) without validating the whole route — for quick menus."""
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
+    data = load_json(path)
     return data.get("name") or os.path.basename(path), data.get("description", "")
