@@ -44,6 +44,11 @@ def create_app(session: Session) -> FastAPI:
 
     @app.middleware("http")
     async def same_origin_only(request: Request, call_next):
+        # DNS rebinding: a page on evil.com can point evil.com at 127.0.0.1, and then its requests
+        # look same-origin. They still carry Host: evil.com though, so only answer our own names.
+        host = (request.headers.get("host") or "").rsplit(":", 1)[0]
+        if host not in ("127.0.0.1", "localhost"):
+            return JSONResponse({"detail": "unknown host"}, status_code=403)
         # A random web page could otherwise POST to localhost and move the phone.
         origin = request.headers.get("origin")
         if request.method != "GET" and origin and origin != f"http://{request.headers.get('host')}":
