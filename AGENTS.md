@@ -212,6 +212,16 @@ Stadia `alidade_smooth_dark`, keyless from localhost (CARTO's dark_all started d
 After the boot log the app shows a **connect screen** until the phone is plugged in + unlocked. On the Mac app, unlocked comes from `xcrun devicectl device info lockState` (`passcodeRequired`) + `ddiServices` `isUsable` (`mac-version/phone_check.py`, live, polled every 2s on the connect screen, every 6s once ready, 20s while a route plays; `usbmux list` every 4s, 10s once ready); elsewhere it falls back to "the pmd3 DDI mount worked". **⚠ pmd3 9.33.1 `auto-mount` crashes on iOS 27.0.1 / iPhone19,3 with `KeyError: 'ApBoardID'`** (2026-10-23) — so the Spoof (pmd3) engine may not be usable on this phone until pmd3 is upgraded; Xcode's DDI *is* on the phone and Drive (devicectl) doesn't need pmd3's mount. On the Mac app, places/pins are held by devicectl too (`simulate location coordinate`, via `Session.use_placer`). `VIDA_DRY_PHONE=slow` fakes a late, locked phone for working on it; `=none` a phone that never shows (the screen waits forever until skipped).
 Windows *should* be able to run `core/backend/server.py` and use a browser (spoof engine only) — **untested**, including `Job.stop()`'s Windows path (writes ENTER to pmd3's stdin). **Force-quit / kill -9 leaves the pmd3 child holding the spoof** (normal close, Cmd+Q and SIGTERM all clear) — recover with `spoof clear` + `drive.command --clear`.
 
+**Access keys (2026-10-31):** release builds ask for a key after the intro (before the boot log) and
+the server answers the API with 402 until one checks out — the gate is in `server.py`'s middleware,
+the card in the page is just the way in. Keys are made/deleted in the **key dashboard**, a separate
+Next.js app in `~/Desktop/projects/key dashboard` meant for Vercel (its README has the deploy steps).
+`core/backend/license.py` checks the saved key at launch and every 5 min; a deleted key locks the app
+(running jobs keep going, nothing new starts), dashboard unreachable keeps a key that checked out in
+the last 6 h. On only when a URL is set: `LICENSE_URL` baked in by `release/build.command` (required
+for non-test builds), or `VIDA_LICENSE_URL` for the dev app. Basic on purpose: answers aren't signed
+and keys aren't bound to one Mac yet.
+
 ## Prerequisites (these bite first)
 
 - **Windows Apple driver:** Apple Mobile Device Support (via iTunes or the Apple Devices
@@ -242,7 +252,8 @@ QUIC-vs-TCP tunnel quirks · phone locks → DVT session drops · location slow 
    caused real confusion).
 4. Follow ROADMAP.md order — **de-risk the transport (M1) before building UI.**
 5. Never leak `pymobiledevice3` types or errors above the adapter layer.
-6. This is a personal-use tool on an owned device. Keep it that way.
+6. Each user spoofs only their own phone, from their own Mac. Access to the release build is sold
+   and controlled with access keys (see "Access keys" above); that's the only "multi-user" part.
 7. Follow the **Git commit & push conventions** below.
 
 ## Research doc conventions (docs/research/)
