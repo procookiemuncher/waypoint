@@ -1,6 +1,8 @@
 #!/bin/bash
 # Build the self-contained Waypoint.app for testers: compiled with Nuitka (Python -> C -> native),
-# no repo or .venv needed on their Mac. Output: dist/Waypoint.app at the repo root.
+# no repo or .venv needed on their Mac. Output: ~/Library/Caches/Waypoint-release/Waypoint.app.
+# Builds outside the repo on purpose: ~/Desktop is in iCloud Drive here, and iCloud tags every file
+# with xattrs that codesign refuses to sign ("resource fork, Finder information... not allowed").
 #
 #   ./mac-version/release/build.command                 # release build, dev switches ignored
 #   ./mac-version/release/build.command --test          # honours VIDA_DRY_RUN etc, for checking it
@@ -20,8 +22,9 @@ if ! "$PY" -c "import nuitka" 2>/dev/null; then
     || uv pip install --python "$PY" -r "$ROOT/mac-version/release/requirements.txt"
 fi
 
-STAGE="$ROOT/build/release"
-rm -rf "$STAGE"
+OUT="${OUT:-$HOME/Library/Caches/Waypoint-release}"
+STAGE="$OUT/stage"
+rm -rf "$STAGE" "$OUT/Waypoint.app" "$OUT/tmp.app"   # (Waypoint.app is waypoint.app too)
 mkdir -p "$STAGE"
 printf 'VERSION = "%s"\nTEST = %s\n' "$VERSION" "$TEST" > "$STAGE/waypoint_build.py"
 
@@ -34,7 +37,7 @@ echo "> compiling Waypoint $VERSION (test build: $TEST)"
 cd "$STAGE"
 PYTHONPATH="$ROOT/core:$ROOT/mac-version:$STAGE" "$PY" -m nuitka \
   --mode=app \
-  --output-dir="$ROOT/dist" \
+  --output-dir="$OUT" \
   --output-filename=Waypoint \
   --macos-app-name=Waypoint \
   --macos-signed-app-name=com.procookiemuncher.waypoint \
@@ -53,9 +56,13 @@ PYTHONPATH="$ROOT/core:$ROOT/mac-version:$STAGE" "$PY" -m nuitka \
   --include-data-files="$ROOT/core/places.json=places.json" \
   --include-data-dir="$ROOT/core/build/snap-cache=snap-cache" \
   --include-data-files="$ROOT/mac-version/app/Waypoint.icns=app/Waypoint.icns" \
+  --no-deployment-flag=self-execution \
   --assume-yes-for-downloads \
   --quiet \
   "$ROOT/mac-version/release/waypoint.py"
 
+# Nuitka names the bundle after the script. Two steps since the file system ignores case.
+mv "$OUT/waypoint.app" "$OUT/tmp.app" && mv "$OUT/tmp.app" "$OUT/Waypoint.app"
+codesign --verify --deep --strict "$OUT/Waypoint.app"
 echo
-echo "Done: $ROOT/dist/Waypoint.app"
+echo "Done: $OUT/Waypoint.app"
