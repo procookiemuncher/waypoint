@@ -167,6 +167,20 @@
     </div>
   </div>
 
+  <!-- ACCESS KEY (after the intro, before the boot log, when the build needs a key) -->
+  <div id="keygate" data-state="none" hidden>
+    <form id="key-card" onsubmit="submitKey(event)" autocomplete="off">
+      <svg class="kg-mark" viewBox="0 0 258 254" aria-hidden="true"><path fill-rule="evenodd" d="M62 162a32 32 0 1 1 0 64a32 32 0 1 1 0-64zM62 180a14 14 0 1 0 0 28a14 14 0 1 0 0-28zM58.090 140.37A151 151 0 0 1 129.15 62.65A15 15 0 0 1 142.85 89.35A121 121 0 0 0 85.90 151.63A15 15 0 0 1 58.09 140.37ZM194 28a34 34 0 1 1 0 68a34 34 0 1 1 0-68z"></path></svg>
+      <div id="key-title">Enter your access key</div>
+      <div id="key-sub">Paste the key you were sent to unlock Waypoint.</div>
+      <div id="key-box">
+        <input id="key-in" type="text" spellcheck="false" autocapitalize="characters" aria-label="Access key" placeholder="WPT-XXXX-XXXX-XXXX-XXXX" maxlength="40">
+        <svg class="kg-ok" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 L10 17 L19 7" fill="none"></path></svg>
+      </div>
+      <button id="key-go" type="submit">Unlock</button>
+    </form>
+  </div>
+
   <div id="crt"></div>
   <div id="vignette"></div>
   <div id="flicker"></div>
