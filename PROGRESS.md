@@ -7,6 +7,16 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-31 — Key dashboard is live on Vercel
+
+- https://waypoint-key-dashboard.vercel.app — private repo `procookiemuncher/waypoint-key-dashboard` (repo identity +
+  credential helper set to procookiemuncher like this repo), Vercel project linked to it (push = deploy), Upstash
+  Redis (free, iad1) connected, `ADMIN_PASSWORD` set for production (owner has it; not the local .env.local one).
+- Checked live: wrong password refused, create key → /api/check ok + IP recorded → delete → ok:false. Test key removed.
+- Next: a release build with `LICENSE_URL` set, tried with the phone.
+
+---
+
 ## 2026-10-31 — Access keys + a key dashboard
 
 **Model: Claude Opus 5.5 (Claude Code).** Owner wants to send Waypoint to paying users and cut access
