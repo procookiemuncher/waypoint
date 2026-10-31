@@ -7,6 +7,16 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-10-31 — Key screen v2: Silk shader + minimal glass
+
+- Owner wanted it calmer: background is now the "Silk" flow shader (21st.dev Shader Builder, colours
+  #02010A → #916BBF, cursor off), raw WebGL1 fullscreen triangle in `KeyFX` (app.js), paused when the
+  window is hidden or the screen is down, one still frame under reduced motion.
+- Card is a single frosted pane: glass icon tile (mark → green tick on unlock), title, four glass
+  key groups, glass button with a glint, ⌘V hint. The lock, orbits, aurora, grid, stars and confetti are gone.
+- Checked again in headless Chrome (none/bad/ok/revoke/narrow/reduced motion) and Safari. rjsmin
+  leaves the shader string byte-identical.
+
 ## 2026-10-31 — Key screen redesigned
 
 - The access-key card is now a full screen of its own (between the intro and the boot log, so still
