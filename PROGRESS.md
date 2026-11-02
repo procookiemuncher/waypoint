@@ -7,6 +7,13 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-02 — "Account limit exceeded" on the map
+
+- Owner saw that text on the map after the address flights landed. Not reproduced here: Stadia answered 200 on every tile from this Mac afterwards, in curl and in the page. The likely cause is Stadia's keyless localhost allowance (docs: "strict rate limits", 429), and the error comes back as a tile image, so it shows up on the map itself. The exact message and the size of the limit aren't documented anywhere I found.
+- Measured, dry run, Chromium, 2x: boot 131 tiles, a Miami→Paris flight 268, a short hop 100. Testing spent roughly 800+ of those too, same connection.
+- Fix so far: `updateWhenZooming:false` on the tile layer, the Miami→Paris flight is down to 156 and looks slightly soft in flight. This cuts usage, it doesn't remove the limit.
+- Open, owner's call: a Stadia key or another tile provider. Every tester shares this problem in release builds, and Stadia's docs say not to ship keys to end users where avoidable, so a key would need thought (proxy through the key dashboard?).
+
 ## 2026-11-02 — ⌘K: go to an address, then place the waypoint
 
 - `go <address>` in the palette (or the "Go to an address" row, or `address <...>`, or the "Find ... as an address" row at the end of any search). Picking a result closes the palette, flies the map there and drops a pin on the address. Click anywhere to move it, then the hero's SET LOCATION HERE sets it. Nothing reaches the phone before that button, the palette step only moves the map.
