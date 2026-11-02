@@ -7,6 +7,14 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-02 — ⌘K: go to an address, then place the waypoint
+
+- `go <address>` in the palette (or the "Go to an address" row, or `address <...>`, or the "Find ... as an address" row at the end of any search). Picking a result closes the palette, flies the map there and drops a pin on the address. Click anywhere to move it, then the hero's SET LOCATION HERE sets it. Nothing reaches the phone before that button, the palette step only moves the map.
+- `core/backend/geocode.py` + `GET /api/geocode?q=`: Photon (photon.komoot.io, OSM data, no key). Chose it over Nominatim because Nominatim's usage policy doesn't allow search-as-you-type. It's server side so it's behind the key gate. Typed addresses go to Photon, map position doesn't (no location bias, so a bare "123 main st" can land anywhere).
+- The motion is from 21st.dev's Expanded Map: its closest zoom (17) and its marker spring (400/20, sampled into a CSS `linear()`). That component is a card with static tiles, not a camera, so the camera move itself is Leaflet's `flyTo`/`flyToBounds`, 1.4-2.8 s depending on distance. Used 1 of the 2 free daily retrievals.
+- Every dropped pin is now that pin, not the old circle. City tags hide at zoom 16+ so they can't catch a placement click. Going to an address during a route turns Follow off (visible on its button), or the route would pull the map back.
+- Tested: `tests/test_geocode.py` (Photon stubbed) plus a Playwright run against a dry-run server with real Photon, Chromium only (Playwright's WebKit install here is broken): flight, mid-flight click ignored, pin moves, exactly one POST and only on the button, address label, error row, Esc, route playing. rjsmin output passes node --check. **Not tested:** the real pywebview window or a real phone. If WebKit ever rejected `linear()` the pin would just appear with no bounce.
+
 ## 2026-11-02 — ⌘K command palette (+ 21st MCP)
 
 - `core/web/static/palette.js` (new, loads after app.js, styles at the end of app.css), inspired by 21st.dev's "Command Palette with Argument Chips", no React. ⌘K / ctrl+K, or the search button on the Destinations header and city pages. Search routes/places/cities straight away, or type `play`, `pin` (`set` works too), `open`, `stop`; the rest becomes chips (action → target → engine → confirm).
