@@ -7,6 +7,16 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-02 — ⌘K command palette (+ 21st MCP)
+
+- `core/web/static/palette.js` (new, loads after app.js, styles at the end of app.css), inspired by 21st.dev's "Command Palette with Argument Chips", no React. ⌘K / ctrl+K, or the search button on the Destinations header and city pages. Search routes/places/cities straight away, or type `play`, `pin` (`set` works too), `open`, `stop`; the rest becomes chips (action → target → engine → confirm).
+- Nothing reaches the phone before the confirm step. There's a 250 ms guard so a double tap can't confirm, Enter key-repeat and Tab can't either, and no phone / busy blocks it. Esc only closes the palette, it never reaches the app's "esc stops the spoof" handler. Palette plays ignore the panel's MPH box (and clear it) so a leftover number can't change the run.
+- It won't open over the key, connect or boot screens, and closes itself if one of those takes over.
+- Tested: Playwright against a dry-run server (Drive engine mocked in, since browsers only get Spoof), plus ⌘K + typing in the real pywebview window. Release minifier output passes node --check. **Not tested:** the confirm step in the real window, or anything on a real phone.
+- `fly` isn't in the palette: the app has no flight API (only /api/place, /api/play, /api/stop), `fly` is still the launcher flow with manual airplane-mode steps. Needs the Mac flight engine first.
+- 21st.dev MCP installed for this project (local scope, key in ~/.claude.json, not the repo). Free tier: searches uncapped, 2 code retrievals a day, no AI. `get_inspiration` mostly returned bookmarks, plain `search` works better.
+- Next: owner is getting map redesign ideas from another session. Offered: merge the play + now-playing cards, console filters.
+
 ## 2026-10-31 — First tester DMG (with keys)
 
 - Real release build (`LICENSE_URL=https://waypoint-key-dashboard.vercel.app`, 0.1.0-beta.1, not --test): key URL is
