@@ -1,16 +1,19 @@
 /* ⌘K command palette. Loads after app.js and uses its globals (ROUTES, PLACES, STATUS, send, stopAll,
    selectItem, openCityPage...). Search anything, or build a command out of chips:
    action → route/place/city → engine → confirm. Nothing reaches the phone before the confirm step, since a
-   real run moves the owner's pin in front of their circle. Single-line strings only: the release build's
+   real run moves the owner's pin in front of their circle. `go` looks up an address and only moves the map:
+   the pin it leaves is set from the hero's button, like any dropped pin. Single-line strings only: the release build's
    rjsmin chokes on multiline template literals. */
 const Palette = (() => {
-  const VERBS = { play:'play', pin:'pin', set:'pin', open:'open' };
-  const CHIP = { play:'Play', pin:'Pin', open:'Open' };
-  const WANT = { play:'Which route?', pin:'Which place?', open:'Which city?' };
+  const VERBS = { play:'play', pin:'pin', set:'pin', open:'open', go:'go', address:'go' };
+  const CHIP = { play:'Play', pin:'Pin', open:'Open', go:'Go to' };
+  const WANT = { play:'Which route?', pin:'Which place?', open:'Which city?', go:'Type an address' };
   const MAX_RESULTS = 30;
+  const ADDRESS_MIN = 3, ADDRESS_WAIT_MS = 300;
   const CONFIRM_GUARD_MS = 250;   // a double tap on the step before shouldn't count as the confirm
 
   let shown=false, action=null, target=null, engine=null, rows=[], at=0, backTo=null, stepAt=0, sig='', timer=null;
+  let addr={ q:'', rows:[], state:'idle' }, addrSeq=0, addrTimer=null;
 
   const root=document.createElement('div');
   root.id='palette'; root.hidden=true;
@@ -45,11 +48,12 @@ const Palette = (() => {
   const routeRow = r => ({ kind:'route', def:r, title:r.label, sub:r.city+' · '+r.cardSub, name:r.label, extra:r.id+' '+r.city+' '+cityInfo(r.city).country, color:r.accent });
   const placeRow = p => ({ kind:'place', def:p, title:p.name, sub:p.city+placeNote(p), name:p.name, extra:p.id+' '+p.city+' '+cityInfo(p.city).country, color:p.accent });
   const cityRow = c => { const C=cityInfo(c); return { kind:'city', city:c, title:c, sub:[C.country, plural(cityItems(c).length,'item')].filter(Boolean).join(' · '), name:c, extra:C.country, flag:C.flag, color:C.color }; };
-  const verbRow = (v,title,sub) => ({ kind:'verb', verb:v, title, sub, name:v+' '+title, extra:'' });
+  const verbRow = (v,title,sub,extra='') => ({ kind:'verb', verb:v, title, sub, name:v+' '+title, extra });
+  const addressRow = a => ({ kind:'address', def:a, title:a.name, sub:a.sub });
   const stopRow = () => running()
     ? { kind:'stop', title:'Stop', sub:'Stop what’s running and put the phone back on real GPS', name:'stop', extra:'clear' }
     : { kind:'stop', off:true, title:'Stop', sub:'Nothing is running', name:'stop', extra:'clear' };
-  const verbRows = () => [verbRow('play','Play a route','Pick a route, then how to play it'), verbRow('pin','Pin a place','Hold the phone at a saved place'), verbRow('open','Open a city','Show a city and its routes')];
+  const verbRows = () => [verbRow('go','Go to an address','Zoom in on it, then choose exactly where the waypoint goes','address waypoint street find'), verbRow('play','Play a route','Pick a route, then how to play it'), verbRow('pin','Pin a place','Hold the phone at a saved place'), verbRow('open','Open a city','Show a city and its routes')];
 
   function search(pool, q){
     const tokens=norm(q).split(' ').filter(Boolean);
@@ -85,13 +89,15 @@ const Palette = (() => {
     if(s==='confirm') return [confirmRow()];
     if(s==='engine') return search(engineList().map(engineRow), q);
     if(s==='target'){
+      if(action==='go') return addr.rows;
       if(action==='play') return search(here(ROUTES,r=>r.city).map(routeRow), q);
       if(action==='pin') return search(here(PLACES,p=>p.city).map(placeRow), q);
       return search(cityNames().map(cityRow), q);
     }
     if(!norm(q)) return running() ? [stopRow(), ...verbRows()] : verbRows();
     const all=[stopRow(), ...verbRows(), ...cityNames().map(cityRow), ...PLACES.map(placeRow), ...ROUTES.map(routeRow)];
-    return search(all, q).slice(0,MAX_RESULTS);
+    // whatever's typed might be an address, so a search is never a dead end
+    return [...search(all, q).slice(0,MAX_RESULTS), { kind:'find', title:'Find “'+q.trim()+'” as an address', sub:'Look it up and zoom in on the map' }];
   }
 
   /* ---- drawing ---- */
@@ -107,12 +113,19 @@ const Palette = (() => {
   }
   function rowIcon(r){
     if(r.kind==='city') return '<span class="fl">'+r.flag+'</span>';
-    const name={ route:'route', place:'map-pin', stop:'square', engine:'gauge', verb:r.verb==='play'?'play':r.verb==='pin'?'map-pin':'map', confirm:action==='play'?'play':'map-pin' }[r.kind];
+    const name={ route:'route', place:'map-pin', address:'map-pin', find:'search', stop:'square', engine:'gauge', verb:r.verb==='go'?'navigation':r.verb==='play'?'play':r.verb==='pin'?'map-pin':'map', confirm:action==='play'?'play':'map-pin' }[r.kind];
     return icon(name,15);
+  }
+  function emptyText(){
+    const q=input.value.trim();
+    if(action!=='go') return 'Nothing matches “'+q+'”';
+    if(addr.state==='busy') return 'Searching…';
+    if(addr.state==='error') return 'Address search isn’t reachable right now';
+    return q.length<ADDRESS_MIN ? 'Street, city, or the name of a place' : 'No address found for “'+q+'”';
   }
   function drawList(){
     if(!rows.length){
-      list.innerHTML='<div class="pal-empty">Nothing matches “'+esc(input.value.trim())+'”</div>';
+      list.innerHTML='<div class="pal-empty">'+esc(emptyText())+'</div>';
       return;
     }
     list.innerHTML=rows.map((r,i)=>'<button class="pal-row'+(i===at?' on':'')+(r.off?' off':'')+'" role="option" id="pal-r'+i+'" aria-selected="'+(i===at)+'" data-i="'+i+'" tabindex="-1"'+(r.color?' style="--t:'+esc(r.color)+'"':'')+'>'
@@ -137,7 +150,8 @@ const Palette = (() => {
       note.classList.toggle('warn', !!b || running());
       keys.innerHTML = b ? '<span class="dim">Can’t run yet</span>' : '<kbd>↵</kbd> '+(action==='play'?'Play route':'Set location');
     } else {
-      note.textContent = s==='search' && !norm(input.value) ? 'Or type play, pin, open or stop' : rows.length ? (s==='search' && rows.length===MAX_RESULTS ? 'Top '+MAX_RESULTS+' results' : plural(rows.length,'result')) : '';
+      const n=rows.filter(r=>r.kind!=='find').length;
+      note.textContent = s==='search' && !norm(input.value) ? 'Or type go, play, pin, open or stop' : action==='go' && addr.state==='busy' ? 'Searching…' : n ? (s==='search' && n===MAX_RESULTS ? 'Top '+MAX_RESULTS+' results' : plural(n,'result')) : '';
       keys.innerHTML = '<kbd>↑↓</kbd> Move <kbd>↵</kbd> Select <kbd>esc</kbd> Close';
     }
   }
@@ -152,12 +166,33 @@ const Palette = (() => {
   const stateSig = () => [running(), STATUS?.busy, STATUS?.devices?.length, engineList().length].join('|');
 
   /* ---- actions ---- */
-  function moved(){ input.value=''; stepAt=performance.now(); draw(); input.focus(); }
+  function moved(){ input.value=''; forgetAddress(); stepAt=performance.now(); draw(); input.focus(); }
+  function forgetAddress(){ clearTimeout(addrTimer); addrSeq++; addr={ q:'', rows:[], state:'idle' }; }
+  function lookup(){
+    const q=input.value.trim().replace(/^to\s+/i,'');   // "go to ..." is typed one key at a time, past the chip
+    if(q===addr.q && addr.state!=='error') return;
+    const shownRows=addr.rows;
+    forgetAddress();
+    addr.q=q;
+    if(q.length<ADDRESS_MIN) return;
+    addr.rows=shownRows;   // keep the old list up while looking, so it doesn't blink on every key
+    addr.state='busy';
+    const id=addrSeq;
+    addrTimer=setTimeout(async()=>{
+      let found=[], state='error';
+      try{ found=await api('/api/geocode?q='+encodeURIComponent(q)); state='done'; }catch(e){}
+      if(id!==addrSeq) return;   // they kept typing, this answer is for an old query
+      addr={ q, rows:found.map(addressRow), state };
+      if(shown) draw();
+    }, ADDRESS_WAIT_MS);
+  }
   function pick(r){
     if(!r || r.off) return;
     if(r.kind==='stop'){ close(); stopAll(); return; }
     if(r.kind==='city'){ close(); openCityPage(r.city); return; }
     if(r.kind==='verb'){ action=r.verb; moved(); return; }
+    if(r.kind==='find'){ const q=input.value; action='go'; moved(); input.value=q; lookup(); draw(); return; }
+    if(r.kind==='address'){ close(); flyToAddress(r.def); return; }
     if(r.kind==='route'){ action='play'; target={ def:r.def }; moved(); return; }
     if(r.kind==='place'){ action='pin'; target={ def:r.def }; moved(); return; }
     if(r.kind==='engine'){ engine=r.id; moved(); return; }
@@ -205,7 +240,7 @@ const Palette = (() => {
   }
   function close(){
     if(!shown) return;
-    shown=false; clearInterval(timer);
+    shown=false; clearInterval(timer); forgetAddress();
     root.hidden=true;
     if(backTo && backTo!==document.body && backTo.isConnected) backTo.focus();
     backTo=null;
@@ -218,6 +253,7 @@ const Palette = (() => {
       const v=m && VERBS[m[1].toLowerCase()];
       if(v){ action=v; input.value=m[2]; stepAt=performance.now(); }
     }
+    if(action==='go') lookup();
     draw();
   });
   input.addEventListener('keydown', e=>{
@@ -226,10 +262,11 @@ const Palette = (() => {
       if(rows.length){ at=(at+(e.key==='ArrowDown'?1:-1)+rows.length)%rows.length; drawList(); }
     } else if(e.key==='Enter'){
       e.preventDefault();
-      if(!e.repeat && !e.isComposing) pick(rows[at]);
+      // the list is still for what was typed before; Enter shouldn't fly off to that
+      if(!e.repeat && !e.isComposing && !(action==='go' && addr.state==='busy')) pick(rows[at]);
     } else if(e.key==='Tab'){
       e.preventDefault();   // moves to the next chip, never out of the palette, and can't run anything
-      if(rows[at]?.kind!=='confirm') pick(rows[at]);
+      if(rows[at]?.kind!=='confirm' && rows[at]?.kind!=='address') pick(rows[at]);
     } else if(e.key==='Backspace' && !input.value){
       e.preventDefault(); back();
     }
