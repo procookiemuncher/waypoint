@@ -728,6 +728,7 @@ function galleryHtml(W){
   const names=cityNames(), countries=countryNames();
   if(!names.length) return `<div class="bempty">no routes in core/routes/ or places in core/places.json yet</div>`;
   return `<div class="bhead"><div><h2>Destinations</h2><div class="sub">${plural(names.length,'city')} in ${plural(countries.length,'country')}</div></div>
+      <button id="cmdk" onclick="Palette.open()" title="Search (⌘K)" aria-label="Search">${icon('search',15)}</button>
       <button id="resetview" onclick="resetView()" title="Reset view" aria-label="Reset view">${icon('rotate-ccw',15)}</button></div>`
     + countries.map(k=>{
       const cs=countryCities(k), shut=shutCountries.has(k);
@@ -752,6 +753,7 @@ function cityHtml(W){
   const cardW=Math.floor((W-38)/2);
   return `<div class="chero" style="--t:${C.color}">${mapArt(items, W, 200, C.color, 40)}<div class="shade"></div>
       <button class="backb" data-back>${icon('chevron-left',16)}Destinations</button>
+      <button class="cmdkb" onclick="Palette.open()" title="Search (⌘K)" aria-label="Search">${icon('search',15)}</button>
       <div class="in"><div class="cn"><span class="flag">${C.flag}</span>${esc(c)}</div>${C.country?`<div class="cc">${esc(C.country)}${C.tz?` · ${esc(localTime(C.tz))} there`:''}</div>`:''}</div></div>
     <div class="cstats"><div><b>${R.length}</b><span>${R.length===1?'route':'routes'}</span></div>
       <div><b>${R.length?miles.toFixed(miles<10?1:0)+' mi':'—'}</b><span>of road</span></div>
