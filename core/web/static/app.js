@@ -457,8 +457,8 @@ async function send(cmd, path, body){
 function setPlace(p){
   send('set '+p.id, '/api/place', { key:p.id });
 }
-function setPoint(lat, lon){
-  send(`set ${lat.toFixed(5)} ${lon.toFixed(5)}`, '/api/place', { lat, lon, label:`Pin ${lat.toFixed(4)}, ${lon.toFixed(4)}` });
+function setPoint(lat, lon, label){
+  send(`set ${lat.toFixed(5)} ${lon.toFixed(5)}`, '/api/place', { lat, lon, label:label ? label.slice(0,80) : `Pin ${lat.toFixed(4)}, ${lon.toFixed(4)}` });
 }
 function playRoute(rt){
   const engine = selEngine();
@@ -813,6 +813,7 @@ function drawBrowseMap(){
   if(!browseLayer) browseLayer=L.layerGroup().addTo(map);
   browseLayer.clearLayers();
   if(!openCity){
+    if(map.getZoom()>=16) return;   // down at street level a city tag only gets in the way of placing a pin
     for(const k of cityClusters()){
       const c=k.cities[0], C=cityInfo(c), more=k.cities.length-1;
       const n=k.cities.reduce((s,x)=>s+cityItems(x).length, 0);
@@ -902,15 +903,47 @@ function selectItem(item){
   }
   refreshHeroButton();
 }
-function dropPin(lat, lon){
+const PIN_SVG='<svg width="32" height="32" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>';
+// name: what to call the pin when it's on a looked-up address, moving it makes it a plain pin again
+function dropPin(lat, lon, name){
   if(pinCandidate) map.removeLayer(pinCandidate);
   if(preview && !live){ map.removeLayer(preview); preview=null; }
-  pinCandidate=L.circleMarker([lat,lon],{ radius:7, color:DEFAULT_ACCENT, weight:2, fillOpacity:.25 }).addTo(map);
+  // not interactive, so a click right on the pin still reaches the map and moves it
+  pinCandidate=L.marker([lat,lon],{ icon:L.divIcon({ className:'wp-pin', html:PIN_SVG, iconSize:[32,32], iconAnchor:[16,29] }), interactive:false, keyboard:false }).addTo(map);
   document.querySelectorAll('#browse [data-id]').forEach(b=>b.classList.remove('sel'));
-  const def={ id:'pin', name:'Dropped pin', sub:`${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon, zoom:Math.round(map.getZoom()), accent:DEFAULT_ACCENT };
+  const def={ id:'pin', name:name||'Dropped pin', pinLabel:name, sub:`${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon, zoom:Math.round(map.getZoom()), accent:DEFAULT_ACCENT };
   const keep=pinCandidate; pinCandidate=null;   // selectItem clears selection layers
   selectItem({ type:'pin', def });
   pinCandidate=keep;
+}
+const ADDRESS_ZOOM=17;   // the closest of the levels in 21st.dev's Expanded Map, street level
+let flightId=0;
+// fly to a looked-up address and put a pin there to move around. Doesn't touch the phone: that's still
+// the hero's SET LOCATION HERE
+function flyToAddress(a){
+  const id=++flightId;
+  if(live && follow) toggleFollow();   // a playing route would pull the map straight back
+  const land=()=>{
+    if(id!==flightId) return;
+    flightId++;
+    document.body.classList.remove('flying');
+    if(!live) setCoord(a.lat, a.lon);
+    dropPin(a.lat, a.lon, a.name);
+  };
+  const b=a.bounds && L.latLngBounds(a.bounds);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){
+    map.setView([a.lat,a.lon], ADDRESS_ZOOM, { animate:false });
+    return land();
+  }
+  // far away takes longer, but nobody should sit through a long flight to the other side of the world
+  const km=map.distance(map.getCenter(), [a.lat,a.lon])/1000;
+  const duration=Math.min(2.8, 1.4+Math.log10(1+km)*.35);
+  // a click during the flight would drop the pin wherever the map happens to be passing over
+  document.body.classList.add('flying');
+  if(b) map.flyToBounds(b, { duration, maxZoom:ADDRESS_ZOOM });
+  else map.flyTo([a.lat,a.lon], ADDRESS_ZOOM, { duration });
+  map.once('moveend', land);
+  setTimeout(land, duration*1000+500);   // moveend can be missed if something else moves the map
 }
 function refreshHeroButton(){
   const b=$('hero-action');
@@ -924,7 +957,7 @@ function refreshHeroButton(){
 function runSelected(){
   if(!selected || $('hero-action').disabled) return;
   if(selected.type==='route') playRoute(selected.def);
-  else if(selected.type==='pin') setPoint(selected.def.lat, selected.def.lon);
+  else if(selected.type==='pin') setPoint(selected.def.lat, selected.def.lon, selected.def.pinLabel);
   else setPlace(selected.def);
 }
 function markLive(){

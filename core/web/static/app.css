@@ -1022,3 +1022,15 @@ path.glowcase { filter: blur(5px); }
   min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; display: inline-grid; place-items: center;
   background: rgba(255,255,255,.07); color: #c9d1d9; font: 500 10.5px 'Inter', system-ui, sans-serif; margin-left: 4px;
 }
+
+/* the pin you place on the map. The drop is Expanded Map's marker from 21st.dev (scale 0→1, y -20→0,
+   spring stiffness 400, damping 20), sampled into linear() since there's no motion library here */
+body.flying #map { pointer-events: none; }
+.wp-pin svg {
+  display: block; overflow: visible; transform-origin: 50% 90%; filter: drop-shadow(0 0 10px rgba(var(--accent-rgb),.5));
+  animation: pin-drop .6s linear(0,.104,.34,.61,.849,1.023,1.124,1.162,1.153,1.118,1.075,1.034,1.002,.983,.974,.974,.979,.986,.993,.999,1.002,1.004,1.004,1.004,1) both;
+}
+.wp-pin path { fill: var(--accent); }
+.wp-pin circle { fill: #0d0f14; }
+@keyframes pin-drop { from { transform: translateY(-20px) scale(0); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .wp-pin svg { animation: none; } }
