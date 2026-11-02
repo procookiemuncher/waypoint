@@ -142,6 +142,8 @@ function initMap(){
   // Stadia's dark style is keyless from localhost (CARTO wants an API key now)
   const tiles = L.tileLayer(TILE_URL, {
     attribution:'© Stadia Maps © OpenMapTiles © OpenStreetMap', maxZoom:20,
+    // keyless Stadia is strictly rate limited, and every zoom level a flight passes through was costing tiles
+    updateWhenZooming:false,
   });
   tiles.once('load', ()=>{ tilesReady=true; });
   // only after the page's load event: pywebview keeps the window black until load fires, and
