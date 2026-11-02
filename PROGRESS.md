@@ -7,6 +7,13 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-02 — Stadia API key for the map
+
+- Owner made a Stadia account. No custom domain needed: domain auth checks the website a request comes from, and this is an app on 127.0.0.1.
+- Key is in the gitignored root `.env` as `VIDA_STADIA_KEY`, not in the repo. New `GET /tiles/{z}/{x}/{name}` (`core/backend/tiles.py`) redirects to Stadia with it, so the page's source never has it. It is still visible in the app's own network traffic.
+- Tested in Chromium on a dry run with `tests/test_tiles.py` too: with the key 323/323 tiles 200 and all keyed, with no `.env` 317/317 200 and keyless (Referer survives the redirect). **Not seen in the real window**, and we still haven't seen whether the limit message clears there.
+- **Open:** release builds don't get the key, so testers are still on keyless access. Owner's call: serve it through the key dashboard, or bake it in. Also check whether Stadia's plan covers a paid product.
+
 ## 2026-11-02 — "Account limit exceeded" on the map
 
 - Owner saw that text on the map after the address flights landed. Not reproduced here: Stadia answered 200 on every tile from this Mac afterwards, in curl and in the page. The likely cause is Stadia's keyless localhost allowance (docs: "strict rate limits", 429), and the error comes back as a tile image, so it shows up on the map itself. The exact message and the size of the limit aren't documented anywhere I found.
