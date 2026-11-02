@@ -12,7 +12,7 @@ if __name__ == "__main__":   # run as a script: make `backend` importable
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -22,6 +22,7 @@ from backend.license import License
 from backend.places import load_places
 from backend.routes import RouteError, route_files, summary
 from backend.session import Session
+from backend.tiles import load_key, tile_url
 
 WEB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web")
 
@@ -52,6 +53,7 @@ def create_app(session: Session, license: License | None = None) -> FastAPI:
     app = FastAPI(title="vida-360", docs_url=None, redoc_url=None)
     app.mount("/static", StaticFiles(directory=os.path.join(WEB, "static")), name="static")
     route_cache = {}   # path -> (mtime, summary)
+    tile_key = load_key()
 
     @app.middleware("http")
     async def same_origin_only(request: Request, call_next):
@@ -74,6 +76,13 @@ def create_app(session: Session, license: License | None = None) -> FastAPI:
     @app.get("/")
     def index():
         return FileResponse(os.path.join(WEB, "index.html"), headers={"Cache-Control": "no-store"})
+
+    @app.get("/tiles/{z}/{x}/{name}")
+    def tile(z: int, x: int, name: str):
+        url = tile_url(z, x, name, tile_key)
+        if not url:
+            raise HTTPException(404, "not a tile")
+        return RedirectResponse(url, status_code=302, headers={"Cache-Control": "max-age=21600"})
 
     @app.get("/api/license")
     def license_status(wait: int = 0):
