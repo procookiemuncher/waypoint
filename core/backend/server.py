@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from backend.destinations import city_info
+from backend.geocode import GeocodeError, search as geocode_search
 from backend.license import License
 from backend.places import load_places
 from backend.routes import RouteError, route_files, summary
@@ -116,6 +117,13 @@ def create_app(session: Session, license: License | None = None) -> FastAPI:
                     continue
             out.append(cached[1])
         return out
+
+    @app.get("/api/geocode")
+    def geocode(q: str = ""):
+        try:
+            return geocode_search(q)
+        except GeocodeError as e:
+            raise HTTPException(502, str(e))
 
     @app.post("/api/place")
     def place(req: PlaceReq):
