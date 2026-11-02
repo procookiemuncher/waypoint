@@ -128,7 +128,7 @@ function setAccent(hex){
 }
 
 /* ============ MAP ============ */
-const TILE_URL='https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png';
+const TILE_URL='/tiles/{z}/{x}/{y}{r}.png';   // the server sends these on to Stadia with the API key
 let map, tilesReady=false;
 let marker=null, lineDim=null, lineGlow=null, lineDone=null, lineHead=null;   // live layers
 let preview=null, pinCandidate=null;                           // selection layers
@@ -139,10 +139,10 @@ function initMap(){
   // the blurred route glow gets its own layer under the lines, so redrawing the line as the
   // marker moves doesn't re-blur it every frame
   map.createPane('glow').style.zIndex=399;
-  // Stadia's dark style is keyless from localhost (CARTO wants an API key now)
+  // Stadia's dark style (CARTO wants an API key now)
   const tiles = L.tileLayer(TILE_URL, {
     attribution:'© Stadia Maps © OpenMapTiles © OpenStreetMap', maxZoom:20,
-    // keyless Stadia is strictly rate limited, and every zoom level a flight passes through was costing tiles
+    // every zoom level a flight passes through was costing tiles, against a rate limit without a key
     updateWhenZooming:false,
   });
   tiles.once('load', ()=>{ tilesReady=true; });
