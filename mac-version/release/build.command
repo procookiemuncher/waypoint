@@ -81,5 +81,12 @@ PYTHONPATH="$ROOT/core:$ROOT/mac-version:$STAGE" "$PY" -m nuitka \
 # Nuitka names the bundle after the script. Two steps since the file system ignores case.
 mv "$OUT/waypoint.app" "$OUT/tmp.app" && mv "$OUT/tmp.app" "$OUT/Waypoint.app"
 codesign --verify --deep --strict "$OUT/Waypoint.app"
+
+# The app runs itself as pmd3 for every phone call, and a dry run skips those, so check it for real.
+echo "> checking the compiled pmd3 runs"
+if ! "$OUT/Waypoint.app/Contents/MacOS/Waypoint" -m pymobiledevice3 usbmux list >/dev/null; then
+  echo "The compiled app can't run pmd3 (usbmux list failed), not shipping this"
+  exit 1
+fi
 echo
 echo "Done: $OUT/Waypoint.app"
