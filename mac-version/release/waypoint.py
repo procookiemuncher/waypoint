@@ -23,12 +23,16 @@ BUNDLED_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "snap-c
 def child():
     """We got started as a stand-in for python. True if this process was one of those."""
     args = sys.argv[1:]
-    if args[:2] == ["-m", "pymobiledevice3"]:
-        sys.argv = ["pymobiledevice3", *args[2:]]
+    if args[:2] == ["-m", "pymobiledevice3"] or args[:1] == ["-c"]:
         # pmd3's utils.py imports IPython up top, only its interactive shell commands use it, and
         # it's left out of the build (it's big, and dragged in jedi). An empty stand-in does.
+        # editor is the same idea: inquirer3 imports it for Editor questions, which pmd3 never asks,
+        # and it pulls in runs -> xmod, whose module wrapping segfaults under Nuitka on import.
         import types
-        sys.modules.setdefault("IPython", types.ModuleType("IPython"))
+        for name in ("IPython", "editor"):
+            sys.modules.setdefault(name, types.ModuleType(name))
+    if args[:2] == ["-m", "pymobiledevice3"]:
+        sys.argv = ["pymobiledevice3", *args[2:]]
         from pymobiledevice3.__main__ import main
         main()
         return True
