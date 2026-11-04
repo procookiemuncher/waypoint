@@ -3,13 +3,14 @@
 # (Xcode or its command line tools — you have Xcode anyway for drive.command).
 # The app is a thin wrapper that runs this repo's .venv + mac-version/app.py, so it has the repo
 # path baked in: if you move the repo, just run this again.
-# It also bakes in the key dashboard, so it asks for an access key like the release build does.
-# LICENSE_URL= ./mac-version/make-app.command builds a keyless one instead.
+# This is the dev build: no access key, and it says DEV BUILD in the titlebar. Only the release
+# build (release/build.command) asks for a key.
+# LICENSE_URL=https://waypoint-key-dashboard.vercel.app ./mac-version/make-app.command to try the key gate here.
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PY="$ROOT/.venv/bin/python"
 APP="${1:-$HOME/Applications}/Waypoint.app"
-LICENSE_URL="${LICENSE_URL-https://waypoint-key-dashboard.vercel.app}"
+LICENSE_URL="${LICENSE_URL-}"
 
 if [ ! -x "$PY" ]; then
   echo "No .venv yet — run ./mac-version/setup.command first."
