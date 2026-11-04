@@ -7,6 +7,14 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-04 — Release app crashed every 4 s, + dev build badge
+
+- **Crash:** opening the Oct 31 DMG with no key/phone changes kept popping "Waypoint quit unexpectedly". The app was fine, its self-exec'd pmd3 child segfaulted on import: inquirer3 -> editor -> runs -> xmod dies under Nuitka (`Waypoint -m pymobiledevice3 usbmux list` exit 139, 9 identical crash reports). Every earlier check was a dry run, which skips pmd3, so nothing caught it. It also means that DMG most likely can't see a phone at all.
+- Fix: `release/waypoint.py` stubs `editor` like it does IPython (pmd3 never asks an Editor question). `build.command` now fails if the compiled app can't run `usbmux list`. A fresh non-test build got through that check, codesign too. Owner ran it and says it no longer crashes.
+- **`~/Desktop/Waypoint-0.1.0-beta.1.dmg` is still the broken build, not rebuilt.** Anyone who has it gets the crash. Next: new release build + DMG, then try it with a phone attached, which still hasn't been done from a compiled app.
+- **Dev vs production (owner's call):** the Dock app (`make-app.command`) is now the dev build: no key by default, DEV BUILD next to the phone pill. That reverses 10-31's "Dock app uses the key system too", it was still baked in even though the owner thought it wasn't. Release is the key build, no badge. `/api/status` `dev_build` = `waypoint_build` isn't imported, so `--test` release builds show no badge either.
+- Tested: `tests/test_dev_badge.py`, and the page in Chromium on a dry run, with and without a stand-in `waypoint_build` (badge there / gone). Dock app rebuilt, keyless, status says `dev_build: true`, but I couldn't get a screenshot of the badge in the real window (it was on another Space and captured blank). The release build above was compiled before the badge went in, so no real compiled build has the new page yet.
+
 ## 2026-11-02 — Stadia API key for the map
 
 - Owner made a Stadia account. No custom domain needed: domain auth checks the website a request comes from, and this is an app on 127.0.0.1.

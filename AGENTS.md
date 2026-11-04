@@ -222,6 +222,7 @@ shows while no saved key checks out — to see it again, delete the key on the d
 Next.js app in `~/Desktop/projects/key dashboard` (GitHub `procookiemuncher/waypoint-key-dashboard`, private),
 live at **https://waypoint-key-dashboard.vercel.app** (Vercel team "cookie's projects", Upstash Redis, pushes to
 main auto-deploy). Release builds: `LICENSE_URL=https://waypoint-key-dashboard.vercel.app ./mac-version/release/build.command`.
+**Two builds (2026-11-04):** the Dock app from `make-app.command` is the **dev build**, keyless with a DEV BUILD badge in the titlebar. The compiled `release/build.command` app is **production**, asks for a key, no badge. A saved key skips the key screen, so to see it as a new user would, launch with an empty profile: `open -n --env HOME=/some/empty/dir <app>`. Dry runs never run pmd3, so they can't prove a compiled build works; `build.command` checks that itself now.
 `core/backend/license.py` checks the saved key at launch and every 5 min; a deleted key locks the app
 (running jobs keep going, nothing new starts), dashboard unreachable keeps a key that checked out in
 the last 6 h. On only when a URL is set: `LICENSE_URL` baked in by `release/build.command` (required
