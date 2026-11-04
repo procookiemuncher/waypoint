@@ -329,6 +329,7 @@ async function pollStatus(){
     }
     $('sb-phone').textContent = dev ? `${dev.name} · iOS ${dev.ios}` : 'not found';
     $('drybadge').hidden = !st.dry_run;
+    $('devbadge').hidden = !st.dev_build;
     if(st.busy) setMode(st.busy.toUpperCase()+'…');
     syncLive(st.active);
     refreshHeroButton();

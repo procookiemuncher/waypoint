@@ -98,7 +98,8 @@ def create_app(session: Session, license: License | None = None) -> FastAPI:
 
     @app.get("/api/status")
     def status():
-        return session.status()
+        # waypoint_build only exists in the compiled release app, anything else is running from the repo
+        return {**session.status(), "dev_build": "waypoint_build" not in sys.modules}
 
     @app.get("/api/logs")
     def logs(since: int = 0):
