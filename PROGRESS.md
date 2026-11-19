@@ -7,6 +7,16 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-18 — Can we drop Xcode? (research + probe, not on-device yet)
+
+- Goal: users shouldn't need Xcode. Today it's needed for devicectl (drive speed, pins, clear, lock state, airplane Shortcut) and because pmd3 9.33.1 can't mount the DDI on iOS 27.
+- Found: devicectl's speed sim is a phone-side service (`dtlocationd` → RSD `com.apple.coredevice.locationservice`, feature `simulatelocation`, actions `setsimulatedlocation` / `startlocationsimulation {waypoints, speed, pacing}` / `clearsimulatedlocation`). pmd3 speaks CoreDevice already and has a stub for this service. pmd3 11.59 looks like it fixes the ApBoardID mount crash. Details: docs/research/no-xcode-speed-sim.md.
+- Added `core/tools/probe_coredevice_location.py` + `mac-version/probe-no-xcode.command` (own venv, newest pmd3, app venv untouched). Checked that it installs and starts. Nothing tested on the phone yet, it wasn't connected.
+- If it works, the speed path also works on Windows and drive can move into core.
+- **Next:** reboot phone → run the probe → put the accepted input shapes into device.py → find a pmd3 way to open the `shortcuts://` URL → upgrade pmd3 in the app and get it through the Nuitka build check.
+
+---
+
 ## 2026-11-04 — Release app crashed every 4 s, + dev build badge
 
 - **Crash:** opening the Oct 31 DMG with no key/phone changes kept popping "Waypoint quit unexpectedly". The app was fine, its self-exec'd pmd3 child segfaulted on import: inquirer3 -> editor -> runs -> xmod dies under Nuitka (`Waypoint -m pymobiledevice3 usbmux list` exit 139, 9 identical crash reports). Every earlier check was a dry run, which skips pmd3, so nothing caught it. It also means that DMG most likely can't see a phone at all.
