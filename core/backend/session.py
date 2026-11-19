@@ -1,28 +1,20 @@
 """What the app drives: one phone, one active job at a time.
 
 Starting anything stops whatever was running first. Stopping kills the job and clears every
-location service we touched since the last clear (pmd3's DVT sim and devicectl's CoreDevice sim
+location service we touched since the last clear (pmd3's DVT sim and the phone's CoreDevice sim
 are separate services, so clearing one doesn't clear the other).
 
-Route engines are pluggable: core ships `spoof` (pmd3 GPX replay, works everywhere); the Mac
-app registers `drive` (devicectl, real speed) from mac-version/.
+Route engines are pluggable. Both ship in core and both go through backend/device.py: `spoof`
+(pmd3 DVT GPX replay, follows the route's timing but Life360 sees 0 mph) and `drive` (the
+CoreDevice sim, real speed, backend/drive.py).
 """
 import threading
 import time
 from collections import deque
 
 from backend.device import DRY_RUN, Pmd3
-from backend.routes import RouteError, build_gpx, route_path
-
-MAX_TIMELINE_POINTS = 1500
-
-
-def thin(points: list, limit: int = MAX_TIMELINE_POINTS) -> list:
-    """Keep the first/last point and an even spread in between — plenty for drawing the pin."""
-    if len(points) <= limit:
-        return points
-    step = (len(points) - 1) / (limit - 1)
-    return [points[round(i * step)] for i in range(limit)]
+from backend.drive import DriveEngine
+from backend.routes import RouteError, build_gpx, route_path, thin
 
 
 class SpoofEngine:
@@ -56,6 +48,7 @@ class Session:
         self.engines = {}
         self.services = {}                 # service name -> clear(log)
         self.register(SpoofEngine(self.pmd3))
+        self.register(DriveEngine())
         self.lock = threading.Lock()       # one phone action at a time
         self.job = None
         self.active = None                 # what's on the phone right now, for the UI
@@ -83,8 +76,8 @@ class Session:
         self.readiness_check = check
 
     def use_placer(self, engine):
-        """Hold places / pins with a registered engine's hold() instead of pmd3's (the Mac app
-        uses devicectl, since pmd3 can't mount on iOS 27)."""
+        """Hold places / pins with a registered engine's hold() instead of pmd3's DVT one (the Mac
+        app uses drive's CoreDevice hold, which hands off and exits instead of keeping a process)."""
         self.placer = engine
 
     def log(self, text: str, level: str = "sys"):
@@ -158,8 +151,8 @@ class Session:
         active = dict(self.active) if self.active else None
         if active and self.job:
             code = self.job.poll()
-            # pmd3 jobs stay alive until stopped; devicectl hands off and exits 0. Anything
-            # else exiting is a failure the UI should show.
+            # pmd3 DVT jobs stay alive until stopped; CoreDevice calls hand off and exit 0.
+            # Anything else exiting is a failure the UI should show.
             if code not in (None, 0):
                 active["state"] = "failed"
                 self.mounted = False   # most pmd3 failures are a missing/stale DDI — remount next time
@@ -238,8 +231,7 @@ class Session:
             self._stop_job()
             service = self.placer.service if self.placer else "pmd3"
             self._clear_dirty(keep=service)
-            if not self.placer:
-                self._ensure_mounted()
+            self._ensure_mounted()   # both location sims come in with the DDI
             self.log(f"holding at {label} ({lat:.5f}, {lon:.5f})", "accent")
             holder = self.placer or self.pmd3
             self.job = holder.hold(lat, lon, lambda line: self.log(line, "dim"))
@@ -259,8 +251,7 @@ class Session:
             self.log(f"building {route_id} for {engine.label.lower()}…", "dim")
             prepared = engine.prepare(path, mph, lambda line: self.log(line, "dim"))
             self._clear_dirty(keep=engine.service)
-            if engine.service == "pmd3":
-                self._ensure_mounted()
+            self._ensure_mounted()
             self.job = engine.start(prepared, lambda line: self.log(line, "dim"))
             self.dirty.add(engine.service)
             self.active = {"kind": "route", "route": route_id, "engine": engine.id,
