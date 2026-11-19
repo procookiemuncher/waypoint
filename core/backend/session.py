@@ -208,7 +208,7 @@ class Session:
         log("mounting developer disk image (phone must be unlocked)…")
         before = self.readiness[0]
         if before != "error":   # error → error retries would only make it flicker
-            self.readiness = ("checking", "putting the developer disk image on the phone, the first time takes a few minutes")
+            self.readiness = ("checking", "getting the developer disk image ready, the first time can take a few minutes")
         state, message = self.pmd3.mount(log)
         if state != before or not quiet:
             if state == "locked":
