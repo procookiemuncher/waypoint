@@ -25,5 +25,7 @@ All commands from the repo root.
 
 ## What Windows can't do yet
 
-**Real speed (mph + the car icon on Life360) is Mac-only for now.** It comes from Xcode's
-`devicectl`, which doesn't exist on Windows. Spoofed drives here show 0 mph on Life360.
+**Real speed (mph + the car icon on Life360) is untested on Windows.** It used to need Xcode's
+`devicectl`; since 2026-11 it goes through pymobiledevice3 like everything else, so
+`.venv\Scripts\python.exe core\tools\drive.py emoji-test` should work here, but nobody has tried it.
+There's no `drive.cmd` launcher yet. Spoofed drives show 0 mph on Life360.

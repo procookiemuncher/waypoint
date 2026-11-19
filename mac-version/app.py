@@ -22,11 +22,8 @@ import uvicorn
 import webview
 
 from backend.server import create_app, free_port
-from backend.device import DRY_RUN
 from backend.license import License
 from backend.session import Session
-from drive_engine import DriveEngine
-from phone_check import DevicectlReadiness
 import splash
 
 APP_NAME = "Waypoint"
@@ -127,11 +124,7 @@ def main():
     signal.pthread_sigmask(signal.SIG_BLOCK, [signal.SIGTERM])   # before any thread exists
     look_like_an_app()
     session = Session()
-    drive = DriveEngine()
-    session.register(drive)
-    session.use_placer(drive)   # places + pins through devicectl too
-    if not DRY_RUN:   # dry runs keep the fake phone so the connect screen can be worked on
-        session.use_readiness(DevicectlReadiness())
+    session.use_placer(session.engines["drive"])   # places + pins through the CoreDevice sim too
 
     lic = License.from_config()   # None unless this build (or VIDA_LICENSE_URL) names a key dashboard
     if lic:

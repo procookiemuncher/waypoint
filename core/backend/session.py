@@ -1,28 +1,20 @@
 """What the app drives: one phone, one active job at a time.
 
 Starting anything stops whatever was running first. Stopping kills the job and clears every
-location service we touched since the last clear (pmd3's DVT sim and devicectl's CoreDevice sim
+location service we touched since the last clear (pmd3's DVT sim and the phone's CoreDevice sim
 are separate services, so clearing one doesn't clear the other).
 
-Route engines are pluggable: core ships `spoof` (pmd3 GPX replay, works everywhere); the Mac
-app registers `drive` (devicectl, real speed) from mac-version/.
+Route engines are pluggable. Both ship in core and both go through backend/device.py: `spoof`
+(pmd3 DVT GPX replay, follows the route's timing but Life360 sees 0 mph) and `drive` (the
+CoreDevice sim, real speed, backend/drive.py).
 """
 import threading
 import time
 from collections import deque
 
 from backend.device import DRY_RUN, Pmd3
-from backend.routes import RouteError, build_gpx, route_path
-
-MAX_TIMELINE_POINTS = 1500
-
-
-def thin(points: list, limit: int = MAX_TIMELINE_POINTS) -> list:
-    """Keep the first/last point and an even spread in between — plenty for drawing the pin."""
-    if len(points) <= limit:
-        return points
-    step = (len(points) - 1) / (limit - 1)
-    return [points[round(i * step)] for i in range(limit)]
+from backend.drive import DriveEngine
+from backend.routes import RouteError, build_gpx, route_path, thin
 
 
 class SpoofEngine:
@@ -56,6 +48,7 @@ class Session:
         self.engines = {}
         self.services = {}                 # service name -> clear(log)
         self.register(SpoofEngine(self.pmd3))
+        self.register(DriveEngine())
         self.lock = threading.Lock()       # one phone action at a time
         self.job = None
         self.active = None                 # what's on the phone right now, for the UI
@@ -63,9 +56,8 @@ class Session:
         self.dirty = set()                 # services that may still be holding a fake location
         self.closing = False               # set by shutdown(); queued actions then do nothing
         self.mounted = False
-        self.readiness = ("checking", "")  # last mount attempt's verdict, for the connect screen
+        self.readiness = ("checking", "")  # (state, message) for the connect screen, kept by _probe
         self._probe_at, self._probing = 0.0, False
-        self.readiness_check = None        # optional (udid) -> (state, message); see use_readiness()
         self.placer = None                 # optional engine with hold(lat, lon, log); see use_placer()
         self.logs = deque(maxlen=400)
         self.seq = 0
@@ -76,15 +68,9 @@ class Session:
         self.engines[engine.id] = engine
         self.services[engine.service] = engine.clear
 
-    def use_readiness(self, check):
-        """Swap the connect screen's mount-based unlock check for a platform one (the Mac app
-        uses devicectl's real lock state). `check(udid)` returns (state, message), state being
-        "ready", "locked" or "error". It must be cheap — it's polled every couple of seconds."""
-        self.readiness_check = check
-
     def use_placer(self, engine):
-        """Hold places / pins with a registered engine's hold() instead of pmd3's (the Mac app
-        uses devicectl, since pmd3 can't mount on iOS 27)."""
+        """Hold places / pins with a registered engine's hold() instead of pmd3's DVT one (the Mac
+        app uses drive's CoreDevice hold, which hands off and exits instead of keeping a process)."""
         self.placer = engine
 
     def log(self, text: str, level: str = "sys"):
@@ -106,20 +92,19 @@ class Session:
         return self._devices
 
     def phone(self) -> dict:
-        """Is the phone plugged in and unlocked? By default unlocked = the DDI mounted (it won't on
-        a locked phone), and once mounted we don't notice the phone re-locking. A platform
-        readiness_check replaces that with a live answer. Either way the check runs in the
-        background so polling stays fast."""
+        """Is the phone plugged in, unlocked and carrying the DDI? The lock comes live from
+        lockdown (plain USB, no tunnel), so re-locking shows up too, and the DDI gets mounted once
+        per plug-in. The check runs in the background so polling stays fast."""
         if not self.devices():
             self.readiness = ("checking", "")
             return {"state": "none", "message": ""}
-        if self.mounted and not self.readiness_check:
-            return {"state": "ready", "message": ""}
-        every = 2 if self.readiness_check else 4
+        every = 2        # quick on the connect screen
         if self.readiness[0] == "ready":
-            every = 6    # each check spawns devicectl; quick on the connect screen, calmer once it's up
+            every = 6    # each check is a pmd3 start (~0.5s of cpu), so calmer once it's up
+        if self.readiness[0] == "error":
+            every = 10   # a failed mount (no internet, Developer Mode off) won't fix itself in 2s
         if self.active and self.active.get("kind") == "route":
-            every = 20   # keep devicectl quiet while a route plays, like the terminal drive.command
+            every = 20   # and quieter still while a route plays
         if not self._probing and time.time() - self._probe_at > every:
             self._probing = True
             threading.Thread(target=self._probe, daemon=True).start()
@@ -127,39 +112,39 @@ class Session:
         return {"state": state, "message": message}
 
     def _probe(self):
-        if self.readiness_check:
-            devices = self._devices
-            try:
-                state, message = self.readiness_check(devices[0]["udid"]) if devices else ("checking", "")
-            except Exception as e:
-                state, message = "error", f"{type(e).__name__}: {e}"
-            if state != self.readiness[0]:
-                if state == "locked":
-                    self.log("phone is locked — unlock it to continue", "warn")
-                elif state == "ready":
-                    self.log("phone unlocked and ready", "ok")
-                elif state == "error":
-                    self.log(f"phone not ready: {message}", "warn")
-            self.readiness = (state, message)
-            self._probe_at, self._probing = time.time(), False
-            return
         try:
-            if not self.lock.acquire(blocking=False):
-                return   # an action is running; it mounts on its own
-            try:
-                if not self.mounted:
-                    self._ensure_mounted(quiet=self.readiness[0] != "checking")
-            finally:
-                self.lock.release()
+            devices = self._devices
+            lock = self.pmd3.lock_state(devices[0]["udid"] if devices else None)
+            if lock == "locked":
+                self._set_readiness("locked", "unlock your iPhone")
+            elif self.mounted:
+                self._set_readiness("ready", "")
+            elif self.lock.acquire(blocking=False):   # an action running mounts on its own
+                try:   # unlocked, or lockdown didn't say: the mount tries and says what's wrong
+                    self._ensure_mounted(quiet=self.readiness[0] not in ("checking", "locked"))
+                finally:
+                    self.lock.release()
+        except Exception as e:
+            self._set_readiness("error", f"{type(e).__name__}: {e}")
         finally:
             self._probe_at, self._probing = time.time(), False
+
+    def _set_readiness(self, state: str, message: str):
+        if state != self.readiness[0]:
+            if state == "locked":
+                self.log("phone is locked — unlock it to continue", "warn")
+            elif state == "ready":
+                self.log("phone unlocked and ready", "ok")
+            elif state == "error":
+                self.log(f"phone not ready: {message}", "warn")
+        self.readiness = (state, message)
 
     def status(self) -> dict:
         active = dict(self.active) if self.active else None
         if active and self.job:
             code = self.job.poll()
-            # pmd3 jobs stay alive until stopped; devicectl hands off and exits 0. Anything
-            # else exiting is a failure the UI should show.
+            # pmd3 DVT jobs stay alive until stopped; CoreDevice calls hand off and exit 0.
+            # Anything else exiting is a failure the UI should show.
             if code not in (None, 0):
                 active["state"] = "failed"
                 self.mounted = False   # most pmd3 failures are a missing/stale DDI — remount next time
@@ -221,8 +206,11 @@ class Session:
             return
         log = (lambda line: None) if quiet else (lambda line: self.log(line, "dim"))
         log("mounting developer disk image (phone must be unlocked)…")
+        before = self.readiness[0]
+        if before != "error":   # error → error retries would only make it flicker
+            self.readiness = ("checking", "getting the developer disk image ready, the first time can take a few minutes")
         state, message = self.pmd3.mount(log)
-        if state != self.readiness[0] or not quiet:
+        if state != before or not quiet:
             if state == "locked":
                 self.log("phone is locked — unlock it to continue", "warn")
             elif state == "ready":
@@ -238,8 +226,7 @@ class Session:
             self._stop_job()
             service = self.placer.service if self.placer else "pmd3"
             self._clear_dirty(keep=service)
-            if not self.placer:
-                self._ensure_mounted()
+            self._ensure_mounted()   # both location sims come in with the DDI
             self.log(f"holding at {label} ({lat:.5f}, {lon:.5f})", "accent")
             holder = self.placer or self.pmd3
             self.job = holder.hold(lat, lon, lambda line: self.log(line, "dim"))
@@ -259,8 +246,7 @@ class Session:
             self.log(f"building {route_id} for {engine.label.lower()}…", "dim")
             prepared = engine.prepare(path, mph, lambda line: self.log(line, "dim"))
             self._clear_dirty(keep=engine.service)
-            if engine.service == "pmd3":
-                self._ensure_mounted()
+            self._ensure_mounted()
             self.job = engine.start(prepared, lambda line: self.log(line, "dim"))
             self.dirty.add(engine.service)
             self.active = {"kind": "route", "route": route_id, "engine": engine.id,

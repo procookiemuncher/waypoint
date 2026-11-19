@@ -1,9 +1,15 @@
 # Dropping Xcode: the speed location sim over plain pmd3 (2026-11-18)
 
-**Status (2026-11-18, on-device, iOS 27.0.1, iPhone19,3): the phone accepts set / route-with-speed /
-clear from pmd3 11.59 over the no-admin userspace tunnel, no devicectl.** Still to confirm by eye:
-the dot actually moves and Life360 shows the mph + car. Also not yet shown: pmd3 mounting the DDI by
-itself, since this run found one already mounted (no reboot first).
+**Status (2026-11-19, on-device, iOS 27.0.1, iPhone19,3, pmd3 11.59.0): DONE, built into the app.**
+The owner confirmed on the phone: a pin through `setsimulatedlocation` shows in Maps and stays after
+our helper process exits, a steady 30 mph `startlocationsimulation` shows **mph + the car icon on
+Life360**, the varying-speed chain (one call per chunk, ~0.8s each) shows a changing mph, and
+`clearsimulatedlocation` stops it. pmd3 mounted its own DDI: Xcode's image came back by itself after a
+reboot (Xcode's CoreDeviceService runs on this Mac), so we unmounted it with `mounter
+umount-personalized`, saw it stay off for 30s, and the app's connect path then downloaded the Cryptex1
+DDI, had it signed and mounted it in 10s ("DeveloperDiskImage mounted successfully", image 651.32,
+not Xcode's 651.13.5). Code: `core/backend/device.py` (`CoreDevice`, `coredevice_child`),
+`core/backend/drive.py`, lock state in `Pmd3.lock_state`.
 
 Working shapes (feature `com.apple.coredevice.feature.simulatelocation` on `com.apple.coredevice.locationservice`):
 
@@ -27,8 +33,8 @@ Every Xcode dependency goes through `xcrun devicectl` in `mac-version/`:
 | route with real speed (`simulate location route --speed`) | `drive_engine.py`, `devicectl_route.py` | CoreDevice `startlocationsimulation` (below) |
 | hold a pin (`simulate location coordinate`) | `drive_engine.py` (placer) | CoreDevice `setsimulatedlocation` |
 | clear | `drive_engine.py` | CoreDevice `clearsimulatedlocation` |
-| lock state | `phone_check.py` | pmd3 `DeviceInfoService.get_lockstate()` (already exists) |
-| DDI usable | `phone_check.py` | pmd3 mounter `is_image_mounted("Personalized")` |
+| lock state | `phone_check.py` | ~~pmd3 `DeviceInfoService.get_lockstate()`~~ refused on iOS 27 ("Action 'com.apple.coredevice.feature.getlockstate' is not implemented", also with action ids `...action.lockstate` / `...action.getlockstate`). **Used instead: lockdown `PasswordProtected`** (`lockdown get "" PasswordProtected`), true while locked and false once unlocked, same as devicectl's `passcodeRequired`, checked both ways on the phone. Plain USB, no tunnel |
+| DDI usable | `phone_check.py` | just run `mounter auto-mount` once per plug-in; 11.59 says "already mounted" (exit 0) or mounts it, and exits non-zero when it can't |
 | airplane-mode Shortcut (`process openURL shortcuts://…`) | airplane flow | **unknown**. pmd3 has `launchapplication`. Need to check if it takes a URL, or capture what devicectl sends |
 | the DDI itself | Xcode mounted it; pmd3 9.33.1 `auto-mount` crashes (`KeyError: 'ApBoardID'`) | pmd3 11.59 skips the Cryptex1 identity that has no board ID, which should fix it |
 
@@ -83,3 +89,19 @@ several shapes and prints the phone's decode error for each.
 4. It mounts the DDI, lists services, then sets a pin at the Eiffel Tower (check Maps), then plays
    a ~1 km route at 25 mph (`--mph` to change). Have a circle member check Life360 for mph + the car.
 5. Paste the output back. The accepted shapes go into `core/backend/device.py`.
+
+## What got built (2026-11-19)
+
+- `device.py` `CoreDevice`: `set_cmd` / `route_cmd` / `clear_cmd` build `python -c <helper> <action>
+  <json | @file>` commands. The helper (`coredevice_child`) opens a userspace tunnel, sends one invoke
+  and exits; routes go through a file so a long one fits a Windows command line. Input builders
+  (`cd_point`, `cd_route_input`, `cd_input`) force floats and the `{"interval": {"_0": s}}` pacing.
+  `selftest` only imports the tunnel + CoreDevice code; `release/build.command` runs it on the compiled
+  app (the compiled app also passed a real `scenarios` call to the phone).
+- pmd3 11.59.0's CLI has `developer core-device location available-scenarios` only, and
+  `get-lockstate` fails on iOS 27, hence the helper and the lockdown lock check.
+- Each call is ~1s (process start + tunnel 0.2-0.3s). devicectl was ~1s too.
+- Seen once: after clearing a route Maps kept a grey dot on the last spoofed point until Location
+  Services was toggled. The next clear was clean. Not known whether devicectl did the same.
+- Still on devicectl: only the airplane-mode Shortcut (`process openURL`), which isn't in the app.
+  pmd3 11.59 has `core-device launch-application`; whether it takes a URL is unchecked.
