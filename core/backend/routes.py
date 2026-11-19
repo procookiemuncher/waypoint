@@ -30,6 +30,17 @@ def route_path(route_id: str) -> str:
     return path
 
 
+MAX_TIMELINE_POINTS = 1500
+
+
+def thin(points: list, limit: int = MAX_TIMELINE_POINTS) -> list:
+    """Keep the first/last point and an even spread in between — plenty for drawing the pin."""
+    if len(points) <= limit:
+        return points
+    step = (len(points) - 1) / (limit - 1)
+    return [points[round(i * step)] for i in range(limit)]
+
+
 def haversine(a, b) -> float:
     la1, la2 = math.radians(a[0]), math.radians(b[0])
     h = (math.sin((la2 - la1) / 2) ** 2

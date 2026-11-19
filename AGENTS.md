@@ -65,12 +65,22 @@ purely spatial / speed-independent (docs/research/life360-geofence-arrival-mecha
 **✅ Speed workaround found (2026-10-22, on-device, Mac):** Xcode's CoreDevice location sim —
 `xcrun devicectl device simulate location route --speed <m/s>` — is a *different* service from pmd3's
 DVT one and it carries a real speed. The emoji-test route played this way at 15.6 m/s showed **35 mph**
-on Life360 (seen on another circle member's phone). Tool: `mac-version/devicectl_route.py`. Limits: Mac +
-Xcode only (breaks the same-code-both-platforms rule — fine while it's the only speed path), one
+on Life360 (seen on another circle member's phone). Tool then: `mac-version/devicectl_route.py` (gone, see the next note). Limits then: Mac +
+Xcode only (broke the same-code-both-platforms rule, fixed 2026-11-19), one
 constant speed per call (no corner slowdowns or dwell yet), no altitude. **The car icon showed up
 too** — the driving emoji, dead since July, works on this path.
 
-**✅ Airplane mode is automatable (2026-10-24, on-device, Mac):** devicectl can't toggle it directly, but
+**✅ No Xcode needed anymore (2026-11-19, on-device, iOS 27.0.1, pmd3 11.59.0):** that "Xcode" sim is
+really a service on the **phone** (`dtlocationd`, comes in with the DDI; RSD
+`com.apple.coredevice.locationservice`), and pmd3 reaches it over the no-admin userspace tunnel.
+`core/backend/device.py` `CoreDevice` (set / route-with-speed / clear, via a `python -c` helper since
+pmd3's CLI only has `available-scenarios`) replaced every `xcrun devicectl` call. Owner confirmed on the
+phone: pin shows in Maps and sticks after the helper exits, a 30 mph drive shows **mph + the car** on
+Life360, the varying-speed chain shows a changing mph, clear works. pmd3 11.59 mounts its own DDI (proved
+by unmounting Xcode's first). The engine is `core/backend/drive.py` now, so it's in core, and Windows
+should get real speed too (**untested on Windows**). Details: docs/research/no-xcode-speed-sim.md.
+
+**✅ Airplane mode is automatable (2026-10-24, on-device, Mac) — the one thing still on devicectl, and it isn't in the app:** devicectl can't toggle it directly, but
 `xcrun devicectl device process openURL "shortcuts://run-shortcut?name=vida-airplane-on"` runs an iOS
 Shortcut on the phone (owner made two once: `vida-airplane-on` = Airplane On + Wi-Fi Off,
 `vida-airplane-off` = Airplane Off + Wi-Fi On). Runs silently, no confirmation prompt. Over the **cable**
@@ -108,8 +118,8 @@ works. Phone must be unlocked. Still unknown: whether Life360's "landed" push fi
 
 - **Host:** Windows (original) and macOS (added 2026-10-22). Two version folders —
   `mac-version/` and `windows-version/` — over one shared `core/`. Don't copy code between the
-  versions: if it works on both, it goes in `core/`; only OS-specific stuff (launchers, the
-  Mac-only `devicectl_route.py`) lives in a version folder.
+  versions: if it works on both, it goes in `core/`; only OS-specific stuff (launchers, the Mac
+  window app) lives in a version folder.
 - **Target:** iPhone, now on **iOS 27.0.1** (was 26.6) → RemoteXPC tunnel path only.
 - **Language:** Python end-to-end. No JS, no Swift.
 - **Transport lib:** `pymobiledevice3` — the only maintained cross-platform library that
@@ -151,7 +161,7 @@ API** for the frequent set/clear/route calls against the RSD that tunneld expose
 ## Repo layout (reorganized 2026-10-22)
 
 ```
-mac-version/       Mac launchers (spoof, drive, fly, setup) + devicectl_route.py (Mac-only, real speed)
+mac-version/       Mac launchers (spoof, drive, fly, setup) + the Waypoint window app (app.py) + release/
 windows-version/   Windows launchers (spoof, fly, setup)
 core/              shared engine — spoof.py, routes/, backend/ (movement, life360), tools/, tests/,
                    map-visualizer.html, build/ (generated, ignored)
@@ -164,17 +174,17 @@ cini videos/       promo films drawn frame by frame in HTML and rendered with Pl
 App (built 2026-10-22): `core/backend/server.py` (FastAPI, 127.0.0.1 only) + `session.py` (one job
 at a time, stop = kill + clear every sim touched) + `device.py` (the pmd3 adapter — still CLI
 subprocesses, same commands spoof.py runs) + `routes.py`/`places.py`; page in `core/web/`. Route
-engines plug into the Session: core ships `spoof` (pmd3 GPX); **the Mac-only `drive` engine lives in
-`mac-version/drive_engine.py`** (wraps `devicectl_route.py`) and `mac-version/app.py` registers it — so
-devicectl code never lands in core. `mac-version/app.py` = pywebview window; `make-app.command` builds
+engines plug into the Session, both in core and both through device.py: `spoof` (pmd3 DVT GPX) and
+`drive` (`core/backend/drive.py`, the CoreDevice sim with a real speed; was Mac-only devicectl until
+2026-11-19). `mac-version/app.py` points places/pins at drive's hold (`Session.use_placer`) and is the
+pywebview window; the terminal version is `core/tools/drive.py` (`drive.command`); `make-app.command` builds
 `~/Applications/Waypoint.app` (compiled `app/launcher.c` that execs the venv python — macOS 26 won't
 launch a bundle whose executable is a shell script, error -10669).
 
 ## Running it
 
 **Launchers live per platform:** `windows-version/` (`spoof.cmd`, `fly.cmd`, `setup.cmd`) and
-`mac-version/` (`spoof.command`, `drive.command`, `fly.command`, `setup.command`). **`drive` (Mac
-only) is the real-speed path** — Life360 shows mph + the car icon. Each folder has a README. Below, `spoof` / `fly` means whichever
+`mac-version/` (`spoof.command`, `drive.command`, `fly.command`, `setup.command`). **`drive` is the real-speed path** — Life360 shows mph + the car icon. Each folder has a README. Below, `spoof` / `fly` means whichever
 launcher matches your OS — e.g. `windows-version\spoof.cmd eiffel` or `./mac-version/spoof.command eiffel`.
 
 **Spoof launcher:** `spoof` (double-click) opens a **"where do you want to go?"** menu —
@@ -209,7 +219,7 @@ tunnel gate (Step 0 in the spec) once before trusting a real run.
 Dock. Or `./mac-version/app.command`. `VIDA_DRY_RUN=1` makes every phone command a printed no-op —
 **use it for UI work; a real run moves the owner's pin in front of their Life360 circle.** Map tiles:
 Stadia `alidade_smooth_dark` (CARTO's dark_all started demanding an API key). The page asks `/tiles/...`, `core/backend/tiles.py` redirects to Stadia with `VIDA_STADIA_KEY` from the env or the gitignored root `.env`. **No key = keyless localhost access, strictly rate limited ("Account limit exceeded" on the map), and release builds have no key yet.**
-After the boot log the app shows a **connect screen** until the phone is plugged in + unlocked. On the Mac app, unlocked comes from `xcrun devicectl device info lockState` (`passcodeRequired`) + `ddiServices` `isUsable` (`mac-version/phone_check.py`, live, polled every 2s on the connect screen, every 6s once ready, 20s while a route plays; `usbmux list` every 4s, 10s once ready); elsewhere it falls back to "the pmd3 DDI mount worked". **⚠ pmd3 9.33.1 `auto-mount` crashes on iOS 27.0.1 / iPhone19,3 with `KeyError: 'ApBoardID'`** (2026-10-23) — so the Spoof (pmd3) engine may not be usable on this phone until pmd3 is upgraded; Xcode's DDI *is* on the phone and Drive (devicectl) doesn't need pmd3's mount. On the Mac app, places/pins are held by devicectl too (`simulate location coordinate`, via `Session.use_placer`). `VIDA_DRY_PHONE=slow` fakes a late, locked phone for working on it; `=none` a phone that never shows (the screen waits forever until skipped).
+After the boot log the app shows a **connect screen** until the phone is plugged in + unlocked + has the DDI. Unlocked comes live from lockdown's `PasswordProtected` (`pymobiledevice3 lockdown get "" PasswordProtected`, plain USB, no tunnel, ~0.6s; it flips with the lock screen exactly like devicectl's `passcodeRequired`, checked both ways 2026-11-19. CoreDevice's own `getlockstate` is refused on iOS 27, "action not implemented"). Then `mounter auto-mount` runs once per plug-in (15 min timeout, the first one downloads + personalizes the image; took 10s here). Polled every 2s on the connect screen, 6s once ready, 10s after a mount error, 20s while a route plays; `usbmux list` every 4s, 10s once ready. All in `Session.phone()`/`_probe()`, same on every platform. Places/pins are held by the CoreDevice sim (`setsimulatedlocation`, via `Session.use_placer`), which hands off and exits, no process kept. `VIDA_DRY_PHONE=slow` fakes a late, locked phone for working on it; `=none` a phone that never shows (the screen waits forever until skipped).
 Windows *should* be able to run `core/backend/server.py` and use a browser (spoof engine only) — **untested**, including `Job.stop()`'s Windows path (writes ENTER to pmd3's stdin). **Force-quit / kill -9 leaves the pmd3 child holding the spoof** (normal close, Cmd+Q and SIGTERM all clear) — recover with `spoof clear` + `drive.command --clear`.
 
 **Command palette (2026-11-02):** ⌘K / ctrl+K, `core/web/static/palette.js`. Search or chips: go / play / pin / open / stop. `go` looks up an address (`/api/geocode`, Photon, needs internet), flies there and leaves a movable pin that the hero button sets. Anything that moves the phone has to pass its confirm step, keep it that way. New static JS has to be added to `MINIFY_JS` in `mac-version/release/stage_assets.py`, and single-line strings only (rjsmin).
@@ -245,7 +255,10 @@ and keys aren't bound to one Mac yet.
 Missing Apple USB driver · not elevated · `wintun` blocked by AV/firewall · Developer Mode
 off · stale pairing record → unpair/re-pair · personalized DDI not yet in the image mirrors
 for a fresh iOS build · `pymobiledevice3` version skew (may need git `main` for 26.6) ·
-QUIC-vs-TCP tunnel quirks · phone locks → DVT session drops · location slow to clear.
+QUIC-vs-TCP tunnel quirks · phone locks → DVT session drops · location slow to clear ·
+**grey dot after a clear** (2026-11-19: once, after clearing a CoreDevice route, Maps kept a grey dot on
+the last spoofed point; both clears had been accepted, toggling Location Services off/on fixed it; the
+next clear went straight back to real GPS).
 
 ## Ground rules for agents working here
 

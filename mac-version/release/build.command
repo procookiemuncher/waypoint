@@ -88,5 +88,11 @@ if ! "$OUT/Waypoint.app/Contents/MacOS/Waypoint" -m pymobiledevice3 usbmux list 
   echo "The compiled app can't run pmd3 (usbmux list failed), not shipping this"
   exit 1
 fi
+# usbmux list never loads the userspace tunnel or CoreDevice code, and drive / pins / clear all
+# go through them (backend.device's -c helper), so load those too. No phone needed.
+if ! "$OUT/Waypoint.app/Contents/MacOS/Waypoint" -c "from backend.device import coredevice_child; coredevice_child()" selftest >/dev/null; then
+  echo "The compiled app can't load the coredevice helper (tunnel/CoreDevice imports), not shipping this"
+  exit 1
+fi
 echo
 echo "Done: $OUT/Waypoint.app"
