@@ -144,8 +144,8 @@ async def run(args):
             wps = [pt(a, b) for a, b in ROUTE]
             shapes = []
             for plabel, pacing in [
+                ("interval{_0}", {"interval": {"_0": 1.0}}),   # this one works on iOS 27.0.1
                 ("interval{interval}", {"interval": {"interval": 1.0}}),
-                ("interval{_0}", {"interval": {"_0": 1.0}}),
                 ("distance{distance}", {"distance": {"distance": 10.0}}),
                 ("distance{_0}", {"distance": {"_0": 10.0}}),
             ]:
