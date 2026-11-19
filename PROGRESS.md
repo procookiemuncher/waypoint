@@ -7,6 +7,12 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-19 — Old tester DMG deleted
+
+- Removed `~/Desktop/Waypoint-0.1.0-beta.1.dmg` (the Oct 31 build that crashed every 4 s). There's no tester DMG right now; the next one gets built from the no-Xcode release.
+
+---
+
 ## 2026-11-19 — Waypoint runs without Xcode
 
 - pmd3 9.33.1 → **11.59.0**, re-pinned exactly (pmd-pytcp 0.3.9, pmd-net-addr/proto 0.0.3, qh3 1.9.4, construct 2.10.70, plus fastapi/starlette/pydantic/uvicorn/requests since the app imports them). Existing CLI calls all still work. Built on branch `no-xcode-work` in a worktree (`../vida-360-no-xcode`) so the Dock app kept running main.
