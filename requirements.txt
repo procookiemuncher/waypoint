@@ -1,17 +1,25 @@
 # Core transport library.
-# 9.33.1 verified to cover iOS 26.6 (it already ships iOS 27+ commands) and to expose
-# `remote tunneld` + `developer dvt simulate-location set/clear/play`.
-# Also pulls in fastapi, uvicorn, and gpxpy as dependencies (reused later for the UI + routes).
-pymobiledevice3==9.33.1
+# 11.59.0 (2026-11-18): its auto-mount works on iOS 27 (9.33.1 crashed with KeyError 'ApBoardID'),
+# userspace tunnel is the default, and it reaches the phone's CoreDevice location service, which
+# is what lets drive / pins / clear run without Xcode (see docs/research/no-xcode-speed-sim.md).
+pymobiledevice3==11.59.0
 
-# pmd3 9.33.1 doesn't cap its own deps, so a fresh install pulls newer ones that break it
-# (found 2026-10-22 setting up the Mac): pmd-pytcp 0.1+ made stack.start() async (tunnel never
-# comes up, "coroutine was never awaited"), construct-typing 0.8 crashes on import (AfcHeader).
-# These are what resolved before 2026-07-08, i.e. what the working Windows venv had.
-pmd-pytcp==0.0.5
-pmd-net-addr==0.0.2
-pmd-net-proto==0.0.2
-construct-typing==0.7.0
+# Exact versions of the tunnel stack, since an unexpected bump here is what broke 9.33.1 back in
+# October (pmd-pytcp 0.1 went async, construct-typing 0.8 crashed on import). These are what an
+# unpinned 11.59.0 install resolved on 2026-11-18, and the userspace tunnel worked on the phone with them.
+pmd-pytcp==0.3.9
+pmd-net-addr==0.0.3
+pmd-net-proto==0.0.3
+qh3==1.9.4
+construct==2.10.70
+
+# The app imports these itself. They used to come along with pmd3 at whatever version it pulled,
+# pin them so a pmd3 bump can't move them under us.
+fastapi==0.165.0
+starlette==1.10.0
+pydantic==2.14.3
+uvicorn==0.54.0
+requests==2.34.2
 
 # Native window for the Mac app (mac-version/app.py). Uses the Mac's own WebKit via pyobjc.
 pywebview==6.2.1; sys_platform == "darwin"
