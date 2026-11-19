@@ -23,3 +23,10 @@ requests==2.34.2
 
 # Native window for the Mac app (mac-version/app.py). Uses the Mac's own WebKit via pyobjc.
 pywebview==6.2.1; sys_platform == "darwin"
+# pywebview doesn't cap pyobjc; 13.0 is what the 11.59 venv got and what app.py's AppKit hooks run on
+pyobjc-core==13.0; sys_platform == "darwin"
+pyobjc-framework-Cocoa==13.0; sys_platform == "darwin"
+pyobjc-framework-Quartz==13.0; sys_platform == "darwin"
+pyobjc-framework-Security==13.0; sys_platform == "darwin"
+pyobjc-framework-UniformTypeIdentifiers==13.0; sys_platform == "darwin"
+pyobjc-framework-WebKit==13.0; sys_platform == "darwin"
