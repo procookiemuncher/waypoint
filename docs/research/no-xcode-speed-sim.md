@@ -1,7 +1,22 @@
 # Dropping Xcode: the speed location sim over plain pmd3 (2026-11-18)
 
-**Status: looks possible from the binaries, NOT tested on the phone yet.** Run
-`./mac-version/probe-no-xcode.command` with the phone plugged in and you'll know.
+**Status (2026-11-18, on-device, iOS 27.0.1, iPhone19,3): the phone accepts set / route-with-speed /
+clear from pmd3 11.59 over the no-admin userspace tunnel, no devicectl.** Still to confirm by eye:
+the dot actually moves and Life360 shows the mph + car. Also not yet shown: pmd3 mounting the DDI by
+itself, since this run found one already mounted (no reboot first).
+
+Working shapes (feature `com.apple.coredevice.feature.simulatelocation` on `com.apple.coredevice.locationservice`):
+
+```
+setsimulatedlocation     {"latitude": 48.85837, "longitude": 2.29448}
+startlocationsimulation  {"waypoints": [{"latitude": .., "longitude": ..}, ...],
+                          "speed": 13.4112,                       # m/s, a double
+                          "pacing": {"interval": {"_0": 1.0}}}    # or {"distance": {"_0": 10.0}}
+clearsimulatedlocation   {}
+```
+
+The call returns `{}` right away and the phone keeps playing after the tunnel closes, like devicectl.
+`{"interval": {"interval": 1.0}}` is refused with "Expected to find key _0".
 
 ## Why we need Xcode today
 
