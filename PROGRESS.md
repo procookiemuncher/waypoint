@@ -7,6 +7,20 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-19 — Waypoint runs without Xcode
+
+- pmd3 9.33.1 → **11.59.0**, re-pinned exactly (pmd-pytcp 0.3.9, pmd-net-addr/proto 0.0.3, qh3 1.9.4, construct 2.10.70, plus fastapi/starlette/pydantic/uvicorn/requests since the app imports them). Existing CLI calls all still work. Built on branch `no-xcode-work` in a worktree (`../vida-360-no-xcode`) so the Dock app kept running main.
+- `device.py` got `CoreDevice` (set / route with speed / clear) through a `python -c` helper, since pmd3's CLI has no command for it. Drive moved to `core/backend/drive.py` (same planning) and the Session registers it on every platform. Terminal: `core/tools/drive.py` (`drive.command`). `devicectl_route.py`, `drive_engine.py`, `phone_check.py` are gone.
+- Connect screen: CoreDevice `getlockstate` is refused on iOS 27, so the lock comes from lockdown `PasswordProtected` (plain USB, flips with the lock screen like devicectl's, checked both ways). `auto-mount` once per plug-in, 15 min timeout. No more "open Xcode" message.
+- **On the phone, with the owner:** reboot didn't leave the DDI off (Xcode's CoreDeviceService on this Mac put it back), so unmounted it with pmd3, it stayed off, then the app's connect path mounted pmd3's own Cryptex1 DDI in 10s. Eiffel pin showed in Maps and held after the helper exited. Steady 30 mph emoji-test: **Life360 showed mph + the car**. Varying chain (17 chunks in 2 min, ~0.8s a call): mph changed. Clear worked. Locked phone shows "locked" without a mount attempt.
+- Release build (`LICENSE_URL` set, not --test, built to `~/Library/Caches/Waypoint-release-noxcode`): codesign ok, `usbmux list` ok, and the new coredevice `selftest` check in build.command ok. The compiled binary also read the lock and did a real (read-only) `scenarios` call to the phone. No DMG made.
+- Tests: `core/tests/test_coredevice.py` (21), 59/59 pass.
+- **Not tested:** the actual Waypoint window on this branch (owner signed off on the Session-level runs), a compiled build moving the pin, Windows at all, a Mac with no Xcode installed (this Mac still has it and CoreDeviceService runs; the unmount test stands in for it).
+- **Seen once:** after clearing the steady route, Maps kept a grey dot on the last point until Location Services was toggled off/on. The next clear (after the varying drive) went back to real GPS fine. Watch for it.
+- Next: rebuild the tester DMG from this, try the window, check `core-device launch-application` for the airplane Shortcut so devicectl can go completely.
+
+---
+
 ## 2026-11-18 — Can we drop Xcode? (research + probe, not on-device yet)
 
 - Goal: users shouldn't need Xcode. Today it's needed for devicectl (drive speed, pins, clear, lock state, airplane Shortcut) and because pmd3 9.33.1 can't mount the DDI on iOS 27.
