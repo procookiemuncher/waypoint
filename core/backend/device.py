@@ -112,25 +112,45 @@ class Pmd3:
                  "ios": d.get("ProductVersion"), "connection": d.get("ConnectionType")}
                 for d in devices]
 
+    def lock_state(self, udid: str | None = None) -> str | None:
+        """"locked" or "unlocked", live, from lockdown's PasswordProtected value. It follows the lock
+        screen the same way devicectl's passcodeRequired does (checked both ways on the phone,
+        2026-11-19), and it's plain USB lockdown: no tunnel, no DDI, ~0.6s. None when lockdown
+        didn't answer (just plugged in, not trusted yet, ...), then the mount gets to explain."""
+        if DRY_RUN:
+            return "locked" if DRY_SLOW and time.time() - _T0 < 20 else "unlocked"
+        cmd = _pmd("lockdown", "get", *(["--udid", udid] if udid else []), "", "PasswordProtected")
+        try:
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        except (subprocess.TimeoutExpired, OSError):
+            return None
+        said = p.stdout.strip().lower()   # JSON, so true / false (seen as True / False too)
+        if said in ("true", "false"):
+            return "locked" if said == "true" else "unlocked"
+        if "PasswordProtected" in p.stderr or "PasswordRequired" in p.stderr:
+            return "locked"
+        return None
+
     def mount(self, log) -> tuple[str, str]:
-        """Mount the Developer Disk Image, which only works on an unlocked phone — so this doubles
-        as the unlock check. Returns (state, message), state being "ready", "locked" or "error".
-        auto-mount exits 0 on most failures too, so go by what it prints."""
+        """Mount the Developer Disk Image if it isn't on yet. Only works on an unlocked phone.
+        Returns (state, message), state being "ready", "locked" or "error". The first mount on a
+        phone downloads + personalizes the image and sends it over the slow userspace tunnel, so
+        it gets minutes, not seconds."""
         cmd = _pmd("mounter", "auto-mount", "--userspace")
         if DRY_SLOW and time.time() - _T0 < 20:
             cmd = _pmd("mounter", "auto-mount", "--userspace", "# pretend: DeviceLocked")
         lines = []
-        ok = run(_dry(cmd, False) if DRY_RUN else cmd, lambda line: (lines.append(line), log(line)))
+        ok = run(_dry(cmd, False) if DRY_RUN else cmd, lambda line: (lines.append(line), log(line)), timeout=900)
         # pmd3's crash tracebacks quote its own source inside a box (│ ╭ ╰) — and that source
         # contains "mounted successfully". Only trust lines outside the box.
         said = [l for l in lines if l.strip()[:1] not in ("│", "╭", "╰")]
         out = "\n".join(said)
-        if "DeviceLocked" in out or "PasswordProtected" in out:
+        if "DeviceLocked" in out or "PasswordProtected" in out or "PasswordRequired" in out:
             return "locked", "unlock your iPhone"
-        if "Developer Mode is disabled" in out:
+        if "Developer Mode is disabled" in out or "DeveloperModeIsNotEnabled" in out:
             return "error", "turn on Developer Mode (Settings → Privacy & Security)"
-        if "already mounted" in out or "mounted successfully" in out or (DRY_RUN and ok):
-            return "ready", ""
+        if ok and ("already mounted" in out or "mounted successfully" in out) or (DRY_RUN and ok):
+            return "ready", ""   # since 11.x auto-mount's exit code means something, so want both
         return "error", (said[-1].strip() if said else "couldn't reach the phone")[:140]
 
     def hold(self, lat: float, lon: float, log) -> Job:
