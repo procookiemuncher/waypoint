@@ -15,7 +15,7 @@ MVP = **M1–M4**.
 - [x] Brainstorm architecture (2026-07-07)
 - [x] Connect git repo to GitHub `procookiemuncher/vida-360`
 - [x] AGENTS.md / ROADMAP.md / PROGRESS.md
-- [x] Python project skeleton + virtualenv + pinned `pymobiledevice3` (9.33.1)
+- [x] Python project skeleton + virtualenv + pinned `pymobiledevice3` (9.33.1, 11.59.0 since 2026-11-19)
 
 ### M1 — Transport spike  ✅ DONE (Find My confirmed)
 Goal: push **one hardcoded coordinate** onto the iOS 26.6 phone from Windows and see it in
@@ -78,8 +78,10 @@ method: **docs/research/life360-notification-triggers.md**.
   `jfk-to-hotel` leg is the first instance; CDG → Paris hotel is a coord swap.)*
 - [ ] "Full Ride" — multi-hour: airport → hotel, then mixed walking / driving / stops.
 - [~] **Life360 shows real mph — CONFIRMED 2026-10-22** via `xcrun devicectl ... simulate location route
-  --speed` (mac-version/devicectl_route.py), 35 mph + the car icon on the emoji-test route. Next: variable
-  speed (chain segments), and retry the >100 mph flight-detection gate with it.
+  --speed` (mac-version/devicectl_route.py), 35 mph + the car icon on the emoji-test route.
+  **No Xcode since 2026-11-19:** same phone service over pmd3 11.59 (core/backend/drive.py), mph + car
+  confirmed again, and the varying-speed chain shows a changing mph. Next: retry the >100 mph
+  flight-detection gate with it, try it on Windows.
 - [ ] Trigger Life360's **movement emoji** (walk / drive icon). ❌ **RESOLVED NO (2026-07-10,
   Phase A #1):** on-device testing (both Motion & Fitness ON and OFF, Observer-instrumented) shows
   the emoji/speed/driving-flag does NOT reliably trigger on a still spoofed phone in either
