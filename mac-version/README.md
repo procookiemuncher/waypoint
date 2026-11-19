@@ -8,9 +8,10 @@ Everything you run on the Mac. The engine itself is shared in `../core/`.
    `curl -LsSf https://astral.sh/uv/install.sh | sh`
 2. Run `./mac-version/setup.command` (or double-click it). Builds `.venv` on Python 3.12 and
    installs `pymobiledevice3`. Don't use the Mac's built-in `python3`, it's 3.9 and too old.
-3. Install **Xcode** (needed for `drive.command` — real speed).
-4. Plug in the iPhone, unlock it, tap **Trust This Computer**. Developer Mode has to be on
-   (Settings → Privacy & Security → Developer Mode).
+3. Plug in the iPhone, unlock it, tap **Trust This Computer**. Developer Mode has to be on
+   (Settings → Privacy & Security → Developer Mode). The first time, the app (or `drive.command`)
+   downloads Apple's developer disk image and puts it on the phone, which needs internet and can take a
+   few minutes. **Xcode isn't needed** (it was until 2026-11, for `devicectl`).
 
 No iTunes / Apple Devices install needed — macOS already has the Apple device service built in.
 
@@ -51,10 +52,11 @@ All commands from the repo root: `cd ~/Desktop/projects/vida-360`
 | List flights / run one | `./mac-version/fly.command` · `./mac-version/fly.command nyc` |
 | Life360 Observer | `.venv/bin/python core/tools/observe.py --watch` |
 
-**`drive` vs `spoof`:** `drive` uses Xcode's location sim, which sends a real speed, so Life360
+**`drive` vs `spoof`:** `drive` uses the phone's CoreDevice location sim (the one Xcode's devicectl
+uses, reached through pymobiledevice3), which sends a real speed, so Life360
 shows mph and the car icon. `spoof` uses pymobiledevice3, which can only send a position (Life360
-shows 0 mph), but it follows the route's speed changes and stops. `drive` holds one speed for
-the whole route for now.
+shows 0 mph), but it follows the route's speed changes and stops. `drive --mph` holds one speed for
+the whole route, `drive --vary` (and the app's Drive) chains calls so the speed changes too.
 
 If Finder blocks a double-click the first time ("unidentified developer"), right-click →
 Open once, or just run it from Terminal.
