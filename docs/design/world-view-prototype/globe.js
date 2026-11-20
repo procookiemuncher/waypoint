@@ -202,19 +202,21 @@ class Globe {
       }
     }
     this.shx.putImageData(this.shi, 0, 0);
-    // stretch it to the disc's size in device pixels and grain it there (see GRAIN), then lay it on 1:1
+    // stretch it to the disc's size in device pixels and grain it there (see GRAIN), then lay it on 1:1.
+    // The disc changes size every frame of a zoom, so the buffer only grows (with room to spare) and
+    // each frame uses the S x S corner of it, rather than making a new multi-megapixel canvas per frame
     const d=devicePixelRatio || 1, S=Math.ceil(2*R*d)+2;
-    if(!this.full || this.full.width!==S){ this.full=document.createElement('canvas'); this.full.width=this.full.height=S; this.fx2=this.full.getContext('2d'); }
+    if(!this.full || this.full.width<S){ this.full=document.createElement('canvas'); this.full.width=this.full.height=Math.ceil(S*1.25); this.fx2=this.full.getContext('2d'); }
     const fx2=this.fx2;
-    fx2.globalCompositeOperation='copy'; fx2.imageSmoothingEnabled=true; fx2.imageSmoothingQuality='high';
+    fx2.clearRect(0, 0, S, S);
+    fx2.imageSmoothingEnabled=true; fx2.imageSmoothingQuality='high';
     fx2.drawImage(this.sh, 1, 1, S-2, S-2);
-    fx2.globalCompositeOperation='source-over'; fx2.fillStyle=grain(fx2); fx2.fillRect(0, 0, S, S);
-    fx2.globalCompositeOperation='source-over';
+    fx2.fillStyle=grain(fx2); fx2.fillRect(0, 0, S, S);
     const ctx=this.ctx;
     ctx.save();
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.clip();
     ctx.setTransform(1,0,0,1,0,0);
-    ctx.drawImage(this.full, Math.round((cx-R)*d)-1, Math.round((cy-R)*d)-1);
+    ctx.drawImage(this.full, 0, 0, S, S, Math.round((cx-R)*d)-1, Math.round((cy-R)*d)-1, S, S);
     ctx.restore();
   }
   draw(){
