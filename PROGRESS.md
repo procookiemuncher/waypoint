@@ -15,6 +15,8 @@ what changed, what was decided, what broke, what's next.
 - Banding: the overlay's dark gradient (about a dozen 8-bit levels across hundreds of px) came out as stripes. Grain added after the blend did nothing (the steps were already baked in); it has to be in the overlay before it's blended, so the overlay is stretched to full device resolution on a second canvas and grained there. Checked with column averages: staircase gone. About 3 ms a frame with everything on.
 - **For the app later:** CDS's own server (cdsarc) failed TLS from here, hence the GitHub copy. Rim uses a canvas radial gradient (the lint flags gradients, it'd be a deliberate exception). stars.json could be packed smaller if 172 KB matters for the DMG.
 - Next: owner flips the switches and picks; then it goes in with the rest of the globe build.
+- Later the same day: night colour is a navy now (black made the night side darker than the page and the globe's edge vanished), and the overlay buffer only grows (it was being rebuilt every zoom frame).
+- **UFOs**, owner asked for "UFOs and flying aliens every once in a while": `visitors.js`, four kinds (hovering saucer with beam that zips off, saucer lapping the globe behind/in front, tumbling alien that waves, three lights that go out one by one), one at a time every 45-120 s, clipped by the globe when behind it, click one and it flees with a line in the bar. Summon button / U key cycles through all four. Off by itself under reduced motion. Tested headless: each kind on screen, click-to-flee, auto timer schedules the next, switching off stops it, a click on Paris still opens France.
 
 ---
 
