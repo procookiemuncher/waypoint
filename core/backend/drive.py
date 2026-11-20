@@ -112,7 +112,8 @@ def plan_chunks(route_path: str, seed=None, log=print):
         speed = dist / (fixes[j].t - fixes[i].t) * wander((fixes[i].t + fixes[j].t) / 2)
         speed = max(MIN_MOVE_MPS, speed)
         if dist / speed >= 1:   # skip slivers, not worth a phone call
-            chunks.append({"kind": "move", "waypoints": pts[i:j + 1], "speed": speed, "dist": dist})
+            chunks.append({"kind": "move", "waypoints": pts[i:j + 1], "speed": speed, "dist": dist,
+                           "mode": fixes[(i + j + 1) // 2].mode})
         i = j
     # the renderer brakes for every bend, which in short chunks reads as 18-31-18 mph; average
     # each chunk with its neighbours (not across a stop) so it reads as easing off instead
@@ -188,6 +189,29 @@ def chunk_timeline(chunks) -> list:
     return out
 
 
+def merge_legs(spans) -> list:
+    """[(start, end, mode)] -> [[start, end, mode]] with runs of one mode joined, rounded to 0.1 s."""
+    out = []
+    for a, b, mode in spans:
+        if out and out[-1][2] == mode:
+            out[-1][1] = b
+        else:
+            out.append([a, b, mode])
+    return [[round(a, 1), round(b, 1), m] for a, b, m in out]
+
+
+def chunk_legs(chunks) -> list:
+    """When each walk / drive / stop starts and ends, on the same clock as chunk_timeline, for the
+    app's live card ("Parked at the door"). A stop on a generated route is the 10 min at the door."""
+    t, spans = 0.0, []
+    for c in chunks:
+        secs = c["secs"] if c["kind"] == "stop" else sum(
+            haversine(a, b) for a, b in zip(c["waypoints"], c["waypoints"][1:])) / c["speed"]
+        spans.append((t, t + secs, "stop" if c["kind"] == "stop" else c.get("mode") or "drive"))
+        t += secs
+    return merge_legs(spans)
+
+
 class ChainJob:
     """Plays a varying-speed drive (play_chunks) on a thread. Same shape as backend.device.Job
     for the Session: stop() and poll(). stop() waits for the thread, so no chunk can start after
@@ -237,7 +261,7 @@ class DriveEngine:
         if not mph:
             name, chunks = plan_chunks(path, log=log)
             write_chunks(name, chunks, log=log)
-            return {"chunks": chunks, "timeline": thin(chunk_timeline(chunks)), "mph": None}
+            return {"chunks": chunks, "timeline": thin(chunk_timeline(chunks)), "legs": chunk_legs(chunks), "mph": None}
         route_file = build_route_file(path, mph, log=log)
         with open(route_file, encoding="utf-8") as f:
             data = json.load(f)
@@ -247,7 +271,9 @@ class DriveEngine:
         for a, b in zip(pts, pts[1:]):
             t += haversine(a, b) / data["speed"]
             timeline.append([round(t, 1), *b])
-        return {"route_file": route_file, "timeline": thin(timeline), "mph": data["speed"] / MPH}
+        # one steady speed, no stops: a single drive leg
+        return {"route_file": route_file, "timeline": thin(timeline), "legs": [[0.0, round(t, 1), "drive"]],
+                "mph": data["speed"] / MPH}
 
     def start(self, prepared: dict, log):
         if "chunks" in prepared:

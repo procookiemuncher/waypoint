@@ -10,9 +10,10 @@ PLACES_FILE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 
 
 def load_places() -> dict:
-    """key -> {name, region, lat, lon, zoom, accent}. Missing/broken files just add nothing."""
+    """key -> {name, region, lat, lon, zoom, accent, ...}. Missing/broken files just add nothing.
+    Presets from places.json carry "saved": true, the catalog's spots don't."""
     try:
         own = load_json(PLACES_FILE)
     except (OSError, json.JSONDecodeError):
         own = {}
-    return {**spot_places(), **own}
+    return {**spot_places(), **{k: {**p, "saved": True} for k, p in own.items()}}

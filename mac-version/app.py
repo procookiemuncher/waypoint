@@ -21,7 +21,7 @@ sys.path.insert(0, HERE)
 import uvicorn
 import webview
 
-from backend.server import create_app, free_port
+from backend.server import create_app, free_port, warm_route_legs
 from backend.license import License
 from backend.updater import Updater
 from backend.session import Session
@@ -146,6 +146,7 @@ def main():
     # look for the phone now, not once the page's boot log gets to it: the usbmux + devicectl checks
     # take seconds on a cold start and this way they run while the boot log is typing
     threading.Thread(target=session.phone, daemon=True).start()
+    warm_route_legs(session)   # how long each route really plays, for the panel
 
     started, finished, quitting = threading.Event(), threading.Event(), threading.Event()
 

@@ -13,7 +13,7 @@ import time
 from collections import deque
 
 from backend.device import DRY_RUN, Pmd3
-from backend.drive import DriveEngine
+from backend.drive import DriveEngine, merge_legs
 from backend.routes import RouteError, build_gpx, route_path, thin
 
 
@@ -33,7 +33,8 @@ class SpoofEngine:
     def prepare(self, path: str, mph, log) -> dict:
         gpx, fixes = build_gpx(path, log)
         t0 = fixes[0].t if fixes else 0
-        return {"gpx": gpx, "timeline": thin([[round(f.t - t0, 1), f.lat, f.lon] for f in fixes])}
+        legs = merge_legs((a.t - t0, b.t - t0, b.mode or "drive") for a, b in zip(fixes, fixes[1:]))
+        return {"gpx": gpx, "timeline": thin([[round(f.t - t0, 1), f.lat, f.lon] for f in fixes]), "legs": legs}
 
     def start(self, prepared: dict, log):
         return self.pmd3.play_gpx(prepared["gpx"], log)
@@ -251,7 +252,7 @@ class Session:
             self.dirty.add(engine.service)
             self.active = {"kind": "route", "route": route_id, "engine": engine.id,
                            "label": route_id, "started": time.time(), "state": "running",
-                           "timeline": prepared["timeline"], "mph": prepared.get("mph")}
+                           "timeline": prepared["timeline"], "legs": prepared.get("legs"), "mph": prepared.get("mph")}
             self.log(f"playing {route_id} via {engine.label.lower()} — keep the phone unlocked", "accent")
         self._in_background(f"starting {route_id}", go)
 
