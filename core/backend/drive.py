@@ -15,7 +15,7 @@ import random
 import threading
 import time
 
-from backend.device import CoreDevice
+from backend.device import TEXT, CoreDevice
 from backend.routes import BUILD_DIR, RouteError, haversine, thin
 
 MPH = 0.44704   # m/s per mph
@@ -160,7 +160,7 @@ def play_chunks(chunks, cd: CoreDevice, cancel, log=print) -> bool:
         if cancel.wait(max(0.0, t0 + at - time.monotonic())):
             return True
         late = time.monotonic() - (t0 + at)
-        p = subprocess.run(chunk_cmd(c, cd), capture_output=True, text=True, timeout=30)
+        p = subprocess.run(chunk_cmd(c, cd), capture_output=True, **TEXT, timeout=30)
         took = time.monotonic() - (t0 + at) - late
         if p.returncode:
             for line in (p.stdout + p.stderr).splitlines():
