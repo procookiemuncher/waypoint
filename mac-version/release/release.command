@@ -6,6 +6,7 @@
 #   VERSION=0.1.0-beta.3 ./mac-version/release/release.command
 #   VERSION=0.1.0-beta.3 NOTES="faster drives" ./mac-version/release/release.command
 #   NO_PUBLISH=1 VERSION=... ./mac-version/release/release.command   # build + DMG only, nobody gets it
+#   SKIP_BUILD=1 VERSION=... BUILD=n ...   # a step after the compile failed, reuse that app
 #
 # Needs: a clean, pushed main (it ships what's committed), the signing key at
 # ~/.config/waypoint/update_ed25519.pem (back it up, without it no installed copy can update again),
@@ -49,8 +50,14 @@ BUILD="${BUILD:-$((CURRENT + 1))}"
 [ "$BUILD" -gt "$CURRENT" ] || { echo "BUILD $BUILD isn't above the live build $CURRENT, copies wouldn't take it"; exit 1; }
 echo "> Waypoint $VERSION is build $BUILD (live now: $CURRENT)"
 
-LICENSE_URL="$DASH" VERSION="$VERSION" BUILD="$BUILD" OUT="$OUT" "$ROOT/mac-version/release/build.command"
 APP="$OUT/Waypoint.app"
+if [ -n "${SKIP_BUILD:-}" ]; then   # resume after a later step failed, only if it's the same build
+  HAVE=$("$APP/Contents/MacOS/Waypoint" -c "import waypoint_build as w; print(w.VERSION, w.BUILD, w.TEST)")
+  [ "$HAVE" = "$VERSION $BUILD False" ] || { echo "The app in $OUT is '$HAVE', not $VERSION build $BUILD"; exit 1; }
+  echo "> reusing the build in $OUT"
+else
+  LICENSE_URL="$DASH" VERSION="$VERSION" BUILD="$BUILD" OUT="$OUT" "$ROOT/mac-version/release/build.command"
+fi
 
 echo "> zipping + signing"
 ZIP="$TMP/Waypoint-$VERSION.zip"
