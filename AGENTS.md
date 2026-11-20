@@ -6,8 +6,8 @@
 ## What this is
 
 **vida-360** is a personal tool that spoofs the GPS location of the owner's own iPhone
-from a Windows PC. v1 sets a fixed fake coordinate (e.g. Eiffel Tower, Dubai, Miami).
-v2 will simulate movement along routes. Personal use, single owned device.
+from a Mac or Windows PC: fixed points (e.g. Eiffel Tower, Dubai, Miami) and realistic
+movement along routes. Each user spoofs only their own phone.
 
 **Status (confirmed):** a static spoof **does** reflect on Life360 — the member's pin moves
 to the fake location, not just in Find My. So Life360 is *not* ignoring CoreLocation, and a
@@ -289,8 +289,10 @@ next clear went straight back to real GPS).
 
 ## Ground rules for agents working here
 
-1. **Read PROGRESS.md first** — it's the running state after any memory/context reset.
-2. **After doing work, append a dated PROGRESS.md entry** (changed / decided / broke / next).
+1. **Read PROGRESS.md first** — its "Current state" block + recent entries are the running state.
+   Older history is one-liners in docs/progress-archive.md.
+2. **After doing work, add a short dated entry at the top of PROGRESS.md** (changed / decided /
+   broke / next) and update "Current state". Past ~10 entries, move the oldest to the archive.
 3. **Keep the docs true to reality.** The moment you *confirm* something (it works, or it
    fails), update AGENTS.md / ROADMAP.md / PROGRESS.md in the same session to match. A
    confirmed result that only lives in your head or a chat is a bug in the docs. This is not
@@ -358,7 +360,3 @@ git config core.sshCommand "ssh -i ~/.ssh/vida360_signing -o IdentitiesOnly=yes"
 **The "Verified" badge needs two things on the procookiemuncher account:** (1) the key above
 added as a *Signing Key*, and (2) `thegoatcodercookie@gmail.com` present as a **verified
 email**. Miss either and the commit shows "Unverified" even though it's signed.
-
-> Note: this working copy is a "Download ZIP" (no `.git`). To reconnect it, `git init` here,
-> `git remote add origin <remote>`, `git fetch`, then align the branch — or just clone fresh
-> and copy over any local changes.
