@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waypoint side panel mockups</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="shared.css">
+<link rel="stylesheet" href="d1-plan.css">
+<link rel="stylesheet" href="d2-clock.css">
+<link rel="stylesheet" href="d3-ledger.css">
+<link rel="stylesheet" href="d4-atlas.css">
+<link rel="stylesheet" href="d5-rail.css">
+<script src="icons.js"></script>
+<script src="data.js"></script>
+</head>
+<body>
+<div id="bar">
+  <div class="seg" id="d-seg" aria-label="Design"></div>
+  <p id="idea"></p>
+  <div class="seg" id="s-seg" aria-label="State"></div>
+</div>
+
+<main id="stage">
+  <div id="mapzone"><canvas></canvas></div>
+  <aside id="panel" aria-label="Destinations"></aside>
+  <section id="strip" aria-label="The phone"></section>
+  <section id="console" aria-label="Console">
+    <div class="c-head">Console</div>
+    <div id="console-log"></div>
+    <label class="c-prompt"><span class="ps">waypoint ›</span><input id="console-in" type="text" spellcheck="false" autocomplete="off" aria-label="Command" placeholder="help"></label>
+  </section>
+</main>
+
+<script src="globe.js"></script>
+<script src="shared.js"></script>
+<script src="d1-plan.js"></script>
+<script src="d2-clock.js"></script>
+<script src="d3-ledger.js"></script>
+<script src="d4-atlas.js"></script>
+<script src="d5-rail.js"></script>
+<script>boot();</script>
+</body></html>
