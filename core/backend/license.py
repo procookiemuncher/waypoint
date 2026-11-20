@@ -94,6 +94,10 @@ class License:
             json.dump(data, f)
         os.chmod(self.path, 0o600)
 
+    def saved_key(self):
+        """The key saved on this Mac, for the updater to ask with."""
+        return self._load().get("key")
+
     def _forget(self):
         try:
             os.remove(self.path)
