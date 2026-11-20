@@ -239,6 +239,25 @@ the last 6 h. On only when a URL is set: `LICENSE_URL` baked in by `release/buil
 for non-test builds), or `VIDA_LICENSE_URL` for the dev app. Basic on purpose: answers aren't signed
 and keys aren't bound to one Mac yet.
 
+**Releases + auto-update (2026-11-19). The owner says when to release, never on a plain push.**
+One command ships it: `VERSION=0.1.0-beta.3 NOTES="..." ./mac-version/release/release.command`
+(needs a clean tree that matches origin). It picks the next **BUILD** (integer, live build + 1),
+runs `build.command` with it baked in, ditto-zips + signs the app, makes the DMG on the Desktop,
+uploads the zip to Vercel Blob (store `waypoint-releases`, public, random-suffix URL, on the
+dashboard project), PUTs the manifest to the dashboard's `/api/release`, and tags `v<VERSION>`.
+`NO_PUBLISH=1` = build + DMG only. Secrets (ADMIN_PASSWORD, BLOB token) come from
+`vercel env pull` into a temp dir each run, nothing saved.
+Installed copies (`core/backend/updater.py`, release builds only, never the dev app) POST
+`/api/update` with their key 90 s after launch and every 3 h. Newer BUILD → download, check sha256
++ the **Ed25519 signature over `waypoint:<build>:<sha256>`** (public key in updater.py), ditto
+-x, codesign --strict, stage in `~/Library/Application Support/Waypoint/update/`. The swap waits
+until the app quits (after the phone's sims are cleared, normal quit or SIGTERM): a detached sh
+waits for the PID, moves the new app into place, puts the old one back if that fails. No relaunch,
+no update screen (owner's call). Can't swap when run off the DMG or translocated, it just stays
+staged. Log lines start with `update:` in `~/Library/Logs/Waypoint.log`.
+**Signing key: `~/.config/waypoint/update_ed25519.pem`, not in any repo. Lose it and no installed
+copy can ever update again** (they'd need a new DMG with a new public key). BUILD 0 = never updates.
+
 ## Prerequisites (these bite first)
 
 - **Windows Apple driver:** Apple Mobile Device Support (via iTunes or the Apple Devices
