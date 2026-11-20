@@ -23,6 +23,7 @@ import webview
 
 from backend.server import create_app, free_port
 from backend.license import License
+from backend.updater import Updater
 from backend.session import Session
 import splash
 
@@ -129,6 +130,9 @@ def main():
     lic = License.from_config()   # None unless this build (or VIDA_LICENSE_URL) names a key dashboard
     if lic:
         lic.start()   # checks the saved key while the intro plays
+    updater = Updater.from_config(lic)   # release builds only: fetches new versions in the background
+    if updater:
+        updater.start()
 
     port = free_port()
     server = uvicorn.Server(uvicorn.Config(create_app(session, lic), host="127.0.0.1", port=port,
@@ -220,6 +224,11 @@ def main():
     from PyObjCTools import AppHelper
     webview.start(lambda: AppHelper.callAfter(watch_presses))
     cleanup()
+    if updater:   # the phone's clear by now, so a waiting update can go in once we're gone
+        try:
+            updater.install_on_exit()
+        except Exception as e:
+            print(f"update: not installed ({e})", flush=True)
     # Exit hard. The titlebar x reaches us through a pywebview bridge thread (not a daemon) that,
     # once close() returns, waits forever to hand the result back to a page that's already gone,
     # so a normal exit hung until give_up — and a Dock click meanwhile went to the stuck process.
