@@ -202,7 +202,15 @@ and a timezone. `core/tools/gen_destinations.py` turns it into routes (airport �
 snapped drive, walk in, 10 min dwell; anything under 1 km is walked) and **refuses to write a route that
 fails validation**. Generated routes carry `"generated": true` + `label` + `city`. Don't hand-edit them:
 edit the catalog and rerun. Every spot is also a pin preset (`spoof sexy-fish-miami`), and the app reads
-city/country/flag/tz from `/api/cities`. Coordinates come from OSM (Nominatim/Overpass), not memory.
+city/country/tz/airport/base from `/api/cities`. **Colour is per country** (`"countries"` at the top of the
+catalog: colour + vibe name, every city's country needs one); no flags anywhere (Windows draws 🇺🇸 as "US").
+Coordinates come from OSM (Nominatim/Overpass), not memory.
+**Route times (2026-11-20):** `/api/routes` sends `legs` ([{mode walk/drive/stop, s, m}]) and `seconds` from the
+renderer at seed 0 (exactly what Spoof plays; Drive lands within a minute or two). Rendering all routes takes
+~12 s, so `server.warm_route_legs` does it on a thread after launch and keeps them in `<build>/legs-cache/`;
+until then a route carries an estimate and `"exact": false` (the page refetches). Generated routes also send
+`from`/`to` (airport or spot, from the id pattern) so the panel can chain airport → hotel → spot. A playing
+route's `active.legs` ([start, end, mode] on its timeline's clock) drives the live card.
 `"access": "boat"` spots (Maldives, Bora Bora) are pin-only. Needs the `.venv` (Python 3.12/3.13, see BUILD_PLAN.md),
 the Apple Mobile Device Service (Windows only — built into macOS), and the phone **unlocked** with Developer Mode on.
 
@@ -222,7 +230,7 @@ Stadia `alidade_smooth_dark` (CARTO's dark_all started demanding an API key). Th
 After the boot log the app shows a **connect screen** until the phone is plugged in + unlocked + has the DDI. Unlocked comes live from lockdown's `PasswordProtected` (`pymobiledevice3 lockdown get "" PasswordProtected`, plain USB, no tunnel, ~0.6s; it flips with the lock screen exactly like devicectl's `passcodeRequired`, checked both ways 2026-11-19. CoreDevice's own `getlockstate` is refused on iOS 27, "action not implemented"). Then `mounter auto-mount` runs once per plug-in (15 min timeout, the first one downloads + personalizes the image; took 10s here). Polled every 2s on the connect screen, 6s once ready, 10s after a mount error, 20s while a route plays; `usbmux list` every 4s, 10s once ready. All in `Session.phone()`/`_probe()`, same on every platform. Places/pins are held by the CoreDevice sim (`setsimulatedlocation`, via `Session.use_placer`), which hands off and exits, no process kept. `VIDA_DRY_PHONE=slow` fakes a late, locked phone for working on it; `=none` a phone that never shows (the screen waits forever until skipped).
 Windows *should* be able to run `core/backend/server.py` and use a browser (spoof engine only) — **untested**, including `Job.stop()`'s Windows path (writes ENTER to pmd3's stdin). **Force-quit / kill -9 leaves the pmd3 child holding the spoof** (normal close, Cmd+Q and SIGTERM all clear) — recover with `spoof clear` + `drive.command --clear`.
 
-**Command palette (2026-11-02):** ⌘K / ctrl+K, `core/web/static/palette.js`. Search or chips: go / play / pin / open / stop. `go` looks up an address (`/api/geocode`, Photon, needs internet), flies there and leaves a movable pin that the hero button sets. Anything that moves the phone has to pass its confirm step, keep it that way. New static JS has to be added to `MINIFY_JS` in `mac-version/release/stage_assets.py`, and single-line strings only (rjsmin).
+**Command palette (2026-11-02):** ⌘K / ctrl+K, `core/web/static/palette.js`. Search or chips: go / play / pin / open / stop. `go` looks up an address (`/api/geocode`, Photon, needs internet), flies there and leaves a movable pin that the dock's "Set location here" sets. Anything that moves the phone has to pass its confirm step, keep it that way. New static JS has to be added to `MINIFY_JS` in `mac-version/release/stage_assets.py`, and single-line strings only (rjsmin).
 
 **Access keys (2026-10-31):** release builds ask for a key after the intro (before the boot log) and
 the server answers the API with 402 until one checks out — the gate is in `server.py`'s middleware,

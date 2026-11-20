@@ -51,6 +51,7 @@
   <div id="main">
     <div id="mapwrap">
       <div id="map"></div>
+      <canvas id="globe" aria-label="Globe: hover a country to turn to it, click to open it"></canvas>
       <div class="hud" id="hud-coord"><span class="lbl">POS</span><span class="val" id="v-coord">--.----, --.----</span></div>
       <div class="hud" id="hud-speed"><span class="lbl">SPD</span><span class="val" id="v-speed">0.0 mph</span><span class="lbl">HDG</span><span class="val" id="v-hdg">—</span></div>
       <div class="hud" id="hud-leg"><span class="lbl">ETA</span><span class="val" id="v-leg">—</span></div>
@@ -59,41 +60,13 @@
       <div id="toast"><span>▸</span><span id="toast-msg">ARRIVED</span></div>
     </div>
 
-    <div id="panel">
-      <div id="cmd">
-        <div id="browse"></div>
-        <div id="hero" style="--d:.12s" hidden>
-          <div class="tick"></div>
-          <div class="hero-in">
-            <div class="hero-top">
-              <div id="hero-thumb"></div>
-              <div style="min-width:0">
-                <div id="hero-name">—</div>
-                <div id="hero-sub">—</div>
-              </div>
-            </div>
-            <div class="hero-stats" id="hero-stats"></div>
-            <div id="hero-opts">
-              <div class="seg" id="engine-seg"></div>
-              <label class="mph" id="mph-wrap" title="Speed for Drive (blank = the route's own)"><span>MPH</span><input id="mph" type="number" min="1" max="200" step="1" placeholder="auto"></label>
-            </div>
-            <div class="hero-note" id="hero-note"></div>
-            <button id="hero-action" onclick="runSelected()">▸ PLAY</button>
-          </div>
-        </div>
-      </div>
-      <div id="nowplaying">
-        <div id="np-head"><span style="color:var(--accent);font-size:11px">▸</span><span id="np-name">—</span><span id="np-time">t+00:00</span></div>
-        <div id="np-bar"><div id="np-fill"></div></div>
-        <div id="np-ctl">
-          <button class="ctlbtn primary" id="btn-stop" onclick="stopAll()">■ STOP &amp; CLEAR</button>
-          <button class="ctlbtn on" id="btn-follow" onclick="toggleFollow()">FOLLOW</button>
-        </div>
-      </div>
-      <div id="consolewrap">
-        <div class="seclabel" style="padding-bottom:4px">Console</div>
+    <div id="panel" aria-label="Destinations">
+      <div id="browse"></div>
+      <div id="dock"></div>
+      <div id="consolewrap" aria-label="Console">
+        <div class="c-head">Console</div>
         <div id="console"></div>
-        <div id="promptline"><span class="ps">waypoint ›</span><input id="prompt-in" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Command" placeholder=""><span class="cursor"></span></div>
+        <div id="promptline"><span class="ps">waypoint ›</span><input id="prompt-in" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Command" placeholder="help"></div>
       </div>
     </div>
   </div>
@@ -203,6 +176,7 @@
   <div id="flicker"></div>
 </div>
 
+<script src="static/globe.js"></script>
 <script src="static/glass.js"></script>
 <script src="static/warp.js"></script>
 <script src="static/app.js"></script>
