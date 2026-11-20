@@ -24,6 +24,8 @@ DRY_SLOW = DRY_RUN and os.environ.get("VIDA_DRY_PHONE") == "slow"
 DRY_NONE = DRY_RUN and os.environ.get("VIDA_DRY_PHONE") == "none"
 DRY_FLAKY = DRY_RUN and os.environ.get("VIDA_DRY_PHONE") == "flaky"
 WINDOWS = sys.platform == "win32"
+# pmd3 writes UTF-8 (PYTHONUTF8, set in backend/__init__.py); left to text=True, Windows reads it as cp1252
+TEXT = dict(text=True, encoding="utf-8", errors="replace")
 CORE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _T0 = time.time()
 
@@ -49,7 +51,7 @@ class Job:
         self.label = label
         self.proc = subprocess.Popen(
             cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, bufsize=1,
+            **TEXT, bufsize=1,
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if WINDOWS else 0)
         threading.Thread(target=self._pump, args=(log,), daemon=True).start()
 
@@ -84,7 +86,7 @@ class Job:
 def run(cmd: list[str], log, timeout: float = 90) -> bool:
     """Run a short command to completion, streaming its output. True on exit code 0."""
     try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        p = subprocess.run(cmd, capture_output=True, **TEXT, timeout=timeout)
     except subprocess.TimeoutExpired:
         log(f"  timed out: {' '.join(cmd[-4:])}")
         return False
@@ -104,7 +106,7 @@ class Pmd3:
                 return []
             return [{"name": "Dry-run iPhone", "udid": "dry-run", "ios": "27.0", "connection": "USB"}]
         try:
-            p = subprocess.run(_pmd("usbmux", "list"), capture_output=True, text=True, timeout=15)
+            p = subprocess.run(_pmd("usbmux", "list"), capture_output=True, **TEXT, timeout=15)
             devices = json.loads(p.stdout or "[]")
         except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
             return []
@@ -121,7 +123,7 @@ class Pmd3:
             return "locked" if DRY_SLOW and time.time() - _T0 < 20 else "unlocked"
         cmd = _pmd("lockdown", "get", *(["--udid", udid] if udid else []), "", "PasswordProtected")
         try:
-            p = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+            p = subprocess.run(cmd, capture_output=True, **TEXT, timeout=15)
         except (subprocess.TimeoutExpired, OSError):
             return None
         said = p.stdout.strip().lower()   # JSON, so true / false (seen as True / False too)
