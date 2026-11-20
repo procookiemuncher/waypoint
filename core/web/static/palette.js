@@ -1,13 +1,13 @@
-/* ⌘K command palette. Loads after app.js and uses its globals (ROUTES, PLACES, STATUS, send, stopAll,
-   selectItem, openCityPage...). Search anything, or build a command out of chips:
-   action → route/place/city → engine → confirm. Nothing reaches the phone before the confirm step, since a
+/* ⌘K command palette. Loads after app.js and uses its globals (ROUTES, PLACES, COUNTRIES, STATUS, send, stopAll,
+   selectItem, openCountryPage...). Search anything, or build a command out of chips:
+   action → route/place/country → engine → confirm. Nothing reaches the phone before the confirm step, since a
    real run moves the owner's pin in front of their circle. `go` looks up an address and only moves the map:
-   the pin it leaves is set from the hero's button, like any dropped pin. Single-line strings only: the release build's
+   the pin it leaves is set from the dock's button, like any dropped pin. Single-line strings only: the release build's
    rjsmin chokes on multiline template literals. */
 const Palette = (() => {
   const VERBS = { play:'play', pin:'pin', set:'pin', open:'open', go:'go', address:'go' };
   const CHIP = { play:'Play', pin:'Pin', open:'Open', go:'Go to' };
-  const WANT = { play:'Which route?', pin:'Which place?', open:'Which city?', go:'Type an address' };
+  const WANT = { play:'Which route?', pin:'Which place?', open:'Which country?', go:'Type an address' };
   const MAX_RESULTS = 30;
   const ADDRESS_MIN = 3, ADDRESS_WAIT_MS = 300;
   const CONFIRM_GUARD_MS = 250;   // a double tap on the step before shouldn't count as the confirm
@@ -44,24 +44,27 @@ const Palette = (() => {
   const running = () => !!(STATUS && (STATUS.active || STATUS.busy)) || !!live;
 
   /* ---- rows ---- */
-  const placeNote = p => { const tz=cityInfo(p.city).tz, o=openNow(p.hours, tz); return o===null ? '' : o ? ' · open now' : ' · opens '+fmtHour(p.hours[0]); };
+  const placeNote = p => { const o=openState(p); return !o ? '' : o.open ? ' · open now' : ' · opens '+fmtHour(p.hours[0]); };
   const routeRow = r => ({ kind:'route', def:r, title:r.label, sub:r.city+' · '+r.cardSub, name:r.label, extra:r.id+' '+r.city+' '+cityInfo(r.city).country, color:r.accent });
   const placeRow = p => ({ kind:'place', def:p, title:p.name, sub:p.city+placeNote(p), name:p.name, extra:p.id+' '+p.city+' '+cityInfo(p.city).country, color:p.accent });
-  const cityRow = c => { const C=cityInfo(c); return { kind:'city', city:c, title:c, sub:[C.country, plural(cityItems(c).length,'item')].filter(Boolean).join(' · '), name:c, extra:C.country, flag:C.flag, color:C.color }; };
+  // a country is found by its own name or any of its cities, which count as much as its name (typing a city
+  // brings up its country first, as the city rows used to)
+  const countryRow = k => ({ kind:'country', country:k.name, title:k.name, sub:[k.cities.join(', '), k.routes ? plural(k.routes,'route') : plural(k.places,'place')].join(' · '), name:[k.name, ...k.cities].join(' '), extra:k.vibe, color:k.color });
   const verbRow = (v,title,sub,extra='') => ({ kind:'verb', verb:v, title, sub, name:v+' '+title, extra });
   const addressRow = a => ({ kind:'address', def:a, title:a.name, sub:a.sub });
   const stopRow = () => running()
     ? { kind:'stop', title:'Stop', sub:'Stop what’s running and put the phone back on real GPS', name:'stop', extra:'clear' }
     : { kind:'stop', off:true, title:'Stop', sub:'Nothing is running', name:'stop', extra:'clear' };
-  const verbRows = () => [verbRow('go','Go to an address','Zoom in on it, then choose exactly where the waypoint goes','address waypoint street find'), verbRow('play','Play a route','Pick a route, then how to play it'), verbRow('pin','Pin a place','Hold the phone at a saved place'), verbRow('open','Open a city','Show a city and its routes')];
+  const verbRows = () => [verbRow('go','Go to an address','Zoom in on it, then choose exactly where the waypoint goes','address waypoint street find'), verbRow('play','Play a route','Pick a route, then how to play it'), verbRow('pin','Pin a place','Hold the phone at a saved place'), verbRow('open','Open a country','Show a country, its cities and routes')];
 
   function search(pool, q){
     const tokens=norm(q).split(' ').filter(Boolean);
     if(!tokens.length) return pool;
     return pool.map((r,i)=>({ r, i, s:score(tokens, r.name, r.extra) })).filter(x=>x.s>0).sort((a,b)=>b.s-a.s || a.i-b.i).map(x=>x.r);
   }
-  // inside a city, its own routes and places come first
-  const here = (a, c) => openCity ? [...a.filter(x=>c(x)===openCity), ...a.filter(x=>c(x)!==openCity)] : a;
+  // inside a country, its own routes and places come first
+  const inOpen = x => openCountry && countryOf(x.city)===openCountry;
+  const here = a => openCountry ? [...a.filter(inOpen), ...a.filter(x=>!inOpen(x))] : a;
   const engineList = () => availableEngines();
   const needEngine = () => action==='play' && target && !engine && engineList().length>1;
   function step(){
@@ -90,12 +93,12 @@ const Palette = (() => {
     if(s==='engine') return search(engineList().map(engineRow), q);
     if(s==='target'){
       if(action==='go') return addr.rows;
-      if(action==='play') return search(here(ROUTES,r=>r.city).map(routeRow), q);
-      if(action==='pin') return search(here(PLACES,p=>p.city).map(placeRow), q);
-      return search(cityNames().map(cityRow), q);
+      if(action==='play') return search(here(ROUTES).map(routeRow), q);
+      if(action==='pin') return search(here(PLACES).map(placeRow), q);
+      return search(COUNTRIES.map(countryRow), q);
     }
     if(!norm(q)) return running() ? [stopRow(), ...verbRows()] : verbRows();
-    const all=[stopRow(), ...verbRows(), ...cityNames().map(cityRow), ...PLACES.map(placeRow), ...ROUTES.map(routeRow)];
+    const all=[stopRow(), ...verbRows(), ...COUNTRIES.map(countryRow), ...PLACES.map(placeRow), ...ROUTES.map(routeRow)];
     // whatever's typed might be an address, so a search is never a dead end
     return [...search(all, q).slice(0,MAX_RESULTS), { kind:'find', title:'Find “'+q.trim()+'” as an address', sub:'Look it up and zoom in on the map' }];
   }
@@ -112,7 +115,7 @@ const Palette = (() => {
     chips.innerHTML=h;
   }
   function rowIcon(r){
-    if(r.kind==='city') return '<span class="fl">'+r.flag+'</span>';
+    if(r.kind==='country') return '<span class="pdot"></span>';
     const name={ route:'route', place:'map-pin', address:'map-pin', find:'search', stop:'square', engine:'gauge', verb:r.verb==='go'?'navigation':r.verb==='play'?'play':r.verb==='pin'?'map-pin':'map', confirm:action==='play'?'play':'map-pin' }[r.kind];
     return icon(name,15);
   }
@@ -130,7 +133,7 @@ const Palette = (() => {
     }
     list.innerHTML=rows.map((r,i)=>'<button class="pal-row'+(i===at?' on':'')+(r.off?' off':'')+'" role="option" id="pal-r'+i+'" aria-selected="'+(i===at)+'" data-i="'+i+'" tabindex="-1"'+(r.color?' style="--t:'+esc(r.color)+'"':'')+'>'
       +'<span class="pi">'+rowIcon(r)+'</span><span class="tx"><span class="nm">'+esc(r.title)+'</span><span class="sb">'+esc(r.sub)+'</span></span>'
-      +(r.kind==='route'||r.kind==='place'||r.kind==='city'?'<span class="kd">'+r.kind+'</span>':'')+'</button>').join('');
+      +(r.kind==='route'||r.kind==='place'||r.kind==='country'?'<span class="kd">'+r.kind+'</span>':'')+'</button>').join('');
     input.setAttribute('aria-activedescendant','pal-r'+at);
     list.querySelector('.on')?.scrollIntoView({ block:'nearest' });
   }
@@ -189,7 +192,7 @@ const Palette = (() => {
   function pick(r){
     if(!r || r.off) return;
     if(r.kind==='stop'){ close(); stopAll(); return; }
-    if(r.kind==='city'){ close(); openCityPage(r.city); return; }
+    if(r.kind==='country'){ close(); openCountryPage(r.country); return; }
     if(r.kind==='verb'){ action=r.verb; moved(); return; }
     if(r.kind==='find'){ const q=input.value; action='go'; moved(); input.value=q; lookup(); draw(); return; }
     if(r.kind==='address'){ close(); flyToAddress(r.def); return; }
@@ -202,10 +205,11 @@ const Palette = (() => {
     if(blocker() || performance.now()-stepAt<CONFIRM_GUARD_MS) return;
     const def=target.def, act=action, eng=chosenEngine();
     close();
-    if(openCity!==def.city) openCityPage(def.city);
+    const k=countryOf(def.city);
+    if(openCountry!==k) openCountryPage(k);
     if(act==='play'){
-      // the panel's speed box isn't part of this command, so it can't quietly change it
-      engineChoice=eng; $('mph').value='';
+      // the dock's speed box isn't part of this command, so it can't quietly change it
+      engineChoice=eng; mphValue='';
       selectItem({ type:'route', def });
       send('play '+def.id+' --'+eng, '/api/play', { route:def.id, engine:eng, mph:null });
     } else {
