@@ -41,7 +41,9 @@ const SHADE = 192;
 // (after, the steps are already baked in), so the overlay is put together at full screen resolution and
 // this grain, a little more alpha per pixel in the overlay's own colour, goes into it there. Made once,
 // so it doesn't shimmer while the globe turns
-const NIGHT = [3, 5, 14];
+// a deep navy, not black: at full strength over the sphere it lands a few levels above the page
+// background, so the night side still reads as a ball against space instead of a hole in it
+const NIGHT = [12, 14, 24];
 let GRAIN = null;
 function grain(ctx){
   if(!GRAIN){
