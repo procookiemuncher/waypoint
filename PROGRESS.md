@@ -7,6 +7,17 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-20 — Side panel: 5 mockups to pick from
+
+- Brainstormed nine directions, mocked five that are different answers to what the panel *is*: **1 Arrival plan** (a city as airport → hotel → spot, the pick says when you'd be at the door and if it's open then), **2 Local clock** (world list by local time, a city as a strip from 30 min back to 3.5 h ahead with routes as bars in their legs and spots in their hours), **3 Ledger** (sortable tables), **4 Atlas** (index in large type, a cover in the country's colour, every route drawn as its own line, bends the no-thumbnails rule), **5 Rail + sheet** (questions the frame: country rail + preview-on-hover sheet, the phone's live state moved to a strip under the map). Each covers world/France/Japan/route/playing plus place and pin. `docs/design/side-panel-mockups/` (README there), same globe and colours, `?d=&s=&now=` in the URL.
+- New `dump-data.py` there: lib.js + airport names, base hotels, spot notes, `generated`, each generated route's ends, and per-route walk/drive/parked legs from the renderer at seed 0. **Found: `/api/routes` `seconds` under-reports walks** (distance ÷ first moving speed, walk-only routes get none): The Dorchester → Sexy Fish London says 10 min, plays 19. The build should send legs or the rendered total. `generated`, spot `note` and `access` aren't in the API either.
+- Spot notes are free text, printed as written, never turned into open/closed. A structured season/days field would let the panel say Club 55 is out of season in November.
+- Skill `lint.mjs --app` on the mockups: 0 FAIL, 19 WARN (1px inset outlines, clock zero-padding, the app's own em dashes in console lines). `inspect.mjs --app` passes at 1440; fails at 768/390 (mockup switch bar, the 60/40 frame doesn't fold), not worked on.
+- Another session was working in the main checkout at the same time (star sky on the prototype globe), so this went on a worktree (`sidepanel-work`). The screenshots are gitignored (`shots/`, contact sheet at `shots/index.html`).
+- Next: owner picks (or mixes) a design. Then the build listed in the brief, with the route-time fix above.
+
+---
+
 ## 2026-11-20 — Globe: stars, depth, night side (on trial in the prototype)
 
 - Owner wanted the globe to feel less basic, suggested realistic stars. Built four effects as switches in the world-view prototype's bar (`docs/design/world-view-prototype/`), all off in `globe.js` unless turned on, so style A is still the baseline: **Stars**, **Depth**, **Night**, **Rim**. Nothing picked yet, nothing in `core/web/`.
