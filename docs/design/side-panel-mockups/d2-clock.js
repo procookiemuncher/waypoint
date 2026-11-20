@@ -1,7 +1,7 @@
 /* 2 · Local clock. Time is the axis. The world list runs round the clock (what time is it there, what's
-   open), and a city is a 24-hour strip in its own time: each route a bar starting now, laid out as its
-   walk / drive / parked legs, each spot its opening hours, a line at now. A route that plays slides
-   along that same strip. */
+   open), and a city is a strip of its own time, 30 min back to 3.5 h ahead: each route a bar starting
+   now, laid out as its walk / drive / parked legs, each spot its opening hours, a line at now. A route
+   that plays sits on the same strip, started where it started. */
 (function(){
 const SPAN = 4, BEFORE = .5;   // the strip shows 30 min back and 3.5 h ahead, local: the window a 'go now' needs
 const GROUPS = ['Night','Evening','Afternoon','Morning','Late night'];
@@ -128,6 +128,6 @@ function dock(){
 }
 
 design({ id:2, name:'Local clock',
-  idea:'Time is the axis: the list runs round the clock, a city is a 24-hour strip in its own time, routes are bars starting now, spots show their hours.',
+  idea:'Time is the axis: the list runs round the clock, a city is a strip of the next few hours in its own time, routes are bars starting now.',
   render: S => ({ panel: S.open ? countryView(country(S.open)) : world() }) });
 })();

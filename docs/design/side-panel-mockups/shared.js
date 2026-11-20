@@ -120,7 +120,7 @@ function kindLabel(p){ return p.kind ? cap(p.kind) : p.saved ? 'Saved place' : '
 const STATES = ['world','france','japan','route','playing','place','pin'];
 const STATE_NAMES = { world:'World', france:'France', japan:'Japan', route:'Route', playing:'Playing', place:'Place', pin:'Pin' };
 const DEMO = { route:'cdg-to-ritz-paris', place:'club-55', elapsed:845,
-  // a pin as ⌘K `go place vendome` leaves it (Photon's answer for Place Vendôme)
+  // a dropped pin at Place Vendôme, name and coordinates typed in by hand for the mockup (not looked up)
   pin:{ lat:48.86750, lon:2.32940, name:'Place Vendôme', sub:'75001 Paris, France' } };
 const S = { d:1, s:'world', hover:null, open:null, sel:null, engine:'drive', mph:'', live:null, follow:true, pin:null, sort:'continent', log:[] };
 

@@ -63,7 +63,8 @@ it), and each route's legs: walk / drive / parked, seconds and metres, from the 
   structured `season` / `days` field in the catalog would let the panel say so.
 - Console lines are the app's own, copied from a dry run (`play cdg-to-ritz-paris --drive` and `set
   club-55`), including the drive plan line "108 moving chunks, 1 stops, 2-41 mph, ~44.9 min".
-- The dropped pin is Place Vendôme as ⌘K `go` would leave it; the playing state is 14:05 into CDG → Ritz.
+- The dropped pin is a pin at Place Vendôme with its name and coordinates typed in by hand (not looked up
+  through Photon); the playing state is 14:05 into CDG → Ritz.
 
 ## Known limits
 
