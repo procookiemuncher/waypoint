@@ -1,0 +1,8 @@
+/* Inter (latin subset only), copied from core/web/static/fonts so this folder can be served on its own */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("inter-latin.woff2") format('woff2');
+}

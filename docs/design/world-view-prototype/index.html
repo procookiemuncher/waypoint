@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Waypoint world view prototype</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+:root {
+  --ground: #0d0d10; --panel: #121319; --hover: rgba(255,255,255,.055); --active: rgba(255,255,255,.1);
+  --line: rgba(255,255,255,.08); --ink: #f4f4f5; --ink2: #d4d4d8; --muted: #8e8e99;
+  --accent: #b49aff; --positive: #3fc07a;
+  --font: 'Inter', system-ui, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--ground); color: var(--ink2); font: 400 14px/20px var(--font); -webkit-font-smoothing: antialiased; overflow: hidden; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: left; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+svg.lu { display: block; flex: none; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* prototype chrome (not part of the design) */
+#bar { height: 48px; display: flex; align-items: center; gap: 24px; padding: 0 24px; background: #09090b; border-bottom: 1px solid var(--line); }
+#bar .t { color: var(--ink); font-weight: 600; }
+#bar .t span { color: var(--muted); font-weight: 400; margin-left: 8px; }
+#bar .grow { flex: 1; }
+.seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: rgba(255,255,255,.06); }
+.seg button { height: 28px; padding: 0 12px; border-radius: 6px; color: var(--muted); font-size: 13px; font-weight: 500; transition: background-color .15s, color .15s; }
+.seg button:hover { color: var(--ink2); }
+.seg button.on { background: rgba(255,255,255,.12); color: var(--ink); }
+.lbl { color: var(--muted); font-size: 13px; margin-right: 8px; }
+
+/* stage */
+/* the app's main area: map 60%, panel 40%, like #main in core/web/static/app.css */
+#stage { height: calc(100% - 48px); display: grid; grid-template-columns: 60% 40%; }
+#mapzone { position: relative; min-width: 0; min-height: 0; background: var(--ground); }
+#mapzone canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#note { color: var(--muted); font-size: 13px; opacity: 0; transition: opacity .3s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#note.on { opacity: 1; }
+
+/* the panel */
+#panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--panel); border-left: 1px solid var(--line); }
+#browse { flex: 1; min-height: 0; overflow-y: auto; padding: 0 12px 16px; scrollbar-width: thin; scrollbar-color: #2a2b33 transparent; }
+#browse.enter > * { animation: rise .32s cubic-bezier(.2,.8,.2,1) backwards; }
+#browse.enter > *:nth-child(2) { animation-delay: .03s; }
+#browse.enter > *:nth-child(n+3) { animation-delay: .06s; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+
+.bhead { display: flex; align-items: flex-start; gap: 12px; padding: 22px 12px 4px; }
+.bhead > div { flex: 1; min-width: 0; }
+h1 { color: var(--ink); font-size: 24px; line-height: 30px; font-weight: 600; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.iconbtn { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); transition: background-color .15s, color .15s; }
+.iconbtn:hover { background: var(--hover); color: var(--ink); }
+
+/* world view: the country list */
+.cg h2 { color: var(--muted); font-size: 12.5px; font-weight: 500; padding: 18px 12px 6px; }
+.crow { width: 100%; display: grid; grid-template-columns: 8px 1fr auto; grid-template-areas: "d n r" ". s r"; column-gap: 12px; align-items: center;
+  padding: 8px 12px; border-radius: 8px; transition: background-color .12s; }
+.crow:hover, .crow.hov { background: var(--hover); }
+.crow .n { grid-area: n; color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crow .s { grid-area: s; color: var(--muted); font-size: 12.5px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crow .r { grid-area: r; color: var(--muted); font-size: 13px; text-align: right; }
+.crow .r b { color: var(--ink2); font-weight: 500; }
+.crow .d { grid-area: d; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+
+/* a country's panel */
+.ctop { display: flex; align-items: center; justify-content: space-between; padding: 14px 0 0; }
+.back { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px 0 6px; border-radius: 8px; color: var(--muted); font-size: 13px; font-weight: 500; transition: background-color .12s, color .12s; }
+.back:hover { background: var(--hover); color: var(--ink); }
+.chead { padding: 10px 12px 4px; }
+.city { margin-top: 18px; }
+.cityh { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 12px 6px; }
+.cityh h2 { color: var(--ink); font-size: 15px; font-weight: 600; }
+.meta { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.it { width: 100%; display: grid; grid-template-columns: 16px 1fr auto; grid-template-areas: "i n v" "i s v"; column-gap: 12px; align-items: center;
+  padding: 8px 12px; border-radius: 8px; transition: background-color .12s; }
+.it:hover { background: var(--hover); }
+.it.sel { background: var(--active); }
+.it .i { grid-area: i; color: var(--muted); align-self: start; margin-top: 2px; }
+.it.sel .i { color: var(--ink2); }
+.it .n { grid-area: n; color: var(--ink); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.it .s { grid-area: s; color: var(--muted); font-size: 12.5px; line-height: 18px; }
+.it .v { grid-area: v; color: var(--ink2); font-size: 13px; text-align: right; }
+.it .v.open { color: var(--positive); }
+.it .v.shut { color: var(--muted); }
+
+/* play controls, docked under the list when something is picked */
+#dock { flex: none; padding: 16px 24px 18px; border-top: 1px solid var(--line); background: var(--panel); }
+#dock[hidden] { display: none; }
+.dk-n { color: var(--ink); font-weight: 600; font-size: 15px; }
+.dk-s { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.dk-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.dk-row .seg button { height: 32px; }
+.mph { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 10px; border-radius: 8px; background: rgba(255,255,255,.06); color: var(--muted); font-size: 13px; }
+.mph input { width: 44px; background: none; border: 0; outline: 0; color: var(--ink); font: 500 13px var(--font); }
+.mph input::placeholder { color: var(--muted); }
+.primary { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: 8px; background: var(--ink); color: #0d0d10; font-weight: 600; font-size: 13.5px; transition: transform .1s, background-color .15s; }
+.primary:hover { background: #fff; }
+.primary:active { transform: translateY(1px); }
+.primary svg { fill: currentColor; }
+.dk-note { color: var(--muted); font-size: 12.5px; line-height: 18px; margin-top: 10px; }
+
+/* the console, unchanged by this redesign, here only for its height */
+#console { flex: none; height: 30%; border-top: 1px solid var(--line); padding: 14px 24px; color: var(--muted); font-size: 12.5px; line-height: 20px; overflow: hidden; }
+#console b { display: block; color: var(--ink2); font-weight: 500; margin-bottom: 6px; }
+@media (prefers-reduced-motion: reduce) { #browse.enter > * { animation: none; } }
+</style>
+<script src="icons.js"></script>
+<script src="lib.js"></script>
+</head>
+<body>
+<div id="bar">
+  <div class="t">Waypoint world view<span>prototype: globe A, colour on hover</span></div>
+  <p id="note" class="grow"></p>
+  <div><span class="lbl">List</span><div class="seg" id="sort-seg">
+    <button data-s="continent" class="on">By continent</button><button data-s="routes">By routes</button></div></div>
+</div>
+
+<main id="stage">
+  <div id="mapzone"><canvas></canvas></div>
+  <aside id="panel">
+    <div id="browse"></div>
+    <div id="dock" hidden></div>
+    <div id="console"><b>Console</b>Unchanged by this redesign, shown so the list gets its real height in the app.<br>dry run: commands are printed, the phone is not touched.</div>
+  </aside>
+</main>
+
+<script src="globe.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const plural = (n, w) => `${n} ${n===1 ? w : w.endsWith('y') ? w.slice(0,-1)+'ies' : w+'s'}`;
+const CI = LIB.cities;
+
+/* ---- the library, grouped by country (this part ports straight into app.js) ---- */
+const cityRoutes = c => LIB.routes.filter(r => r.city===c);
+const cityPlaces = c => LIB.places.filter(p => p.city===c);
+const cityCount = c => cityRoutes(c).length + cityPlaces(c).length;
+const COUNTRIES = (() => {
+  const by = new Map();
+  for(const c of Object.keys(CI)){
+    const k = CI[c].country;
+    if(!by.has(k)) by.set(k, { name:k, continent:CI[c].continent, cities:[] });
+    by.get(k).cities.push(c);
+  }
+  for(const k of by.values()){
+    k.cities.sort((a,b) => cityCount(b)-cityCount(a) || a.localeCompare(b));
+    k.routes = k.cities.reduce((s,c) => s+cityRoutes(c).length, 0);
+    k.places = k.cities.reduce((s,c) => s+cityPlaces(c).length, 0);
+  }
+  return [...by.values()].sort((a,b) => b.routes-a.routes || b.places-a.places || a.name.localeCompare(b.name));
+})();
+const country = name => COUNTRIES.find(k => k.name===name);
+const TOTAL = { countries:COUNTRIES.length, cities:Object.keys(CI).length, routes:LIB.routes.length };
+
+function localTime(tz){
+  try { return new Intl.DateTimeFormat('en-US', { timeZone:tz, weekday:'short', hour:'numeric', minute:'2-digit' }).format(new Date()); }
+  catch(e){ return ''; }
+}
+function openNow(hours, tz){
+  if(!hours || !tz) return null;
+  const p = new Intl.DateTimeFormat('en-US', { timeZone:tz, hour:'numeric', minute:'numeric', hourCycle:'h23' }).formatToParts(new Date());
+  const t = +p.find(x => x.type==='hour').value + p.find(x => x.type==='minute').value/60, [a,b] = hours;
+  return a<b ? t>=a && t<b : t>=a || t<b;
+}
+const fmtHour = h => { const hh=Math.floor(h)%24; return `${hh%12||12} ${hh<12?'am':'pm'}`; };
+const mainMode = r => r.modes.includes('drive') ? 'Drive' : r.modes.includes('walk') ? 'Walk' : 'Stop';
+const miles = m => { const x=m/1609.34; return x.toFixed(x<10?1:0)+' mi'; };
+
+/* ---- views ---- */
+let sortBy = 'continent', open = null, sel = null;
+
+function rowHtml(k){
+  const r = k.routes ? `<b class="num">${k.routes}</b> ${k.routes===1?'route':'routes'}` : `<b class="num">0</b> routes · ${plural(k.places,'place')}`;
+  return `<button class="crow" data-country="${esc(k.name)}" style="--c:${HUE[k.name][0]}"><span class="d"></span><span class="n">${esc(k.name)}</span><span class="s">${k.cities.map(esc).join(', ')}</span><span class="r">${r}</span></button>`;
+}
+function worldHtml(){
+  let body;
+  if(sortBy==='continent'){
+    const groups = new Map();
+    for(const k of COUNTRIES){ if(!groups.has(k.continent)) groups.set(k.continent, []); groups.get(k.continent).push(k); }
+    body = [...groups].map(([c, ks]) => `<section class="cg"><h2>${esc(c)}</h2>${ks.map(rowHtml).join('')}</section>`).join('');
+  } else body = `<section class="cg"><h2>Most routes first</h2>${COUNTRIES.map(rowHtml).join('')}</section>`;
+  return `<div class="bhead"><div><h1>Destinations</h1><p class="sub">${plural(TOTAL.countries,'country')}, ${plural(TOTAL.cities,'city')}, ${plural(TOTAL.routes,'route')}</p></div>
+    <button class="iconbtn" title="Search (⌘K)" aria-label="Search">${icon('search',16)}</button></div>${body}`;
+}
+function itemsHtml(c){
+  const tz = CI[c].tz;
+  const rs = cityRoutes(c).map(r => `<button class="it${sel?.id===r.id?' sel':''}" data-kind="route" data-id="${esc(r.id)}"><span class="i">${icon('route',16)}</span>
+    <span class="n">${esc(r.label)}</span><span class="s">${mainMode(r)} · ${Math.round(r.seconds/60)} min</span><span class="v num">${miles(r.meters)}</span></button>`);
+  const ps = cityPlaces(c).map(p => {
+    const o = openNow(p.hours, tz);
+    const v = o===null ? '<span class="v"></span>' : o ? '<span class="v open">Open now</span>' : `<span class="v shut">Opens ${fmtHour(p.hours[0])}</span>`;
+    const kind = p.kind ? p.kind[0].toUpperCase()+p.kind.slice(1) : 'Saved place';
+    return `<button class="it${sel?.id===p.id?' sel':''}" data-kind="place" data-id="${esc(p.id)}"><span class="i">${icon('map-pin',16)}</span>
+      <span class="n">${esc(p.name)}</span><span class="s">${esc(kind)}</span>${v}</button>`;
+  });
+  return rs.concat(ps).join('');
+}
+const cityMeta = c => [CI[c].airport, localTime(CI[c].tz)].filter(Boolean).map(esc).join(' · ');
+function countryHtml(k){
+  const one = k.cities.length===1;
+  const sub = one ? `${esc(k.cities[0])} · ${cityMeta(k.cities[0])}` : [plural(k.cities.length,'city'), plural(k.routes,'route'), plural(k.places,'place')].join(' · ');
+  return `<div class="ctop"><button class="back" data-back>${icon('chevron-left',16)}All countries</button>
+      <button class="iconbtn" title="Search (⌘K)" aria-label="Search">${icon('search',16)}</button></div>
+    <div class="chead"><h1>${esc(k.name)}</h1><p class="sub">${sub}</p></div>
+    ${one ? `<div class="city">${itemsHtml(k.cities[0])}</div>`
+          : k.cities.map(c => `<section class="city"><div class="cityh"><h2>${esc(c)}</h2><span class="meta">${cityMeta(c)}</span></div>${itemsHtml(c)}</section>`).join('')}`;
+}
+function render(animate){
+  const el = $('browse');
+  el.innerHTML = open ? countryHtml(country(open)) : worldHtml();
+  if(animate){ el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); el.scrollTop = 0; }
+  renderDock();
+}
+function renderDock(){
+  const d = $('dock');
+  if(!sel){ d.hidden = true; return; }
+  d.hidden = false;
+  if(sel.kind==='route'){
+    const r = LIB.routes.find(x => x.id===sel.id);
+    d.innerHTML = `<div class="dk-n">${esc(r.label)}</div><div class="dk-s num">${esc(r.city)} · ${miles(r.meters)} · ${Math.round(r.seconds/60)} min${r.speed?` · cruises about ${Math.round(r.speed*2.23694)} mph`:''}</div>
+      <div class="dk-row"><div class="seg"><button class="on">Drive</button><button>Spoof</button></div>
+        <label class="mph"><input type="number" placeholder="Auto" aria-label="Speed in mph">mph</label>
+        <button class="primary">${icon('play',13)}Play route</button></div>
+      <p class="dk-note">Real speed: Life360 shows mph and the car. It slows for bends and stops at the door.</p>`;
+  } else {
+    const p = LIB.places.find(x => x.id===sel.id);
+    d.innerHTML = `<div class="dk-n">${esc(p.name)}</div><div class="dk-s num">${esc(p.city)} · ${p.lat.toFixed(4)}, ${p.lon.toFixed(4)}</div>
+      <div class="dk-row"><button class="primary">${icon('map-pin',14)}Set location here</button></div>`;
+  }
+}
+
+/* ---- globes ---- */
+// one colour per country, picked for the place's feel; every hue held near the same lightness and
+// chroma (OKLCH) so none of them shouts on the dark globe
+const HUE = {
+  'United States':['#f471aa','Miami neon pink'], 'Mexico':['#e08256','Cabo desert terracotta'],
+  'Saint Barthélemy':['#47d6cf','Caribbean turquoise'], 'Monaco':['#e9504d','Grand Prix red'],
+  'France':['#bca1ed','Provence lavender'], 'United Kingdom':['#53ae77','racing green'],
+  'Greece':['#4c94ec','Aegean blue'], 'Spain':['#f59740','Ibiza sunset orange'],
+  'Italy':['#efd956','Amalfi lemon'], 'Switzerland':['#afd9ea','glacier ice'],
+  'United Arab Emirates':['#e1b75c','desert gold'], 'Japan':['#f1b8cd','sakura'],
+  'Singapore':['#cf78d5','orchid'], 'Indonesia':['#67bb6b','Bali jungle green'],
+  'Morocco':['#4170e9','Majorelle blue'], 'South Africa':['#ec8a92','protea coral'],
+  'Brazil':['#79c24a','Copacabana green'], 'Uruguay':['#82c7f0','celeste'],
+  'Australia':['#de844f','outback ochre'], 'Maldives':['#5ddae0','lagoon aqua'],
+  'French Polynesia':['#ec6480','hibiscus'],
+};
+let globes = [], big;
+function vibe(name){
+  if(open) return;
+  $('note').classList.toggle('on', !!name);
+  if(name) $('note').textContent = `${name}: ${HUE[name][1]}`;
+}
+function eachGlobe(f){ for(const g of globes) f(g); }
+function hoverCountry(name){
+  if(open) return;
+  document.querySelectorAll('.crow').forEach(b => b.classList.toggle('hov', b.dataset.country===name));
+  eachGlobe(g => g.highlight(name));
+  vibe(name);
+}
+function openCountry(name){
+  open = name; sel = null;
+  eachGlobe(g => g.focus(name, 1.6));
+  $('note').classList.add('on');
+  $('note').textContent = `In the app the globe zooms on into the street map here, framed on ${name}.`;
+  render(true);
+}
+function closeCountry(){
+  const was = open; open = null; sel = null;
+  $('note').classList.remove('on');
+  eachGlobe(g => { g.highlight(null); g.zoomTo(1); });
+  render(true);
+  const b = [...document.querySelectorAll('.crow')].find(x => x.dataset.country===was);
+  if(b) b.scrollIntoView({ block:'nearest' });
+}
+
+$('browse').addEventListener('mouseover', e => {
+  const t = e.target.closest('.crow');
+  if(t && !open){ eachGlobe(g => g.focus(t.dataset.country)); vibe(t.dataset.country); }
+});
+$('browse').addEventListener('focusin', e => {
+  const t = e.target.closest('.crow');
+  if(t && !open) eachGlobe(g => g.focus(t.dataset.country));
+});
+$('browse').addEventListener('mouseleave', () => { if(!open){ eachGlobe(g => g.highlight(null)); vibe(null); } });
+$('browse').addEventListener('click', e => {
+  const t = e.target.closest('[data-country],[data-back],[data-id]');
+  if(!t) return;
+  if(t.dataset.country) openCountry(t.dataset.country);
+  else if(t.dataset.back !== undefined) closeCountry();
+  else { sel = { kind:t.dataset.kind, id:t.dataset.id }; document.querySelectorAll('.it').forEach(b => b.classList.toggle('sel', b===t)); renderDock(); }
+});
+document.addEventListener('keydown', e => { if(e.key==='Escape' && open) closeCountry(); });
+
+$('sort-seg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  $('sort-seg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x===b));
+  sortBy = b.dataset.s; if(!open) render(true);
+});
+
+fetch('countries.json').then(r => r.json()).then(shapes => {
+  const places = Object.values(CI).map(c => ({ country:c.country, lat:c.lat, lon:c.lon }));
+  const lit = COUNTRIES.map(k => k.name);
+  const palette = Object.fromEntries(Object.entries(HUE).map(([k, v]) => [k, v[0]]));
+  const make = (canvas, tint) => {
+    const g = new Globe(canvas, shapes, { style:'silhouette', tint, lon:-35, lat:28,
+      onHover: name => hoverCountry(name), onClick: name => openCountry(name) });
+    g.setPlaces(places); g.setLit(lit); g.setPalette(palette);
+    globes.push(g); return g;
+  };
+  big = make(document.querySelector('#mapzone canvas'), 'hover');
+});
+render(false);
+</script>
+</body></html>
