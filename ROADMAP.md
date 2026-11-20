@@ -2,168 +2,107 @@
 
 ## Vision
 
-Personal GPS spoofer for the owner's own iPhone (iOS 26.6) from Windows.
-**v1:** set a fixed fake location reliably. **v2:** simulate movement along routes.
+**Waypoint** spoofs your own iPhone's location from a Mac or Windows PC, believably enough that
+Life360 shows it: fixed points, real-speed drives (mph + car icon), and full trips that end in a
+geofence "arrived at" push. Sold to a small set of users with access keys.
 
-MVP = **M1–M4**.
-
----
-
-## Milestones
-
-### M0 — Project setup  ✅ DONE
-- [x] Brainstorm architecture (2026-07-07)
-- [x] Connect git repo to GitHub `procookiemuncher/vida-360`
-- [x] AGENTS.md / ROADMAP.md / PROGRESS.md
-- [x] Python project skeleton + virtualenv + pinned `pymobiledevice3` (9.33.1, 11.59.0 since 2026-11-19)
-
-### M1 — Transport spike  ✅ DONE (Find My confirmed)
-Goal: push **one hardcoded coordinate** onto the iOS 26.6 phone from Windows and see it in
-Maps / Find My. This de-risks everything else.
-- [x] Verify prerequisites (device visible over USB, Developer Mode = `true`, trusted)
-- [x] Bring up the tunnel — used **`--userspace`** (pure-Python, no admin / no `wintun`)
-- [x] Auto-mount the personalized Developer Disk Image (needs phone unlocked)
-- [x] Connect DVT, call `simulate-location set`, confirm on device
-- [x] Record the exact working command sequence in PROGRESS.md
-- **Exit criteria met:** Find My showed the spoofed location (Paris).
-
-### M1.5 — Life360 airport arrival + realistic routes (the real end goal)  🔬 IN PROGRESS
-**North star (corrected 2026-07-08):** get Life360 to push **"Juan arrived at CDG"** to the group.
-The *literal* flight-detection "landed" push is **confirmed NOT reproducible** on a lat/lon-only
-stack (needs real altitude + an airplane-mode toggle + a post-landing network reconnect), and
-**airports are NOT auto-Places** — so the achievable, equivalent goal is a **geofence arrival at a
-manually-saved CDG Place**. Full analysis, the complete notification catalog, and the trigger
-method: **docs/research/life360-notification-triggers.md**.
-
-- [x] **CONFIRMED: a static spoof reflects on Life360.** The member's pin moves to the fake
-  location (not just Find My). The earlier "Life360 ignores the spoof" finding was wrong.
-  So there's no home-Wi-Fi / IP / teleport blocker on a plain static set — **the gap is
-  movement.**
-- [x] **Movement engine designed** — see **docs/MOVEMENT_ENGINE.md** (2026-07-08). Chosen:
-  JSON route defs → Valhalla road-snapping (build time) → cached GPX → `simulate-location
-  play`; live-`set()` session deferred to a later phase.
-- [ ] **Phase A on-device gates (do first, in order):**
-  - **#0 `isSimulatedBySoftware` (DECISIVE):** does our pmd3 / `DVTSimulateLocation` tunnel path
-    set `CLLocation.sourceInformation.isSimulatedBySoftware`? Xcode's GPX sim sets it `true`;
-    consumer "external provider" spoofers read `false`; our path uses Apple's *own* DVT service,
-    so it may read `true` — in which case any app (Life360 included) can detect the sim in one
-    line and realism is moot. Test with a ~20-line app. → docs/research/life360-detection-and-realism.md.
-  - [x] **#1 CoreMotion / movement emoji — RESOLVED NO (2026-07-10, Observer-instrumented, both
-    Motion & Fitness ON and OFF legs).** The emoji/speed/driving-flag does NOT reliably trigger on
-    a physically-still spoofed phone; toggling Motion & Fitness made no measurable difference in
-    either direction. Leading suspect is Life360's own sparse server-side position-update cadence
-    (~60-75s median in both legs), not the permission. See
-    docs/research/activity-emoji-coremotion.md for the full data.
-  - **#2 flight-gap:** does iOS revert to real GPS when we stop calling `set()`?
-- [ ] **Build the movement engine** (Phase B — the missing piece; see M2 and the design doc).
-  Believable movement: road-snapped interpolation, per-segment speed profiles (walk / drive /
-  stop), GPS jitter, and the flight "gap".
-- [ ] Confirm airport arrival fires: **save CDG as a Life360 Place**, then after a Miami "gap"
-  believably drive the pin into that Place and dwell (≥5–10 min) → watch for "arrived at CDG".
-  ✅ **Confirmed (primary sources, docs/research/life360-notification-triggers.md):** the auto
-  **"landed"** flight push is NOT reproducible (needs altitude + airplane-mode toggle + network
-  reconnect), and airports are NOT auto-Places. Target the **geofence arrival** — same family
-  alert to the circle, no plane icon. (Upgraded from last week's "likely not" to confirmed.)
-- [ ] Arrival must look real: no impossible-speed teleport, GPS drift present.
-
-**Route presets (the movement engine):**
-- [~] **Flight-arrival spoofer BUILT (offline) — 2026-07-10.** `fly.cmd` choreographs a full
-  airplane-mode "flight" that fires "arrived at <destination>": drive to departure airport → manual
-  airplane-mode gap (offline, so Life360 never sees the compressed hop) → drive from arrival airport
-  into a saved Place → dwell. First trip: **`nyc`** (Miami → Manhattan hotel), with `mia-departure`
-  + `jfk-to-hotel` routes and an Observer arrival signal (`place_name` / `--places`). Repeatable
-  per city. Design: docs/superpowers/specs/2026-07-10-flight-arrival-spoofer-design.md. **Pending
-  on-device:** Step 0 tunnel-survives-airplane-mode gate, then a real run with a 2nd member watching.
-- [ ] "Airport route" — believable ~30–40 min drive airport → a 5-star hotel. *(The `nyc` trip's
-  `jfk-to-hotel` leg is the first instance; CDG → Paris hotel is a coord swap.)*
-- [ ] "Full Ride" — multi-hour: airport → hotel, then mixed walking / driving / stops.
-- [~] **Life360 shows real mph — CONFIRMED 2026-10-22** via `xcrun devicectl ... simulate location route
-  --speed` (mac-version/devicectl_route.py), 35 mph + the car icon on the emoji-test route.
-  **No Xcode since 2026-11-19:** same phone service over pmd3 11.59 (core/backend/drive.py), mph + car
-  confirmed again, and the varying-speed chain shows a changing mph. Next: retry the >100 mph
-  flight-detection gate with it, try it on Windows.
-- [ ] Trigger Life360's **movement emoji** (walk / drive icon). ❌ **RESOLVED NO (2026-07-10,
-  Phase A #1):** on-device testing (both Motion & Fitness ON and OFF, Observer-instrumented) shows
-  the emoji/speed/driving-flag does NOT reliably trigger on a still spoofed phone in either
-  condition — see docs/research/activity-emoji-coremotion.md. Deprioritize this goal unless a new
-  lever surfaces (e.g. a much longer sustained run, or evidence the server cadence itself is
-  fixable).
-  - ⚠ **Out of scope:** Life360 **driver reports / hard-braking / crash detection** are Arity
-    **CoreMotion** (real accelerometer + gyro) and are **not** reproducible on a physically still
-    phone. Don't promise them.
-- Likely implementation: stored **GPX routes** replayed (pymobiledevice3 has
-  `simulate-location play`), with per-segment speed profiles for walk / drive / stop.
-
-**UI:** wanted later, deferred.
-
-### M1.6 — Behavioral / life-simulation engine  💡 NEW (stretch, builds on M1.5)
-A layer **above** the movement engine that makes location *history* look like a real person's
-life over hours/days (home → work → errand → home, believable dwell + circadian rhythm), instead
-of one-off routes. The movement engine renders legs; this engine decides *where & when*. Full
-prior-art survey + design + data model in **docs/research/behavioral-engine-prior-art.md**.
-- [ ] Vendor a per-point **jitter/step model** (Pokémon-Go `step_walker`, MIT) into the renderer.
-- [ ] **Speed/timing profiler**: encode per-mode speed via point spacing; jerk-limited ramps
-  (≤~2 m/s², jerk ≤~2 m/s³); zero-speed dwell between mode changes.
-- [ ] Wire **Valhalla `trace_attributes`** for real per-edge speeds at build time — API details,
-  call sequence, and the polyline6 decode pitfall in docs/research/valhalla-road-snapping.md.
-- [ ] **Template day planner** (17-motif sampler + Zipf-weighted anchors + power-law dwell) →
-  `(place, arrive, depart)` day-script → full-day GPX. Optional **scikit-mobility** (EPR/DITRAS)
-  backend later.
-- [ ] **Record-and-replay**: import a real self-recorded GPX / OSM `identifiable` trace as a
-  realism baseline + regression corpus. (Not Strava — its 2026 API policy forbids it.)
-- [ ] Offline **realism acceptance tests** (heavy-tailed jumps, no speed cliffs, overnight = home
-  + jitter) extending the existing validator.
-- Reference tool on our exact stack: **`locwarp`** (Windows + pymobiledevice3) — study, don't fork.
-
-### M2 — Backend core  🟡 thin version built 2026-10-22
-- [x] Session (`core/backend/session.py`) — set / play / stop / status, one job at a time, clears every sim it touched
-- [x] `pymobiledevice3` adapter (`core/backend/device.py`) — still CLI subprocesses, `--userspace`
-- [ ] Managed tunnel helper (handles elevation) — not needed so far, `--userspace` per call works
-- [~] Status/health reporting — device found (usbmux) + active job; no DDI / dev-mode / tunnel detail yet
-
-### M3 — Local web UI  ✅ first version 2026-10-22 (Waypoint, Mac app)
-- [x] FastAPI app serving the static Leaflet page (`core/backend/server.py`, `core/web/`)
-- [x] Map click-to-set (drop a pin → set location)
-- [x] Landmark presets (`core/places.json`, shared with spoof.py)
-- [ ] Save / reuse named locations from the UI (presets are hand-edited JSON for now)
-- [x] Status pills + set / play / stop & clear, console fed by the server log
-- [x] Route picker with Drive (real mph, Mac) / Spoof engine toggle + mph override
-- [x] Mac Dock app — `mac-version/make-app.command` → ~/Applications/Waypoint.app
-- [ ] **On-device run from the app** (only dry-run + headless-browser checks so far)
-
-### M4 — MVP polish
-- [ ] Prerequisite checks surfaced in the UI with fixes
-- [ ] One-command launcher
-- [ ] Basic error surfacing
+How it works and why: AGENTS.md. Current state: PROGRESS.md.
 
 ---
 
-## v2 — Backlog & Ideas (parking lot)
+## Done so far
 
-- **Route simulation:** hold the DVT session open, interpolate along a drawn polyline,
-  `set()` on a ~1s timer, with speed control (smoother than one-shot GPX play).
-- **Cable-free (wireless) operation:** drive the phone over **local Wi-Fi** instead of USB —
-  pmd3 already models a `"Network"` connection type, so once the phone is **paired over USB once
-  (Trust)** and **Wi-Fi sync** is on, the host can reach it wirelessly (phone untethered, anywhere
-  on the LAN). Ideal for holding a **static "one place"** indefinitely; works for routes too.
-  ⚠ **This is NOT "cloud":** the host PC must still be **on and on the same network** — there is
-  **no untethered/remote spoof** on non-jailbroken iOS 26.6 (kill the host → it reverts; the
-  commercial "stays after disconnect" is a stale dot iOS 18+ wipes). **Untested unknown:** whether
-  the full iOS-17 RemoteXPC tunnel + DDI mount + `simulate-location` runs over Wi-Fi on our
-  Windows / iOS-26.6 stack (the initial handshake sometimes wants USB) → **verify first** (pair via
-  USB → enable Wi-Fi sync → unplug → does `usbmux list` still show it as `Network`, and can we
-  hold/replay a location?). Pairs with the long-lived session (Route simulation, above);
-  reference impl: `lvalen91/location_daemon.py` (docs/research/oss-spoofer-landscape.md).
+- **Transport:** pmd3 `--userspace` tunnel, DDI auto-mount, DVT set/play. No admin, no Xcode
+  (pmd3 11.59 since 2026-11-19).
+- **On Life360:** a static spoof shows up; no VPN needed. The drive path (CoreDevice location
+  service) shows real mph + the car icon, including changing speeds.
+- **Movement engine:** JSON routes → Valhalla road snapping → per-segment speed profiles, corner
+  slowdowns, GPS jitter → validated GPX (docs/MOVEMENT_ENGINE.md). Destinations catalog: 35 spots
+  in 28 cities, generated airport → hotel → spot routes.
+- **Flight choreographer:** `fly <trip>` (drive out, airplane-mode gap, drive into a Place, dwell).
+  Built, not yet run end to end on the phone.
+- **Life360 Observer:** reads the circle's server-side view (`core/tools/observe.py`).
+- **Waypoint app (Mac):** map + globe UI, arrival-plan side panel, ⌘K palette, connect screen,
+  dev and release builds, access keys + key dashboard, auto-update. 0.1.0-beta.2 is out to testers.
+
+---
+
+## The four paths
+
+Numbered in the owner's order. When it isn't clear which one to work on, ask.
+
+### 1. Finish the Windows version
+
+Today Windows has the terminal launchers (spoof, fly, setup) and nothing has run there since
+the Mac work started.
+
+- [ ] Real speed on Windows: run `core\tools\drive.py emoji-test` with the phone, confirm mph +
+  car on Life360. Add a `drive.cmd` launcher.
+- [ ] Run `core/backend/server.py` + the page in a browser with a real phone. Check
+  `Job.stop()`'s Windows path (writes ENTER to pmd3's stdin).
+- [ ] A Waypoint window on Windows (pywebview works there too), with the key gate.
+- [ ] Packaging: a compiled Windows build + installer. The updater is Mac-only today (ditto,
+  codesign), so Windows needs its own swap and signature check.
+- [ ] Airplane mode: the Shortcut trick goes through `xcrun devicectl` (Mac only). Find a pmd3
+  way (`core-device launch-application` or similar), which also removes the last devicectl call
+  on the Mac.
+- [ ] Keep log and print lines ASCII-safe (cp1252 crashes have bitten twice).
+
+### 2. Keep adding to the UI
+
+- [ ] Owner tries the new globe + side panel in the Dock app (only dry-run tested in Chromium).
+- [ ] Pick the globe effects (stars, depth, night, rim, UFOs) in the prototype, then build them in.
+- [ ] Decide on the CRT scanlines over the new panel.
+- [ ] The lint leftovers (10 FAIL / 89 WARN): window ring/frame, map sweep, status bar gauge,
+  CRT overlay, connect + key screens.
+- [ ] Save / rename / delete places from the UI (presets are hand-edited JSON today).
+- [ ] Flights in the app: a flight API + `fly` in the palette, with the airplane-mode steps.
+- [ ] A structured season/days field for spots, so the panel can say Club 55 is out of season.
+- [ ] Prerequisite checks with fixes (Developer Mode, Trust, driver) and clearer errors.
+
+### 3. Start getting users
+
+- [ ] **Map key for release builds.** Testers are on Stadia's keyless, rate-limited access.
+  Proxy through the key dashboard or bake it in; check Stadia's plan allows a paid product.
+- [ ] Prove a compiled build moves the pin on a real phone (only dry runs + read-only calls so
+  far). Also: a Mac with no Xcode installed, and the update swap after a normal window quit.
+- [ ] Intel Macs: the release build is arm64 only.
+- [ ] Gatekeeper: stay on "Open Anyway", or pay for the Apple developer account and notarize.
+- [ ] How keys get sold and paid for (today they're made by hand on the dashboard).
+- [ ] First-run onboarding for a new user: Developer Mode, Trust, keep unlocked.
+- [ ] Harden keys if abuse shows up: signed answers, one Mac per key.
+- [ ] Housekeeping: delete old release zips in Vercel Blob (~70 MB each).
+
+### 4. Improve the motion engine
+
+- [ ] **Gate #0, `isSimulatedBySoftware`:** does our path set it? If yes, any app can detect
+  the sim in one line. Test with a ~20-line app (docs/research/life360-detection-and-realism.md).
+- [ ] **Geofence arrival end to end:** save a Place, drive in, dwell 5–10 min, confirm Life360
+  pushes "arrived at" to another member's phone.
+- [ ] **Flight run:** `fly` Step 0 (tunnel survives airplane mode), then a real run with a
+  second member watching. Gate #2: does iOS go back to real GPS when we stop setting?
+- [ ] Retry Life360's >100 mph flight-detection gate now that speed is real (expected to still
+  fail without altitude, but cheap to check).
+- [ ] Drive parity: Drive lands within a minute or two of Spoof's timing; make the CoreDevice
+  path follow the renderer's corner slowdowns and dwell exactly.
+- [ ] Realism: per-edge speeds from Valhalla `trace_attributes`, jerk-limited ramps, a per-point
+  jitter/step model, offline realism tests in the validator.
+- [ ] **Behavioral engine** (stretch): a day planner above the movement engine (home → work →
+  errand → home, believable dwell) that renders a full-day route. Record-and-replay of real
+  traces as a baseline. Prior art: docs/research/behavioral-engine-prior-art.md.
+
+---
+
+## Backlog (parking lot)
+
+- **Wireless:** drive the phone over local Wi-Fi after one USB pairing. The host still has to be
+  on and on the same network (no untethered spoof without a jailbreak). Untested on iOS 27;
+  airplane mode doesn't work over Wi-Fi pairing. Reference: `lvalen91/location_daemon.py`.
+- **Long-lived live session:** hold the sim open and set on a ~1 s timer for live control.
 - GPX import / export.
-- Small positional **jitter** for realism.
-- **macOS support** — mostly free once the adapter is isolated; the tunnel is easier there.
 - Auto-reconnect / tunnel self-healing.
 - Keep-awake helper while spoofing.
 - Preset packs / shareable location files.
 
----
-
-## Current focus
-
-→ Finish **M0**, then start the **M1 transport spike**. Do not build UI until M1's exit
-criteria are met.
+**Out of scope:** Life360 driver reports, hard braking and crash detection (real CoreMotion
+sensors), and the literal "landed" flight push (needs real altitude).
