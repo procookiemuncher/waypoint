@@ -19,6 +19,11 @@ Decided so far (2026-11-20):
   twilight; the hovered country is drawn over it so its colour holds), **Rim** (thin atmosphere; this
   one goes against "no glow", so it's off by default). **Sky: Drifts** turns the stars 12% as far as
   the globe, **Real** turns them all the way, which is true but busy on every hover.
+- **UFOs** (easter egg, owner's idea, on in the prototype): every 45-120 s (first one 15-30 s in) one
+  visitor goes past: a saucer that hovers with its beam on then zips off, a saucer lapping the globe,
+  a lost alien tumbling by, or three lights that go out one by one. Behind-the-globe ones are clipped by
+  the disc. Click one and it flees. **Summon** (or the U key) sends the next kind over right away.
+  Never on its own with reduced motion.
 - Still open: the side panel (it works but reads as too basic), and whether the country list is
   grouped by continent or sorted by route count (the List switch in the bar).
 
@@ -38,6 +43,7 @@ then http://127.0.0.1:8790/. Serve this folder only, not the repo root (the root
 | `globe.js` | the globe, written to drop into `core/web/static/` as is (single-line strings for rjsmin). `new Globe(canvas, shapes, { style, tint, onHover, onClick })`, then `setPlaces`, `setLit`, `setPalette`, `focus(name, zoom)`, `highlight`, `zoomTo` |
 | `countries.json` | Natural Earth 1:110m outlines from `core/tools/build_countries.py --out <here>/countries.json` |
 | `sky.js` | the star sky, its own canvas under the globe's. `new Sky(canvas, stars, { follow, lon })`, redrawn from the globe's `onView` |
+| `visitors.js` | the UFOs, a canvas over the globe's that lets clicks through. `new Visitors(canvas, globe)`, `enable`, `summon`, `poke(x, y)` for clicks |
 | `stars.json` | 8,404 stars (RA, Dec, magnitude, temperature) from `core/tools/build_stars.py --out <here>/stars.json` |
 | `lib.js` | the app's real cities/routes/places, from `dump-lib.mjs` against a dry-run app |
 | `icons.js`, `fonts/` | copies of the app's Lucide icons and Inter (latin), so this folder serves on its own |
