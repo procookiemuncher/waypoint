@@ -8,6 +8,9 @@
    Each catalog country can have its own colour (setPalette). tint decides when it shows: 'hover' (only the
    hovered/open country), 'muted' (every country dimly, the hovered one full) or 'full' (all, all the time).
    Countries too small for 1:110m (the file's "dots") are drawn as a dot at each of their places.
+   Effects, all off unless setEffects turns them on: depth (the sphere darkens toward its edge, so it
+   reads as a ball), night (the real night side for right now, soft through twilight) and rim (a thin
+   atmosphere just outside the edge). onView(lon, lat, k) fires on every draw, for a sky behind it.
    Single-line strings only: the release build minifies this with rjsmin. */
 (function(){
 'use strict';
@@ -23,6 +26,32 @@ const wrap = d => ((d+540)%360)-180;
 const rgb = h => [1,3,5].map(i => parseInt(h.slice(i,i+2),16));
 // a over b by t, both #rrggbb
 const mix = (a, b, t) => { const p=rgb(a), q=rgb(b); return 'rgb('+p.map((v,i)=>Math.round(q[i]+(v-q[i])*t)).join(',')+')'; };
+// where the sun is overhead right now: declination from the day of the year, longitude from UTC time
+// plus the equation of time. Good to well under a degree, which is plenty for a soft terminator
+function sun(ms){
+  const d=ms/864e5-10957.5, g=(357.529+.98560028*d)*RAD, q=280.459+.98564736*d;
+  const L=(q+1.915*Math.sin(g)+.02*Math.sin(2*g))*RAD, e=(23.439-3.6e-7*d)*RAD;
+  const ra=Math.atan2(Math.cos(e)*Math.sin(L), Math.cos(L)), dec=Math.asin(Math.sin(e)*Math.sin(L));
+  const gmst=(280.46061837+360.98564736629*d)*RAD;
+  return unit(wrap((ra-gmst)/RAD), dec/RAD);
+}
+const SHADE = 192;
+// The night and depth gradients only span about a dozen 8-bit levels across a few hundred pixels, so they
+// come out as visible steps. Noise only fixes that if it's in the overlay before the overlay is blended
+// (after, the steps are already baked in), so the overlay is put together at full screen resolution and
+// this grain, a little more alpha per pixel in the overlay's own colour, goes into it there. Made once,
+// so it doesn't shimmer while the globe turns
+const NIGHT = [3, 5, 14];
+let GRAIN = null;
+function grain(ctx){
+  if(!GRAIN){
+    const c=document.createElement('canvas'); c.width=c.height=128;
+    const x=c.getContext('2d'), im=x.createImageData(128, 128);
+    for(let i=0;i<im.data.length;i+=4){ im.data[i]=NIGHT[0]; im.data[i+1]=NIGHT[1]; im.data[i+2]=NIGHT[2]; im.data[i+3]=Math.floor(Math.random()*37); }
+    x.putImageData(im, 0, 0); GRAIN=c;
+  }
+  return ctx.createPattern(GRAIN, 'repeat');
+}
 
 class Globe {
   constructor(canvas, shapes, opts={}){
@@ -41,6 +70,7 @@ class Globe {
     this.hi = null;
     this.palette = {};
     this.tint = opts.tint || 'hover';
+    this.fx = Object.assign({ depth:false, night:false, rim:false }, opts.effects);
     // view centre (degrees), zoom, their targets and spring velocities
     this.lon = this.tlon = opts.lon ?? -30; this.lat = this.tlat = opts.lat ?? 25; this.k = this.tk = 1;
     this.vlon = this.vlat = this.vk = 0;
@@ -59,6 +89,7 @@ class Globe {
   // name -> #rrggbb. Countries without one fall back to the style's accent
   setPalette(map){ this.palette=map || {}; this.draw(); }
   setTint(t){ this.tint=t; this.draw(); }
+  setEffects(o){ Object.assign(this.fx, o); this.draw(); }
   colorOf(name){ return this.palette[name] || this.c.hi; }
   // what a country that isn't hovered looks like under the current tint; null = just land
   restColor(name){
@@ -144,10 +175,57 @@ class Globe {
     if(p[0]*B.v[0]+p[1]*B.v[1]+p[2]*B.v[2] <= .05) return null;
     return [cx+R*(p[0]*B.e[0]+p[1]*B.e[1]+p[2]*B.e[2]), cy-R*(p[0]*B.n[0]+p[1]*B.n[1]+p[2]*B.n[2])];
   }
+  // depth and night as one overlay: worked out per pixel on a small square and stretched over the disc.
+  // Both change slowly across the sphere, so 192px smoothed up is as good as full size and costs ~1ms
+  shade(B, cx, cy, R){
+    const fx=this.fx;
+    if(!fx.depth && !fx.night) return;
+    if(!this.sh){ this.sh=document.createElement('canvas'); this.sh.width=this.sh.height=SHADE; this.shx=this.sh.getContext('2d'); this.shi=this.shx.createImageData(SHADE, SHADE); }
+    const D=this.shi.data, N=SHADE;
+    let sx=0, sy=0, sz=0;
+    if(fx.night){ const S=sun(Date.now()); sx=S[0]*B.e[0]+S[1]*B.e[1]+S[2]*B.e[2]; sy=S[0]*B.n[0]+S[1]*B.n[1]+S[2]*B.n[2]; sz=S[0]*B.v[0]+S[1]*B.v[1]+S[2]*B.v[2]; }
+    for(let j=0;j<N;j++){
+      for(let i=0;i<N;i++){
+        let x=2*(i+.5)/N-1, y=1-2*(j+.5)/N;
+        const s=x*x+y*y;
+        // outside the disc, repeat the rim so the smoothing at the edge doesn't pull in a seam
+        if(s>.998){ const l=Math.sqrt(s/.998); x/=l; y/=l; }
+        const z=Math.sqrt(Math.max(0, 1-x*x-y*y));
+        const a1=fx.depth ? .5*(1-z)*Math.sqrt(1-z) : 0;
+        // twilight runs from the sun on the horizon to 18 degrees below it
+        const u=fx.night ? Math.max(0, Math.min(1, (.04-(x*sx+y*sy+z*sz))/.35)) : 0;
+        const a2=.6*u*u*(3-2*u);
+        const k=4*(j*N+i);
+        D[k]=NIGHT[0]; D[k+1]=NIGHT[1]; D[k+2]=NIGHT[2]; D[k+3]=Math.round(255*(1-(1-a1)*(1-a2)));
+      }
+    }
+    this.shx.putImageData(this.shi, 0, 0);
+    // stretch it to the disc's size in device pixels and grain it there (see GRAIN), then lay it on 1:1
+    const d=devicePixelRatio || 1, S=Math.ceil(2*R*d)+2;
+    if(!this.full || this.full.width!==S){ this.full=document.createElement('canvas'); this.full.width=this.full.height=S; this.fx2=this.full.getContext('2d'); }
+    const fx2=this.fx2;
+    fx2.globalCompositeOperation='copy'; fx2.imageSmoothingEnabled=true; fx2.imageSmoothingQuality='high';
+    fx2.drawImage(this.sh, 1, 1, S-2, S-2);
+    fx2.globalCompositeOperation='source-over'; fx2.fillStyle=grain(fx2); fx2.fillRect(0, 0, S, S);
+    fx2.globalCompositeOperation='source-over';
+    const ctx=this.ctx;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI*2); ctx.clip();
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.drawImage(this.full, Math.round((cx-R)*d)-1, Math.round((cy-R)*d)-1);
+    ctx.restore();
+  }
   draw(){
     if(!this.w || !this.countries) return;
     const ctx=this.ctx, C=this.c, cx=this.w/2, cy=this.h/2, R=this.radius(), B=this.basis(), TAU=Math.PI*2;
     ctx.clearRect(0,0,this.w,this.h);
+    this.opts.onView?.(this.lon, this.lat, this.k);
+    if(this.fx.rim){
+      // the atmosphere: a few percent of the radius, cool and faint, gone before it reaches the stars
+      const g=ctx.createRadialGradient(cx, cy, R*.985, cx, cy, R*1.075);
+      g.addColorStop(0, 'rgba(150,175,255,.22)'); g.addColorStop(.35, 'rgba(120,150,255,.07)'); g.addColorStop(1, 'rgba(120,150,255,0)');
+      ctx.beginPath(); ctx.arc(cx, cy, R*1.08, 0, TAU); ctx.fillStyle=g; ctx.fill();
+    }
     if(C.sphere){ ctx.beginPath(); ctx.arc(cx,cy,R,0,TAU); ctx.fillStyle=C.sphere; ctx.fill(); }
     this.fill(this.countries, C.land, B, cx, cy, R);
     if(this.style==='lit') this.fill([...this.lit].filter(n=>n!==this.hi && this.named.has(n)).map(n=>this.named.get(n)), C.lit, B, cx, cy, R);
@@ -157,8 +235,10 @@ class Globe {
       for(const c of this.countries) for(const r of c.rings) this.stroke(r, B, cx, cy, R);
       ctx.lineWidth=1; ctx.lineJoin='round'; ctx.strokeStyle=C.border; ctx.stroke();
     }
-    if(this.hi && this.named.has(this.hi)) this.fill([this.named.get(this.hi)], this.colorOf(this.hi), B, cx, cy, R);
     if(C.edge){ ctx.beginPath(); ctx.arc(cx,cy,R-.5,0,TAU); ctx.lineWidth=1; ctx.strokeStyle=C.edge; ctx.stroke(); }
+    this.shade(B, cx, cy, R);
+    // the open/hovered country goes over the shading, so its colour holds on the night side too
+    if(this.hi && this.named.has(this.hi)) this.fill([this.named.get(this.hi)], this.colorOf(this.hi), B, cx, cy, R);
     // tiny countries: a dot per place. The hovered country's places: small dots in the ground colour
     for(const p of this.places){
       const dot=this.dotNames.has(p.country), on=p.country===this.hi;
