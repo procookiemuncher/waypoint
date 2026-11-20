@@ -6,7 +6,7 @@
 // The clock is pinned (NOW below) so open/closed and local times are the same in every shot.
 // Playwright comes from the promo-film folder's node_modules, like dump-lib.mjs in the prototype.
 import { createRequire } from 'module';
-import { mkdirSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
@@ -26,7 +26,9 @@ const b = await chromium.launch({ headless: false, args: ['--headless=new'] }); 
 const p = await b.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
 const errors = [];
 p.on('pageerror', e => errors.push(e.message));
-p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+p.on('console', m => { if (m.type() === 'error' && !/favicon|404/.test(m.text())) errors.push(m.text()); });
+p.on('requestfailed', r => errors.push('failed: ' + r.url()));
+p.on('response', r => { if (r.status() >= 400 && !r.url().endsWith('favicon.ico')) errors.push(r.status() + ' ' + r.url()); });
 for (const d of designs) {
   for (const s of states) {
     await p.goto(`${BASE}?d=${d}&s=${s}&now=${NOW}`, { waitUntil: 'networkidle' });
@@ -39,5 +41,14 @@ for (const d of designs) {
     console.log(file);
   }
 }
+// a contact sheet next to the shots: designs down, states across, click one to open it full size
+const names = { 1: 'Arrival plan', 2: 'Local clock', 3: 'Ledger', 4: 'Atlas', 5: 'Rail + sheet' };
+const all = [1, 2, 3, 4, 5], every = ['world', 'france', 'japan', 'route', 'playing', 'place', 'pin'];
+writeFileSync(path.join(out, 'index.html'), `<!DOCTYPE html><meta charset="utf-8"><title>Side panel mockups, every state</title>
+<style>body{margin:0;padding:24px;background:#0d0d10;color:#d4d4d8;font:14px/20px system-ui,sans-serif}h1{font-size:20px;margin:0 0 4px;color:#f4f4f5}p{margin:0 0 20px;color:#9a9aa5}
+table{border-collapse:collapse}th{text-align:left;font-weight:500;color:#9a9aa5;padding:0 8px 8px 0}td{padding:0 8px 12px 0;vertical-align:top}td:first-child{color:#f4f4f5;font-weight:600;white-space:nowrap;padding-right:16px}
+img{width:300px;display:block;border-radius:4px}a{color:inherit}</style>
+<h1>Side panel mockups, every state</h1><p>1440 x 900 at 2x, clock pinned to ${NOW}. <a href="../">Open the clickable mockups</a>.</p>
+<table><tr><th></th>${every.map(s => `<th>${s}</th>`).join('')}</tr>${all.map(d => `<tr><td>${d} ${names[d]}</td>${every.map(s => `<td><a href="d${d}-${s}.png"><img src="d${d}-${s}.png" alt="design ${d}, ${s}" loading="lazy"></a></td>`).join('')}</tr>`).join('')}</table>`);
 if (errors.length) console.log('page errors:\n' + [...new Set(errors)].join('\n'));
 await b.close();
