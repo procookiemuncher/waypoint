@@ -210,8 +210,16 @@ def main():
         quit_soon()
         return False   # cancel for now; clear_then_close closes it once the phone is clear
 
+    def cleanup_then_update():
+        cleanup()
+        if updater:   # the phone's clear by now, so a waiting update can go in once we're gone
+            try:
+                updater.install_on_exit()
+            except Exception as e:
+                print(f"update: not installed ({e})", flush=True)
+
     atexit.register(cleanup)
-    threading.Thread(target=on_sigterm, args=(cleanup,), daemon=True).start()
+    threading.Thread(target=on_sigterm, args=(cleanup_then_update,), daemon=True).start()
     api = WindowApi()
     window = webview.create_window(
         APP_NAME, f"http://127.0.0.1:{port}/", js_api=api,
@@ -223,12 +231,7 @@ def main():
     handle_reopen(on_reopen)
     from PyObjCTools import AppHelper
     webview.start(lambda: AppHelper.callAfter(watch_presses))
-    cleanup()
-    if updater:   # the phone's clear by now, so a waiting update can go in once we're gone
-        try:
-            updater.install_on_exit()
-        except Exception as e:
-            print(f"update: not installed ({e})", flush=True)
+    cleanup_then_update()
     # Exit hard. The titlebar x reaches us through a pywebview bridge thread (not a daemon) that,
     # once close() returns, waits forever to hand the result back to a page that's already gone,
     # so a normal exit hung until give_up — and a Dock click meanwhile went to the stuck process.
