@@ -11,7 +11,8 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const require = createRequire(path.join(here, '../../../cini videos/v1/sting/package.json'));
+// PW_ROOT: a folder with playwright in node_modules (a worktree has no node_modules of its own)
+const require = createRequire(path.join(process.env.PW_ROOT || path.join(here, '../../../cini videos/v1/sting'), 'package.json'));
 const { chromium } = require('playwright');
 
 const NOW = '2026-11-20T19:30:00Z';   // Friday: 8:30 pm in Paris, 2:30 pm in Miami, 4:30 am Saturday in Tokyo
