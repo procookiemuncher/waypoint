@@ -793,7 +793,7 @@ function liveCard(){
   }
   const r=ROUTES.find(x=>x.id===live.route), c=r ? cityColor(r.city) : DEFAULT_ACCENT, legs=live.legs;
   const name=r?.label || live.route, total=routeMetersLive();
-  return `<div class="p1-card p1-live" style="--c:${c}"><div class="p1-ct"><span class="dot"></span><b>${esc(name)}</b><span class="muted">${esc(live.how)}</span></div><p class="p1-big"><span><span data-live="doing">${esc(live.doing || 'Starting')}</span><span data-live="mphwrap">, <span class="num" data-live="mph">0</span> mph</span></span><span class="p1-at">at the door <span class="num" data-live="arrive">–</span></span></p><div class="p1-prog" data-live-bar style="--pct:0%">${UI.legs(legs, c, 'p1-wide')}<span class="p1-over">${UI.legs(legs, c, 'p1-wide')}</span><i class="p1-cur"></i></div><div class="p1-nums num"><span><b data-live="elapsed">0:00</b> of ${clockT(live.total)}</span><span><b data-live="left">${clockT(live.total)}</b> left</span><span><b data-live="dist">0.0</b> of ${miles(total)}</span></div><div class="p1-ctl">${UI.stop()}${UI.follow()}</div></div>`;
+  return `<div class="p1-card p1-live" style="--c:${c}"><div class="p1-ct"><span class="dot"></span><b>${esc(name)}</b><span class="muted">${esc(live.how)}</span></div><p class="p1-big"><span><span data-live="doing">${esc(live.doing || 'Starting')}</span><span data-live="mphwrap">, <span class="num" data-live="mph">0</span> mph</span></span><span class="p1-at"><span data-live="atlbl">at the door</span> <span class="num" data-live="arrive">–</span></span></p><div class="p1-prog" data-live-bar style="--pct:0%">${UI.legs(legs, c, 'p1-wide')}<span class="p1-over">${UI.legs(legs, c, 'p1-wide')}</span><i class="p1-cur"></i></div><div class="p1-nums num"><span><b data-live="elapsed">0:00</b> of ${clockT(live.total)}</span><span><b data-live="left">${clockT(live.total)}</b> left</span><span><b data-live="dist">0.0</b> of ${miles(total)}</span></div><div class="p1-ctl">${UI.stop()}${UI.follow()}</div></div>`;
 }
 
 /* ---- drawing ---- */
@@ -1025,7 +1025,9 @@ function tickLiveCard(el, s, mph){
   set('mph', String(Math.round(mph||0)));
   set('elapsed', clockT(Math.min(el, live.total)));
   set('left', clockT(live.total-el));
-  set('arrive', done ? 'now' : clockAt(tz, Date.now()+(live.total-el)*1000));
+  // driving: when it gets to the door; parked: until when; done: since when (it holds the last point)
+  set('atlbl', done ? 'since' : mode==='stop' ? 'until' : 'at the door');
+  set('arrive', clockAt(tz, Date.now()+(live.total-el)*1000));
   set('dist', milesN(m));
   document.querySelectorAll('[data-live="mphwrap"]').forEach(e=>{ e.hidden = done || mode==='stop'; });
   document.querySelectorAll('[data-live-bar]').forEach(e=>e.style.setProperty('--pct', pct.toFixed(2)+'%'));
@@ -1190,7 +1192,7 @@ async function boot(){
   $('sweep').classList.add('go');
   await wait(250);
   if(STATUS?.dry_run) typeLine('dry run — commands are printed, the phone is not touched.','warn');
-  typeLine('pick a route or place, or click the map to drop a pin.','sys');
+  typeLine('hover a country on the globe or in the list, open it, then pick a route or place. Click its street map to drop a pin.','sys');
   booted=true;
   // no polling while minimised (each status poll also has the server ask the phone); catch up on return
   setInterval(()=>{ if(!document.hidden) pollStatus(); }, 2000);
