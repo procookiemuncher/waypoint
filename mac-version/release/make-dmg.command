@@ -16,7 +16,12 @@ xattr -dr com.apple.provenance "$STAGE/src/Waypoint.app" 2>/dev/null || true
 ln -s /Applications "$STAGE/src/Applications"
 hdiutil create -volname Waypoint -srcfolder "$STAGE/src" -fs APFS -format UDZO -ov "$STAGE/$DMG" -quiet
 
-M=$(hdiutil attach "$STAGE/$DMG" -nobrowse -readonly | tail -1 | awk -F'\t' '{print $NF}')
+# attach sometimes fails with "Resource temporarily unavailable", it works on a retry
+for i in 1 2 3 4 5; do
+  M=$(hdiutil attach "$STAGE/$DMG" -nobrowse -readonly 2>/dev/null | tail -1 | awk -F'\t' '{print $NF}') && [ -n "$M" ] && break
+  M=""; sleep 3
+done
+[ -n "$M" ] || { echo "couldn't mount the DMG to check it"; exit 1; }
 codesign --verify --deep --strict "$M/Waypoint.app"
 hdiutil detach "$M" -quiet
 
