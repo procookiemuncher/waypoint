@@ -10,10 +10,8 @@ from a Mac or Windows PC: fixed points (e.g. Eiffel Tower, Dubai, Miami) and rea
 movement along routes. Each user spoofs only their own phone.
 
 **Status (confirmed):** a static spoof **does** reflect on Life360 — the member's pin moves
-to the fake location, not just in Find My. So Life360 is *not* ignoring CoreLocation, and a
-plain "set location" already works. **The missing piece is the movement engine** — believable
-*movement* (routes, per-segment speed profiles, GPS jitter, a flight "gap"), which is what a
-realistic arrival and the activity indicator still need.
+to the fake location, not just in Find My. The movement engine (routes, per-segment speed
+profiles, GPS jitter, a flight "gap") is built, and the drive path shows real mph + the car icon.
 
 **End goal (corrected 2026-07-08 — see docs/research/life360-notification-triggers.md):** get
 Life360 to push **"Juan arrived at Paris (CDG)"** to the group. ⚠ The *literal* flight-detection
@@ -26,14 +24,10 @@ a Life360 **Place**, then have the spoof (a) survive sanity checks (no impossibl
 GPS drift present) and (b) believably drive into that Place and dwell → "arrived at CDG".
 Movement-engine work.
 
-**Stretch — pre-built routes** (the owner's real ambition):
-- "Airport route": a believable ~30–40 min drive from CDG to a 5-star Paris hotel.
-- "Full Ride": a multi-hour trip — airport → hotel, then mixed walking / driving / stops.
-- Trigger Life360's **movement emoji** (the walk / drive icon it shows per member). Research
-  (docs/research/activity-emoji-coremotion.md) finds this icon is likely **speed-derived**
-  (spoofable); confirm in Phase A. But Life360's **driver reports / hard-braking / crash
-  detection** are Arity **CoreMotion** (real accelerometer + gyro), which we do NOT spoof — the
-  phone sits physically still — so those are out of scope. Target the emoji, not the reports.
+**Pre-built routes (built):** the destinations catalog generates airport → hotel → spot routes
+with mixed walking / driving / stops (see *Destinations catalog*). The **movement emoji** (car
+icon) works on the drive path. Life360's **driver reports / hard-braking / crash detection** are
+Arity **CoreMotion** (real accelerometer + gyro), which we can't spoof on a still phone — out of scope.
 
 **UI: first version built (2026-10-22)** — the Waypoint app (Mac Dock app + the same page in a browser). See *Running it*.
 
@@ -45,7 +39,7 @@ reads location sees the fake value. No jailbreak, no per-app patching.
 
 On iOS 17+ that service lives behind Apple's RemoteXPC **tunnel** (RSD), reached with the
 [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3) library. This device is on
-**iOS 26.6**, so the tunnel path is the *only* option — there is no legacy pre-17 USB flow.
+**iOS 27.0.1**, so the tunnel path is the *only* option — there is no legacy pre-17 USB flow.
 
 **Confirmed API constraint (2026-07-08, verified against pmd3 upstream):** `simulate-location
 set` accepts **only latitude + longitude** — no accuracy, altitude, speed, or heading (see
@@ -121,7 +115,8 @@ works. Phone must be unlocked. Still unknown: whether Life360's "landed" push fi
   versions: if it works on both, it goes in `core/`; only OS-specific stuff (launchers, the Mac
   window app) lives in a version folder.
 - **Target:** iPhone, now on **iOS 27.0.1** (was 26.6) → RemoteXPC tunnel path only.
-- **Language:** Python end-to-end. No JS, no Swift.
+- **Language:** Python for the engine and server, plain JS/CSS for the page (`core/web/`, no
+  framework, no build step outside release minifying), a tiny C launcher for the Mac app. No Swift.
 - **Transport lib:** `pymobiledevice3` — the only maintained cross-platform library that
   speaks the iOS 17+ tunnel on Windows.
 
@@ -129,14 +124,14 @@ works. Phone must be unlocked. Still unknown: whether Life360's "landed" push fi
 
 ```
 ┌─────────────────────────────────────────────┐
-│  UI      FastAPI + static Leaflet page        │  map picker, presets,
-│          (browser)                            │  saved locations, status
+│  UI      core/web page (Leaflet + globe)      │  served by FastAPI (server.py);
+│          pywebview window on Mac, or browser  │  the Mac window is mac-version/app.py
 ├─────────────────────────────────────────────┤
-│  Core    LocationBackend interface            │  ensure_ready() / set_location(lat,lon)
-│          (only depends on this)               │  / clear() / status()
+│  Core    session.py + engines + movement/     │  one job at a time; spoof (DVT GPX)
+│                                               │  and drive (CoreDevice, real speed)
 ├─────────────────────────────────────────────┤
-│  Adapter pymobiledevice3 glue (ONE module)    │  tunneld daemon, RSD lookup,
-│          the only place that imports pmd3     │  DDI mount, DVT connect
+│  Adapter core/backend/device.py               │  the only app module that talks to
+│                                               │  pmd3: mount, DVT set/play, CoreDevice
 └─────────────────────────────────────────────┘
 ```
 
@@ -144,9 +139,10 @@ works. Phone must be unlocked. Still unknown: whether Life360's "landed" push fi
 between iOS 16 and 17). Quarantining *every* transport detail inside the adapter means a
 future break is a one-file fix, and the UI / route code never changes.
 
-**Driving strategy (hybrid):** run pymobiledevice3's `remote tunneld` as a managed
-background daemon (the one piece that needs admin/UAC), and use pymobiledevice3's **Python
-API** for the frequent set/clear/route calls against the RSD that tunneld exposes.
+**Transport:** everything uses pmd3's **`--userspace`** tunnel (pure Python, no admin, no
+`wintun`). Most calls run the pmd3 CLI as a subprocess; CoreDevice has no CLI command, so
+device.py runs it through a `python -c` helper. The terminal launchers (`spoof.py`,
+`tools/play_route.py`) call the pmd3 CLI the same way.
 
 ## Key decisions — do not relitigate without a real reason
 
@@ -154,8 +150,9 @@ API** for the frequent set/clear/route calls against the RSD that tunneld expose
 |---|---|
 | Python core, not Swift | Swift tools are macOS-only; host is Windows + Mac. |
 | `pymobiledevice3` as transport | Only maintained lib for iOS 17+ on Windows. |
-| FastAPI + Leaflet local web UI | Best map picker for least code; single Python process; cross-platform for free. Rejected Electron (2nd runtime) and PyQt (painful embedded map). |
-| Hybrid `tunneld` daemon + library API | CLI-stable transport, library-level control for frequent calls. |
+| FastAPI + Leaflet local web UI | Best map picker for least code; single Python process; cross-platform for free. Rejected Electron (2nd runtime) and PyQt (painful embedded map). Mac wraps it in pywebview. |
+| `--userspace` tunnel, pmd3 CLI as subprocess | No admin/UAC, no `wintun`; CLI is the stable surface. |
+| Everything stays local | A hosted server can't reach a USB-connected phone. |
 | All transport glue in one adapter module | Version resilience against Apple's transport churn. |
 
 ## Repo layout (reorganized 2026-10-22)
@@ -270,19 +267,17 @@ copy can ever update again** (they'd need a new DMG with a new public key). BUIL
 
 - **Windows Apple driver:** Apple Mobile Device Support (via iTunes or the Apple Devices
   app) — without it the phone is not discovered at all.
-- **Admin/UAC:** the tunnel creates a virtual network interface (`wintun`) → the tunnel
-  helper must run elevated.
 - **iPhone Developer Mode ON:** Settings → Privacy & Security → Developer Mode (appears
-  only after a dev-connection attempt; reboot + confirm).
+  only after a dev-connection attempt; reboot + confirm). **An iOS update turns it off.**
 - **Trust:** first connect prompts "Trust this computer" on the unlocked phone.
 - Keep the phone **unlocked / awake** while spoofing.
 
 ## Known failure modes (expect these)
 
-Missing Apple USB driver · not elevated · `wintun` blocked by AV/firewall · Developer Mode
-off · stale pairing record → unpair/re-pair · personalized DDI not yet in the image mirrors
-for a fresh iOS build · `pymobiledevice3` version skew (may need git `main` for 26.6) ·
-QUIC-vs-TCP tunnel quirks · phone locks → DVT session drops · location slow to clear ·
+Missing Apple USB driver (Windows) · Developer Mode off · stale pairing record →
+unpair/re-pair · personalized DDI not yet in the image mirrors for a fresh iOS build ·
+unpinned deps newer than pmd3 expects break the tunnel (keep requirements.txt pinned) ·
+phone locks → DVT session drops · location slow to clear ·
 **grey dot after a clear** (2026-11-19: once, after clearing a CoreDevice route, Maps kept a grey dot on
 the last spoofed point; both clears had been accepted, toggling Location Services off/on fixed it; the
 next clear went straight back to real GPS).
@@ -299,7 +294,8 @@ next clear went straight back to real GPS).
    optional — stale claims actively mislead the next agent (e.g. the docs long said "Life360
    didn't reflect the spoof" when the static spoof actually *does* work on Life360, which
    caused real confusion).
-4. Follow ROADMAP.md order — **de-risk the transport (M1) before building UI.**
+4. **UI work runs with `VIDA_DRY_RUN=1`.** A real run moves the owner's pin in front of their
+   Life360 circle.
 5. Never leak `pymobiledevice3` types or errors above the adapter layer.
 6. Each user spoofs only their own phone, from their own Mac. Access to the release build is sold
    and controlled with access keys (see "Access keys" above); that's the only "multi-user" part.
