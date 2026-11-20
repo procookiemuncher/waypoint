@@ -7,6 +7,18 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-19 — Auto-update + release.command, beta.2 is out
+
+- Owner has a second tester (a friend, free key, daily use). Wanted updates without new DMGs, no update screen, only when the owner says to release (not every push). How it works is in AGENTS.md → "Releases + auto-update".
+- New: `core/backend/updater.py` (+ `tests/test_updater.py`, 10 tests, real ditto/codesign/swap on a fake app), `mac-version/release/release.command`, BUILD in `build.command` (+ a compiled check that the signature code loads), dashboard `POST /api/update` (key → manifest) and `GET/PUT /api/release` (bearer admin password). Vercel Blob store `waypoint-releases` (public) on the dashboard project. Signing key `~/.config/waypoint/update_ed25519.pem`, **back it up**.
+- **Shipped 0.1.0-beta.2 = build 2**, live on the dashboard, tag `v0.1.0-beta.2`, `~/Desktop/Waypoint-0.1.0-beta.2.dmg` (84 MB).
+- Tested end to end against the live dashboard: a throwaway build 1 in a scratch HOME with a temp key found beta.2 at launch+90 s, downloaded and verified it, swapped on quit (SIGTERM path), the result passes codesign --strict, reports 0.1.0-beta.2 / 2, launches, and doesn't try to update again. Temp key deleted afterwards.
+- make-dmg's `hdiutil attach` failed once ("Resource temporarily unavailable"), now retries. `SKIP_BUILD=1` resumes a release without recompiling.
+- **Not tested:** the swap after a normal window quit (same function as SIGTERM, but not run), a phone moving from a compiled build (still), a Mac with no Xcode, Intel Macs (build is arm64 only).
+- Open: old zips stay in Blob (about 70 MB each), delete old ones once there are a few. The Stadia key still isn't in release builds, so a daily user will hit the map's rate limit.
+
+---
+
 ## 2026-11-19 — Old tester DMG deleted
 
 - Removed `~/Desktop/Waypoint-0.1.0-beta.1.dmg` (the Oct 31 build that crashed every 4 s). There's no tester DMG right now; the next one gets built from the no-Xcode release.
