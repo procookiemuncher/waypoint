@@ -36,6 +36,9 @@ svg.lu { display: block; flex: none; }
 #stage { height: calc(100% - 48px); display: grid; grid-template-columns: 60% 40%; }
 #mapzone { position: relative; min-width: 0; min-height: 0; background: var(--ground); }
 #mapzone canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#mapzone #visitors { pointer-events: none; }
+.ghost { height: 28px; margin-left: 6px; padding: 0 10px; border-radius: 6px; color: var(--muted); font-size: 13px; font-weight: 500; transition: background-color .15s, color .15s; }
+.ghost:hover { background: var(--hover); color: var(--ink); }
 #note { color: var(--muted); font-size: 13px; opacity: 0; transition: opacity .3s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 #note.on { opacity: 1; }
 
@@ -115,7 +118,8 @@ h1 { color: var(--ink); font-size: 24px; line-height: 30px; font-weight: 600; le
   <div class="t">Waypoint world view<span>prototype: globe A, colour on hover</span></div>
   <p id="note" class="grow"></p>
   <div class="opt"><span class="lbl">Effects</span><div class="seg" id="fx-seg">
-    <button data-fx="stars" class="on">Stars</button><button data-fx="depth" class="on">Depth</button><button data-fx="night" class="on">Night</button><button data-fx="rim">Rim</button></div></div>
+    <button data-fx="stars" class="on">Stars</button><button data-fx="depth" class="on">Depth</button><button data-fx="night" class="on">Night</button><button data-fx="rim">Rim</button><button data-fx="ufos" class="on">UFOs</button></div>
+    <button class="ghost" id="summon" title="Send one over now (U)">Summon</button></div>
   <div class="opt"><span class="lbl">Sky</span><div class="seg" id="sky-seg">
     <button data-f=".12" class="on">Drifts</button><button data-f="1">Real</button></div></div>
   <div class="opt"><span class="lbl">List</span><div class="seg" id="sort-seg">
@@ -123,7 +127,7 @@ h1 { color: var(--ink); font-size: 24px; line-height: 30px; font-weight: 600; le
 </div>
 
 <main id="stage">
-  <div id="mapzone"><canvas id="sky"></canvas><canvas id="world"></canvas></div>
+  <div id="mapzone"><canvas id="sky"></canvas><canvas id="world"></canvas><canvas id="visitors"></canvas></div>
   <aside id="panel">
     <div id="browse"></div>
     <div id="dock" hidden></div>
@@ -133,6 +137,7 @@ h1 { color: var(--ink); font-size: 24px; line-height: 30px; font-weight: 600; le
 
 <script src="globe.js"></script>
 <script src="sky.js"></script>
+<script src="visitors.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -254,8 +259,8 @@ const HUE = {
   'Australia':['#de844f','outback ochre'], 'Maldives':['#5ddae0','lagoon aqua'],
   'French Polynesia':['#ec6480','hibiscus'],
 };
-let globes = [], big, sky;
-const fx = { stars:true, depth:true, night:true, rim:false };
+let globes = [], big, sky, visitors;
+const fx = { stars:true, depth:true, night:true, rim:false, ufos:true };
 function vibe(name){
   if(open) return;
   $('note').classList.toggle('on', !!name);
@@ -312,8 +317,20 @@ $('fx-seg').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
   fx[b.dataset.fx] = !fx[b.dataset.fx]; b.classList.toggle('on', fx[b.dataset.fx]);
   sky?.show(fx.stars);
+  visitors?.enable(fx.ufos);
   eachGlobe(g => g.setEffects({ depth:fx.depth, night:fx.night, rim:fx.rim }));
 });
+
+/* ---- visitors: the odd UFO. Clicks reach them through the map zone, before the globe sees them ---- */
+const SAID = { flyby:'Unidentified. Not on any route.', orbit:'Unidentified. Not on any route.', alien:'Just passing through.' };
+let saidTimer = 0;
+const zonePoint = e => { const r = $('mapzone').getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; };
+$('mapzone').addEventListener('click', e => {
+  if(visitors?.poke(...zonePoint(e))){ e.stopPropagation(); e.preventDefault(); }
+}, true);
+$('mapzone').addEventListener('pointermove', e => { if(visitors?.hit(...zonePoint(e))) $('world').style.cursor = 'pointer'; });
+$('summon').addEventListener('click', () => visitors?.summon());
+document.addEventListener('keydown', e => { if((e.key==='u' || e.key==='U') && !e.metaKey && !e.ctrlKey && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) visitors?.summon(); });
 $('sky-seg').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
   $('sky-seg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x===b));
@@ -339,6 +356,12 @@ fetch('countries.json').then(r => r.json()).then(shapes => {
     globes.push(g); return g;
   };
   big = make($('world'), 'hover');
+  visitors = new Visitors($('visitors'), big, { onFlee: kind => {
+    if(!SAID[kind] || open) return;
+    $('note').textContent = SAID[kind]; $('note').classList.add('on');
+    clearTimeout(saidTimer); saidTimer = setTimeout(() => { if(!open) $('note').classList.remove('on'); }, 2600);
+  } });
+  visitors.enable(fx.ufos);
 });
 render(false);
 </script>
