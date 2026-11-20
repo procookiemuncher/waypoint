@@ -22,6 +22,13 @@ oldest to `docs/progress-archive.md` as one-liners.
 
 ---
 
+## 2026-11-20 — Docs cleanup: progress log trimmed
+
+- PROGRESS.md was 171 KB / 99 entries (~43k tokens read at the start of every session). Now it's a "Current state" block + entries from 11-18 on. Everything older is one-liners + a lessons list in `docs/progress-archive.md`, full text in git history.
+- CLAUDE.md and AGENTS.md ground rules updated to match. Dropped AGENTS.md's stale "Windows only, v2 will move" intro and the "Download ZIP" note.
+
+---
+
 ## 2026-11-20 — Side panel built: the arrival plan, the globe in the app
 
 - Owner picked **design 1, Arrival plan**, and said to put it in the app. Built on a worktree (`panel-work`).
