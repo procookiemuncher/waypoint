@@ -8,6 +8,10 @@
 #   ./mac-version/release/build.command --test          # honours VIDA_DRY_RUN etc, for checking it
 #   VERSION=0.1.0-beta.2 ./mac-version/release/build.command
 #   LICENSE_URL=https://your-dashboard.vercel.app ./mac-version/release/build.command
+#   BUILD=3 ...                                         # update number, release.command sets it
+#
+# BUILD is the integer the auto-updater compares (backend/updater.py). 0 = never updates itself.
+# Shipping to testers goes through release.command, which picks the next BUILD and publishes it.
 #
 # LICENSE_URL is the key dashboard (the "key dashboard" folder). With it, the app asks for an access
 # key before it does anything. A release build won't build without one; a --test build can skip it.
@@ -17,6 +21,7 @@ set -e
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PY="$ROOT/.venv/bin/python"
 VERSION="${VERSION:-0.1.0-beta.1}"
+BUILD="${BUILD:-0}"
 TEST=False
 [ "$1" = "--test" ] && TEST=True
 LICENSE_URL="${LICENSE_URL:-}"
@@ -36,7 +41,7 @@ OUT="${OUT:-$HOME/Library/Caches/Waypoint-release}"
 STAGE="$OUT/stage"
 rm -rf "$STAGE" "$OUT/Waypoint.app" "$OUT/tmp.app"   # (Waypoint.app is waypoint.app too)
 mkdir -p "$STAGE"
-printf 'VERSION = "%s"\nTEST = %s\nLICENSE_URL = "%s"\n' "$VERSION" "$TEST" "$LICENSE_URL" > "$STAGE/waypoint_build.py"
+printf 'VERSION = "%s"\nBUILD = %d\nTEST = %s\nLICENSE_URL = "%s"\n' "$VERSION" "$BUILD" "$TEST" "$LICENSE_URL" > "$STAGE/waypoint_build.py"
 
 echo "> icon"
 "$PY" "$ROOT/mac-version/app/make_icon.py" >/dev/null
@@ -92,6 +97,11 @@ fi
 # go through them (backend.device's -c helper), so load those too. No phone needed.
 if ! "$OUT/Waypoint.app/Contents/MacOS/Waypoint" -c "from backend.device import coredevice_child; coredevice_child()" selftest >/dev/null; then
   echo "The compiled app can't load the coredevice helper (tunnel/CoreDevice imports), not shipping this"
+  exit 1
+fi
+# the updater checks every download with Ed25519 from cryptography, make sure that compiled in
+if ! "$OUT/Waypoint.app/Contents/MacOS/Waypoint" -c "from backend.updater import verify; verify(1, 'x', 'AA==')" >/dev/null; then
+  echo "The compiled app can't load the updater's signature check, not shipping this"
   exit 1
 fi
 echo
