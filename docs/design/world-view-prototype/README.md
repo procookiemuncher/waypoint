@@ -1,7 +1,8 @@
 # World view prototype
 
 A standalone mock of the redesigned world view, outside the app, used to pick the globe and to work
-on the side panel before any of it goes into `core/web/`. Not shipped and not loaded by the app.
+on the side panel. Not shipped and not loaded by the app; `globe.js` and `countries.json` were copied into
+`core/web/static/` on 2026-11-20 with the side panel build (copy again if the globe changes here).
 
 Decided so far (2026-11-20):
 

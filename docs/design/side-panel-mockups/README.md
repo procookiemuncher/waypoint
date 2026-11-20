@@ -1,8 +1,8 @@
 # Side panel mockups
 
 Five ideas for the world view's side panel, built on the prototype in `../world-view-prototype/` (same globe,
-same colours, same data). Brief: `docs/handoff/side-panel-brainstorm-prompt.md`. Not in `core/web/` and not
-loaded by the app. One page, a design switch (1–5) and a state switch (World, France, Japan, Route,
+same colours, same data). Brief: `docs/handoff/side-panel-brainstorm-prompt.md`. **Design 1 (Arrival plan)
+was picked and built into `core/web/` on 2026-11-20**; these pages aren't loaded by the app. One page, a design switch (1–5) and a state switch (World, France, Japan, Route,
 Playing, Place, Pin). Everything clicks: hover a country to turn the globe, open it, pick a route, choose
 Drive or Spoof, type an mph, play, stop, follow, set a place, type `help` in the console.
 
