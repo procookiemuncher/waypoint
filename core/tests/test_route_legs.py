@@ -120,5 +120,24 @@ class LegsTest(unittest.TestCase):
         self.assertIsNone(s["to"])
 
 
+class LiveLegsTest(unittest.TestCase):
+    """The legs of the run that's actually playing, on the same clock as its timeline."""
+
+    def test_merge_joins_runs_of_one_mode(self):
+        from backend.drive import merge_legs
+        self.assertEqual(merge_legs([(0, 5, "walk"), (5, 9, "walk"), (9, 20, "drive"), (20, 30, "stop")]),
+                         [[0, 9, "walk"], [9, 20, "drive"], [20, 30, "stop"]])
+
+    def test_chunk_legs_end_with_the_timeline(self):
+        from backend.drive import chunk_legs, chunk_timeline
+        chunks = [{"kind": "move", "waypoints": [(51.5, -0.15), (51.501, -0.15)], "speed": 1.4, "secs": 79.4, "mode": "walk"},
+                  {"kind": "move", "waypoints": [(51.501, -0.15), (51.51, -0.14)], "speed": 12.0, "secs": 100, "mode": "drive"},
+                  {"kind": "stop", "at": (51.51, -0.14), "secs": 600}]
+        legs = chunk_legs(chunks)
+        self.assertEqual([g[2] for g in legs], ["walk", "drive", "stop"])
+        self.assertAlmostEqual(legs[-1][1], chunk_timeline(chunks)[-1][0], delta=0.2)
+        self.assertAlmostEqual(legs[-1][1] - legs[-1][0], 600, delta=0.2)
+
+
 if __name__ == "__main__":
     unittest.main()
