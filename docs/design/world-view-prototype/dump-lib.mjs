@@ -25,7 +25,7 @@ const data = await p.evaluate(() => {
   const cities = {};
   for (const [k, v] of Object.entries(CITY_INFO)) { const { flag, color, ...rest } = v; cities[k] = rest; }
   const routes = ROUTES.map(r => ({ id: r.id, label: r.label, city: r.city, meters: r.meters, seconds: r.seconds,
-    modes: r.modes, speed: r.speed_mps, generated: !!r.generated,
+    modes: r.modes, speed: r.speed_mps,
     line: r.line.filter((_, i) => i % Math.max(1, Math.floor(r.line.length / 40)) === 0 || i === r.line.length - 1) }));
   const places = PLACES.map(q => ({ id: q.id, name: q.name, city: q.city, kind: q.kind || null, hours: q.hours || null, lat: q.lat, lon: q.lon }));
   return { cities, routes, places };
