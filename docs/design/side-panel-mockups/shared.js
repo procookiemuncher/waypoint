@@ -196,16 +196,25 @@ const UI = {
     const P = p => [(p[1]*k-x0)*s+ox, (-p[0]-y0)*s+oy].map(v => v.toFixed(1));
     const d = L.map((p,i) => (i?'L':'M')+P(p).join(' ')).join('');
     const c = hueOfCity(r.city), a = P(L[0]), b = P(L[L.length-1]);
-    let done = '', dot = '';
+    let done = '', dot = '', lab = '';
     if(o.at != null){
-      const n = Math.max(1, Math.round(o.at*(L.length-1)));
+      const cum = [0]; for(let i=1;i<L.length;i++) cum.push(cum[i-1]+hav(L[i-1], L[i]));
+      const want = o.at*cum[cum.length-1]; let n = 1; while(n<L.length-1 && cum[n]<=want) n++;
       const pos = o.pos ? P(o.pos) : P(L[n]);
       done = `<path d="${L.slice(0, n).map((p,i) => (i?'L':'M')+P(p).join(' ')).join('')}L${pos.join(' ')}" stroke="${c}" stroke-width="${o.sw ? o.sw+.5 : 2.5}" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`;
       dot = `<circle cx="${pos[0]}" cy="${pos[1]}" r="${o.dot || 5}" fill="${c}" stroke="#121319" stroke-width="2"/>`;
     }
+    if(o.labels){
+      // each label sits on the far side of its end from where the line leaves it
+      const t = (pt, from, txt, ink) => { const dx = +pt[0]-+from[0], dy = +pt[1]-+from[1], m = Math.hypot(dx, dy) || 1;
+        const x = +pt[0] + dx/m*10, y = +pt[1] + dy/m*10 + 4;
+        return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${dx>=0 ? 'start' : 'end'}" fill="${ink}" font-size="12">${esc(txt)}</text>`; };
+      const k2 = Math.min(4, L.length-1);
+      lab = t(a, P(L[k2]), o.labels[0], '#9a9aa5') + t(b, P(L[L.length-1-k2]), o.labels[1], '#d4d4d8');
+    }
     return `<svg class="ui-line" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">
       <path d="${d}" stroke="${c}" stroke-opacity="${o.at != null ? .35 : 1}" stroke-width="${o.sw || 2}" fill="none" stroke-linejoin="round" stroke-linecap="round"/>${done}
-      <circle cx="${a[0]}" cy="${a[1]}" r="${o.end || 3}" fill="#121319" stroke="${c}" stroke-width="1.5"/><circle cx="${b[0]}" cy="${b[1]}" r="${o.end || 3}" fill="${c}"/>${dot}</svg>`;
+      <circle cx="${a[0]}" cy="${a[1]}" r="${o.end || 3}" fill="#121319" stroke="${c}" stroke-width="1.5"/><circle cx="${b[0]}" cy="${b[1]}" r="${o.end || 3}" fill="${c}"/>${dot}${lab}</svg>`;
   },
 };
 
@@ -295,7 +304,7 @@ function tickLive(){
   const L = liveNow(); if(!L) return;
   const set = (k, v) => document.querySelectorAll(`[data-live="${k}"]`).forEach(e => { e.textContent = v; });
   set('elapsed', clock(L.a.t)); set('left', clock(L.a.left)); set('arrive', L.arrive); set('pct', Math.round(L.a.pct*100)+'%');
-  set('mph', String(Math.round(L.mphNow))); set('leg', L.a.done ? 'Arrived' : legName(L.a.leg, L.r)); set('doing', L.doing); set('legleft', dur(L.a.legLeft));
+  set('mph', String(Math.round(L.mphNow))); set('leg', L.a.done ? 'Arrived' : legName(L.a.leg, L.r)); set('doing', L.doing); set('doinglc', L.doing.toLowerCase()); set('legleft', dur(L.a.legLeft));
   set('dist', milesN(L.a.dist)); set('pos', `${L.a.pos[0].toFixed(5)}, ${L.a.pos[1].toFixed(5)}`);
   document.querySelectorAll('[data-live-bar]').forEach(e => e.style.setProperty('--pct', (L.a.pct*100).toFixed(2)+'%'));
 }
@@ -352,7 +361,7 @@ function wire(){
     if(t.dataset.sort){ S.sort = t.dataset.sort; return render(); }
     if(t.dataset.act) return act(t.dataset.act);
     if(t.dataset.route){ S.sel = { kind:'route', id:t.dataset.route }; return render(); }
-    if(t.dataset.place){ S.sel = { kind:'place', id:t.dataset.place }; return render(); }
+    if(t.dataset.place){ if(t.dataset.openCountry && !S.open){ S.open = t.dataset.openCountry; S.hover = null; focusGlobe(); } S.sel = { kind:'place', id:t.dataset.place }; return render(); }
     if(t.dataset.pin !== undefined){ S.sel = { kind:'pin' }; return render(); }
     if(t.dataset.country) return openCountry(t.dataset.country);
   });
