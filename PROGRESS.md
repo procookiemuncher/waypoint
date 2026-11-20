@@ -27,6 +27,7 @@ oldest to `docs/progress-archive.md` as one-liners.
 - PROGRESS.md was 171 KB / 99 entries (~43k tokens read at the start of every session). Now it's a "Current state" block + entries from 11-18 on. Everything older is one-liners + a lessons list in `docs/progress-archive.md`, full text in git history.
 - CLAUDE.md and AGENTS.md ground rules updated to match. Dropped AGENTS.md's stale "Windows only, v2 will move" intro and the "Download ZIP" note.
 - AGENTS.md rewritten: fixed stale claims (tunneld/admin/wintun, iOS 26.6, "no JS", "movement engine is the missing piece"), the speed history collapsed into a DVT vs CoreDevice table, Running it split into sections, git part trimmed. 28 KB to 18 KB. `docs/handoff/` deleted (finished jobs).
+- ROADMAP.md rewritten around the owner's four paths: 1 finish Windows, 2 keep adding to the UI, 3 start getting users, 4 improve the motion engine. Old M0-M4 milestones collapsed into a "Done so far" list; the emoji goal is marked done (drive path), stale iOS 26.6 / Windows-only vision gone.
 
 ---
 
