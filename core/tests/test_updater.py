@@ -61,6 +61,7 @@ class Server(BaseHTTPRequestHandler):
         pass
 
 
+@unittest.skipUnless(sys.platform == "darwin", "needs ditto + codesign (the Windows updater is still to do)")
 class UpdaterTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
