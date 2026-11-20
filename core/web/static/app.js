@@ -153,7 +153,7 @@ function initMap(){
   // the border light + frosted HUDs repaint every frame; pause them while the map moves
   map.on('movestart', ()=> document.body.classList.add('panning'));
   map.on('moveend', ()=> document.body.classList.remove('panning'));
-  map.on('zoomend', ()=>{ $('v-zoom').textContent = map.getZoom(); if(!openCity) drawBrowseMap(); });
+  map.on('zoomend', ()=>{ $('v-zoom').textContent = map.getZoom(); });
   map.on('mousemove', e=>{ if(!live) setCoord(e.latlng.lat, e.latlng.lng); });
   map.on('click', e=> dropPin(e.latlng.lat, e.latlng.lng));
 }
@@ -194,23 +194,20 @@ function syncLive(active){
   cancelAnimationFrame(rafId); clearTimeout(tickTimer);
   clearLiveLayers();
   live=null;
-  $('nowplaying').classList.remove('on');
   $('v-leg').textContent='—'; $('v-hdg').textContent='—'; $('v-speed').textContent='0.0 mph';
   $('sb-elapsed').textContent='--:--'; $('gauge-fill').style.transform='scaleX(0)';
-  if(!active){ setMode('IDLE'); markLive(); return; }
+  if(!active){ setMode('IDLE'); renderPanel(); syncGlobe(); return; }
 
-  live = { key, kind:active.kind, label:active.label, started:active.started, engine:active.engine, mph:active.mph };
+  live = { key, kind:active.kind, label:active.label, started:active.started, engine:active.engine, mph:active.mph, route:active.route };
   clearPreview();
-  $('nowplaying').classList.add('on');
   if(active.kind==='place'){
     const pl = PLACES.find(p=>p.name===active.label);
+    live.place = pl || null;
     live.accent = pl?.accent || DEFAULT_ACCENT;
     setAccent(live.accent);
     marker = makeMarker([active.lat, active.lon]);
     setCoord(active.lat, active.lon);
     map.flyTo([active.lat, active.lon], Math.max(map.getZoom(), pl?.zoom || 15), { duration:1.2 });
-    $('np-name').innerHTML = esc(active.label)+'<small>holding</small>';
-    $('np-fill').style.width='100%';
     setMode('HOLDING');
   } else {
     const rt = ROUTES.find(r=>r.id===active.route);
@@ -219,6 +216,11 @@ function syncLive(active){
     const tl = active.timeline || [];
     live.timeline = tl;
     live.total = tl.length ? tl[tl.length-1][0] : 0;
+    // meters along the timeline at each point, for "12.3 of 20.1 mi"
+    live.cum = [0];
+    for(let i=1;i<tl.length;i++) live.cum.push(live.cum[i-1]+dist([tl[i-1][1],tl[i-1][2]], [tl[i][1],tl[i][2]]));
+    // walk / drive / stop as this run plays them (the server times them on the timeline's clock)
+    live.legs = (active.legs && active.legs.length ? active.legs : [[0, live.total, 'drive']]).map(([a,b,mode])=>({ mode, s:Math.max(0, b-a), start:a, end:b }));
     const latlngs = tl.map(p=>[p[1],p[2]]);
     lineGlow=L.polyline(latlngs,{ color:live.accent, weight:9, opacity:.28, className:'glowcase', pane:'glow' }).addTo(map);
     lineDim=L.polyline(latlngs,{ color:dimOf(live.accent), weight:2.5, opacity:.55 }).addTo(map);
@@ -227,12 +229,15 @@ function syncLive(active){
     live.doneTo=0;
     marker=makeMarker(latlngs[0]);
     map.flyToBounds(lineDim.getBounds().pad(.25), { duration:1.1 });
-    const how = active.engine==='drive' ? (active.mph ? `drive · ${Math.round(active.mph)} mph` : 'drive · varying') : 'spoof';
-    $('np-name').innerHTML = esc(rt?.name || active.route)+'<small>'+esc(how)+'</small>';
+    live.how = active.engine==='drive' ? (active.mph ? `Drive · ${Math.round(active.mph)} mph` : 'Drive · varying') : 'Spoof';
     setMode('EN ROUTE');
     lastLogAt=-99;
   }
-  markLive();
+  // something started from the world list (or was already playing at launch): show its country
+  const lc=liveCity();
+  if(!openCountry && lc && country(countryOf(lc))) openCountryPage(countryOf(lc), { noFrame:true });
+  renderPanel();
+  syncGlobe();
   rafId=requestAnimationFrame(tick);
 }
 
@@ -257,7 +262,6 @@ function tick(now){
   const el = serverNow() - live.started, readout = !(now-live.readAt < READOUT_MS);
   if(readout){
     live.readAt=now;
-    setText('np-time', 't+'+fmtT(el));
     setText('sb-elapsed', fmtT(el));
   }
   if(live.kind==='route' && live.timeline.length){
@@ -275,7 +279,8 @@ function tick(now){
       setText('v-speed', mph.toFixed(1)+' mph');
       if(s.hdg!==null) setText('v-hdg', Math.round(s.hdg)+'° '+compass(s.hdg));
       setText('v-leg', el>=live.total ? 'arrived' : fmtT(live.total-el));
-      $('np-fill').style.width=Math.min(100, el/live.total*100).toFixed(1)+'%';
+      live.lastS=s; live.lastMph=mph;
+      tickLiveCard(el, s, mph);
       $('gauge-fill').style.transform='scaleX('+Math.min(1, mph/90)+')';
     }
     if(el-lastLogAt>=30 && el<live.total){
@@ -304,7 +309,10 @@ function toast(msg){
 }
 function toggleFollow(){
   follow=!follow;
-  $('btn-follow').classList.toggle('on', follow);
+  document.querySelectorAll('[data-act="follow"]').forEach(b=>{ b.classList.toggle('on', follow); b.setAttribute('aria-pressed', follow); });
+  // following from the world list means looking at it: open its country, the street map comes back
+  const lc=liveCity();
+  if(follow && live && !openCountry && lc && country(countryOf(lc))) openCountryPage(countryOf(lc), { noFrame:true });
 }
 
 /* ============ STATUS POLL ============ */
@@ -319,7 +327,7 @@ async function pollStatus(){
     const engIds=e=>e.map(x=>x.id).join();
     const enginesChanged = engIds(st.engines)!==engIds(ENGINES);
     ENGINES = st.engines;
-    if(enginesChanged && selected?.type==='route'){ renderEngines(); updateRouteNote(); }
+    if(enginesChanged) renderDock();
     const dev = st.devices[0];
     if(dev) hadPhone=true;
     else if(booted && hadPhone && !linkDone){
@@ -332,7 +340,7 @@ async function pollStatus(){
     $('devbadge').hidden = !st.dev_build;
     if(st.busy) setMode(st.busy.toUpperCase()+'…');
     syncLive(st.active);
-    refreshHeroButton();
+    refreshActions();
   }catch(e){
     if(e.locked) return;
     if(++statusFails===3) logLine('lost the local server — restart the app','warn');
@@ -454,7 +462,7 @@ function setMode(m){ $('sb-mode-v').textContent=m; }
 async function send(cmd, path, body){
   echoCommand(cmd);
   try{ await api(path, body); }
-  catch(e){ typeLine('✗ '+e.message,'warn'); }
+  catch(e){ typeLine(e.message,'warn'); }
   setTimeout(pollStatus, 250);
 }
 function setPlace(p){
@@ -465,20 +473,13 @@ function setPoint(lat, lon, label){
 }
 function playRoute(rt){
   const engine = selEngine();
-  const mphRaw = parseFloat($('mph').value);
+  const mphRaw = parseFloat(mphValue);
   const mph = engine==='drive' && mphRaw>0 ? mphRaw : null;
   send(`play ${rt.id} --${engine}`+(mph?` --mph ${mph}`:''), '/api/play', { route:rt.id, engine, mph });
 }
 function stopAll(){
   send('stop', '/api/stop', {});
 }
-function resetView(){
-  echoCommand('reset view');
-  clearPreview();
-  if(live && marker) map.flyTo(marker.getLatLng(), 14, { duration:1.2 });
-  else frameBrowse();
-}
-
 /* ============ PROMPT (typed commands) ============ */
 const promptIn=$('prompt-in');
 const cmdHistory=[]; let histAt=0, promptRunning=false;
@@ -486,24 +487,32 @@ const cmdHistory=[]; let histAt=0, promptRunning=false;
 function sizePrompt(){ promptIn.style.width=`calc(${promptIn.value.length}ch + 2px)`; }
 function clearConsole(){ consoleEl.innerHTML=''; }
 const HELP = [
-  'clear                     clear the console (ctrl+L)',
-  'reset                     stop, put the phone back on real GPS, reset the map + console',
-  'stop                      stop whatever is running and clear the spoof',
-  'set <place>               hold at a saved place',
-  'set <lat> <lon>           hold at a coordinate',
-  'play <route> [--spoof|--drive] [--mph N]',
-  'ls [routes|places]        list what you can set / play',
-  'help                      this',
+  ['clear', 'clear the console (ctrl+L)'],
+  ['reset', 'stop, put the phone back on real GPS, back to the world list'],
+  ['stop', 'stop whatever is running and clear the spoof'],
+  ['set <place>', 'hold at a saved place'],
+  ['set <lat> <lon>', 'hold at a coordinate'],
+  ['play <route>', '[--spoof|--drive] [--mph N]'],
+  ['ls [routes|places]', 'list what you can set / play'],
+  ['help', 'this'],
 ];
+// the console is in the text face, so columns are a grid, not spaces
+function logCols(cells, widths, cls='sys'){
+  const d=logLine('', cls+' cols');
+  d.style.gridTemplateColumns=widths;
+  for(const c of cells){ const s=document.createElement('span'); s.textContent=c; d.appendChild(s); }
+  return d;
+}
 const COMMANDS = {
-  help(){ HELP.forEach(l=>logLine(l,'sys')); },
+  help(){ HELP.forEach(l=>logCols(l, '150px 1fr')); },
   clear(){ clearConsole(); },
   reset(){
     clearConsole();
     if(STATUS?.active || STATUS?.busy) stopAll();
     clearPreview();
-    if(openCity){ openCity=null; renderBrowse(true); }
-    frameBrowse(true);   // same whole-world view as on load
+    selected=null; openCountry=null; hoverCountry=null;
+    renderPanel(true);   // back to the world list and the globe, as on load
+    syncGlobe();
     setAccent(DEFAULT_ACCENT);
     if(!STATUS?.active) typeLine('phone is on real GPS.','ok');
   },
@@ -527,8 +536,8 @@ const COMMANDS = {
   ls(args){
     const what=args[0];
     if(what && !['routes','places'].includes(what)) return logLine('usage: ls [routes|places]','warn');
-    if(what!=='places') ROUTES.forEach(r=>logLine(`route  ${r.id.padEnd(16)} ${r.sub}`,'sys'));
-    if(what!=='routes') PLACES.forEach(p=>logLine(`place  ${p.id.padEnd(16)} ${p.name}`,'sys'));
+    if(what!=='places') ROUTES.forEach(r=>logCols(['route', r.id, r.sub], '48px minmax(0,230px) 1fr'));
+    if(what!=='routes') PLACES.forEach(p=>logCols(['place', p.id, p.name], '48px minmax(0,230px) 1fr'));
   },
 };
 function runPrompt(line){
@@ -565,282 +574,342 @@ $('consolewrap').addEventListener('click', e=>{
   const n=promptIn.value.length; promptIn.setSelectionRange(n, n);
 });
 
-/* ============ COMMAND PANEL (hero + thumbs) ============ */
-let selected=null, engineChoice=null;
-
-function tileUrl(lat, lon, z){
-  const n=2**z;
-  const x=Math.floor((lon+180)/360*n);
-  const rad=lat*Math.PI/180;
-  const y=Math.floor((1-Math.log(Math.tan(rad)+1/Math.cos(rad))/Math.PI)/2*n);
-  return TILE_URL.replace('{z}',z).replace('{x}',x).replace('{y}',y).replace('{r}','@2x');
-}
-function routeGlyph(pts, s){
-  if(pts.length<2) return '';
-  const step=Math.max(1, Math.floor(pts.length/60));
-  pts=pts.filter((_,i)=>i%step===0 || i===pts.length-1);
-  const lats=pts.map(p=>p[0]), lons=pts.map(p=>p[1]);
-  const mnLa=Math.min(...lats), mxLa=Math.max(...lats), mnLo=Math.min(...lons), mxLo=Math.max(...lons);
-  const spanLa=mxLa-mnLa||1e-9, spanLo=mxLo-mnLo||1e-9, span=Math.max(spanLa,spanLo);
-  const pad=s*0.2, inner=s-pad*2;
-  const oxy=pts.map(p=>[
-    pad+((p[1]-mnLo)/span)*inner + (span===spanLa?(inner*(1-spanLo/span))/2:0),
-    pad+((mxLa-p[0])/span)*inner + (span===spanLo?(inner*(1-spanLa/span))/2:0)
-  ]);
-  const d=oxy.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ');
-  const a=oxy[0], b=oxy[oxy.length-1];
-  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" fill="none">
-    <polyline points="${d}" stroke="rgba(var(--accent-rgb),.18)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
-    <polyline class="draw" points="${d}" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" pathLength="120"/>
-    <circle cx="${a[0].toFixed(1)}" cy="${a[1].toFixed(1)}" r="2" fill="var(--accent)"/>
-    <circle cx="${b[0].toFixed(1)}" cy="${b[1].toFixed(1)}" r="2.2" stroke="var(--accent)" stroke-width="1.2" fill="none"/>
-  </svg>`;
-}
-function thumbHtml(item, s){
-  if(item.type==='route') return routeGlyph(item.def.line, s);
-  const p=item.def;
-  return `<img src="${tileUrl(p.lat,p.lon,Math.max(3,(p.zoom||14)-2))}" alt="" draggable="false"><span class="pin"></span>`;
-}
-function countUp(el, target, decimals, suffix){
-  if(RM){ el.innerHTML=target.toFixed(decimals)+suffix; return; }
-  const t0=performance.now(), dur=650;
-  setTimeout(()=>{ el.innerHTML=target.toFixed(decimals)+suffix; }, dur+80);   // land exactly, even if rAF stalls
-  (function step(t){
-    const k=Math.min(1,Math.max(0,(t-t0)/dur)), e=1-Math.pow(1-k,3);
-    el.innerHTML=(target*e).toFixed(decimals)+suffix;
-    if(k<1) requestAnimationFrame(step);
-  })(t0);
-}
-/* ============ DESTINATIONS (city gallery → a city's places + route map cards) ============ */
-// Cities aren't stored anywhere: a place's region names its city, a route belongs to whichever
-// known city (or place region) its last point is nearest to, within NEAR_KM. Add a city here to
-// give it a flag + color; anything unknown still gets its own card, just with a pin and a palette color.
-// filled from /api/cities (core/destinations.json) in loadLibrary
-const CITY_INFO = {};
+/* ============ SIDE PANEL: countries → a country's arrivals → the dock ============ */
+/* Countries first, no city step: the world list turns the globe on hover and a click opens the country,
+   where each city reads as an arrival in order (airport → hotel → spot) built from the generated routes'
+   ends. Test drives and saved places sit under "Also in". The dock under the list holds what's picked
+   (with when you'd be at the door and whether the spot is open then) and what the phone is doing.
+   Each country has one colour (destinations.json), shown on the globe and on its data only.
+   Single-line strings only: the release build minifies this with rjsmin. */
+const CITY_INFO = {};   // filled from /api/cities (core/destinations.json) in loadLibrary
 const NEAR_KM = 100;
-let openCity=null;
+const OTHER = 'Other places';
+let COUNTRIES = [], openCountry = null, hoverCountry = null;
+let selected = null, engineChoice = null, mphValue = '';
 
+const plural = (n, word) => `${n} ${n===1 ? word : word.endsWith('y') ? word.slice(0,-1)+'ies' : word+'s'}`;
+const cap = s => s ? s[0].toUpperCase()+s.slice(1) : s;
 function cityOf(lat, lon){
-  const cands=[...Object.entries(CITY_INFO).map(([n,c])=>[n,c.lat,c.lon]),
-               ...PLACES.filter(p=>p.region).map(p=>[p.region,p.lat,p.lon])];
+  const cands=[...Object.entries(CITY_INFO).map(([n,c])=>[n,c.lat,c.lon]), ...PLACES.filter(p=>p.region).map(p=>[p.region,p.lat,p.lon])];
   let best='Elsewhere', bd=NEAR_KM*1000;
   for(const [n,la,lo] of cands){ const d=dist([lat,lon],[la,lo]); if(d<bd){ bd=d; best=n; } }
   return best;
 }
-// a city's local clock, so a club pin at 2pm local doesn't give the LARP away
-function localTime(tz){
-  try{ return new Intl.DateTimeFormat('en-US',{ timeZone:tz, weekday:'short', hour:'numeric', minute:'2-digit' }).format(new Date()); }
-  catch(e){ return ''; }
+// a city the catalog doesn't know (a test route's end, "Elsewhere") still gets a country: OTHER, in violet
+function cityInfo(name){ return CITY_INFO[name] || { country:OTHER, color:DEFAULT_ACCENT, continent:'Elsewhere', tz:null }; }
+const countryOf = c => cityInfo(c).country;
+const cityColor = c => cityInfo(c).color || DEFAULT_ACCENT;
+const cityRoutes = c => ROUTES.filter(r=>r.city===c);
+const cityPlaces = c => PLACES.filter(p=>p.city===c);
+const country = k => COUNTRIES.find(x=>x.name===k);
+function buildCountries(){
+  const by=new Map(), cities=[...new Set([...Object.keys(CITY_INFO), ...ROUTES.map(r=>r.city), ...PLACES.map(p=>p.city)])];
+  for(const c of cities){
+    const C=cityInfo(c), n=cityRoutes(c).length+cityPlaces(c).length;
+    if(!n) continue;
+    if(!by.has(C.country)) by.set(C.country, { name:C.country, continent:C.continent || 'Elsewhere', color:C.color || DEFAULT_ACCENT, vibe:C.vibe || '', cities:[] });
+    by.get(C.country).cities.push(c);
+  }
+  for(const k of by.values()){
+    const size=c=>cityRoutes(c).length+cityPlaces(c).length;
+    k.cities.sort((a,b)=>size(b)-size(a) || a.localeCompare(b));
+    k.routes=k.cities.reduce((s,c)=>s+cityRoutes(c).length, 0);
+    k.places=k.cities.reduce((s,c)=>s+cityPlaces(c).length, 0);
+  }
+  COUNTRIES=[...by.values()].sort((a,b)=>(a.name===OTHER)-(b.name===OTHER) || b.routes-a.routes || b.places-a.places || a.name.localeCompare(b.name));
 }
-function openNow(hours, tz){
-  if(!hours || !tz) return null;
-  const p=new Intl.DateTimeFormat('en-US',{ timeZone:tz, hour:'numeric', minute:'numeric', hourCycle:'h23' }).formatToParts(new Date());
-  const t=+p.find(x=>x.type==='hour').value + p.find(x=>x.type==='minute').value/60, [a,b]=hours;
-  return a<b ? t>=a && t<b : t>=a || t<b;
+function byContinent(list){
+  const g=new Map();
+  for(const k of list){ if(!g.has(k.continent)) g.set(k.continent, []); g.get(k.continent).push(k); }
+  return [...g];
 }
-const fmtHour = h => { const hh=Math.floor(h)%24, m=Math.round(h%1*60); return `${hh%12||12}${m?':'+String(m).padStart(2,'0'):''}${hh<12?'am':'pm'}`; };
-function cityInfo(name){
-  if(CITY_INFO[name]) return CITY_INFO[name];
-  const h=[...name].reduce((a,c)=>a+c.charCodeAt(0),0);
-  return { country:'', flag:'📍', color:PALETTE[h%PALETTE.length] };
+// a city's arrivals, from the generated routes' ends: airport → spot, then spot → spot
+function chain(city){
+  const rs=cityRoutes(city), ps=cityPlaces(city), gen=rs.filter(r=>r.generated && r.to);
+  const arrivals=gen.filter(r=>r.from?.kind==='airport'), onward=gen.filter(r=>r.from?.kind==='spot');
+  const inChain=new Set(gen.flatMap(r=>[r.to.id, r.from?.kind==='spot' ? r.from.id : null]));
+  return { arrivals, onward, other:rs.filter(r=>!r.generated || !r.to), loose:ps.filter(p=>!inChain.has(p.id)) };
 }
-const cityItems = c => [...ROUTES.filter(r=>r.city===c).map(def=>({ type:'route', def })),
-                        ...PLACES.filter(p=>p.city===c).map(def=>({ type:'place', def }))];
-function cityNames(){
-  const n=[...new Set([...ROUTES,...PLACES].map(x=>x.city))];
-  return n.sort((a,b)=> (a==='Elsewhere')-(b==='Elsewhere') || cityItems(b).length-cityItems(a).length || a.localeCompare(b));
+const routeEnd = r => r.to ? PLACES.find(p=>p.id===r.to.id) : null;
+
+/* ---- time, always the city's own ---- */
+function parts(tz, ms=Date.now()){
+  const p=new Intl.DateTimeFormat('en-US',{ timeZone:tz || undefined, weekday:'short', hour:'numeric', minute:'2-digit', hourCycle:'h23' }).formatToParts(new Date(ms));
+  const g=t=>p.find(x=>x.type===t)?.value;
+  const h=+g('hour')%24, m=+g('minute');
+  return { h, m, t:h+m/60, wd:g('weekday') };
 }
-// countries come from CITY_INFO too; a city without one (unknown region, "Elsewhere") goes in OTHER, last
-const OTHER = 'Other places';
-const countryOf = c => cityInfo(c).country || OTHER;
-const countryFlag = k => k===OTHER ? '🌐' : Object.values(CITY_INFO).find(c=>c.country===k).flag;
-const countryCities = k => cityNames().filter(c=>countryOf(c)===k);
-const countryItems = k => countryCities(k).flatMap(cityItems);
-function countryNames(){
-  const n=[...new Set(cityNames().map(countryOf))];
-  return n.sort((a,b)=> (a===OTHER)-(b===OTHER) || countryItems(b).length-countryItems(a).length || a.localeCompare(b));
+const ampm = (h, m) => `${(h%12)||12}${m ? ':'+String(m).padStart(2,'0') : ''} ${h%24<12 ? 'am' : 'pm'}`;
+function clockAt(tz, ms=Date.now(), day=false){
+  const p=parts(tz, ms);
+  return (day ? p.wd+' ' : '')+`${(p.h%12)||12}:${String(p.m).padStart(2,'0')} ${p.h<12 ? 'am' : 'pm'}`;
 }
-let shutCountries=new Set();   // collapsed country groups in the gallery
-const itemPoints = it => it.type==='route' ? it.def.line : [[it.def.lat, it.def.lon]];
-function cityCenter(c){
-  if(CITY_INFO[c]) return [CITY_INFO[c].lat, CITY_INFO[c].lon];
-  const pts=cityItems(c).flatMap(itemPoints);
-  return [pts.reduce((s,p)=>s+p[0],0)/pts.length, pts.reduce((s,p)=>s+p[1],0)/pts.length];
+const hourLabel = x => ampm(Math.floor(x)%24, Math.round((x-Math.floor(x))*60));
+const hoursLabel = hs => `${hourLabel(hs[0])} – ${hs[1]%24===0 ? 'midnight' : hourLabel(hs[1])}`;
+function utcOffset(tz){
+  try{
+    const s=new Intl.DateTimeFormat('en-US',{ timeZone:tz, timeZoneName:'shortOffset' }).formatToParts(new Date()).find(x=>x.type==='timeZoneName').value;
+    return s.replace('GMT','UTC').replace(/^UTC$/,'UTC+0');
+  }catch(e){ return ''; }
 }
-// 'jfk-to-hotel' → 'JFK → hotel'
-const ACRONYMS = new Set(['jfk','mia','cdg','dxb','lax','lhr','nyc','sfo']);
-function routeLabel(name){
-  const w=name.replace(/-to-/g,' → ').split(/[-_ ]+/).map(t=>ACRONYMS.has(t.toLowerCase()) ? t.toUpperCase() : t);
-  const s=w.join(' ');
-  return s.charAt(0).toUpperCase()+s.slice(1);
+// a spot with hours, at a moment (now by default). null = no hours (hotels, saved places)
+function openState(p, ms=Date.now()){
+  const tz=cityInfo(p.city).tz;
+  if(!p.hours || !tz) return null;
+  const t=parts(tz, ms).t, [a,b]=p.hours, open = a<b ? t>=a && t<b : t>=a || t<b;
+  return open ? { open:true, label:`Open till ${b%24===0 ? 'midnight' : hourLabel(b)}` } : { open:false, label:`Opens ${hourLabel(a)}` };
+}
+// the palette's "opens 11pm"
+const fmtHour = h => hourLabel(h).replace(' ','');
+
+/* ---- numbers ---- */
+const miles = m => { const x=m/1609.34; return x.toFixed(x<10 ? 1 : 0)+' mi'; };
+const milesN = m => { const x=m/1609.34; return x.toFixed(x<10 ? 1 : 0); };
+const dur = s => { const m=Math.max(1, Math.round(s/60)); return m<60 ? `${m} min` : `${Math.floor(m/60)} h ${m%60} min`; };
+const clockT = s => { s=Math.max(0, Math.round(s)); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return (h ? h+':'+String(m).padStart(2,'0') : String(m))+':'+String(x).padStart(2,'0'); };
+const cruise = r => r.speed_mps ? Math.round(r.speed_mps*MPS_TO_MPH) : null;
+const routeMeters = r => r.legs.reduce((s,l)=>s+l.m, 0) || r.meters;
+const legName = (mode, r) => mode==='walk' ? 'Walk' : mode==='drive' ? 'Drive' : r?.generated ? 'Parked' : 'Stopped';
+const legDoing = (mode, r) => mode==='walk' ? 'Walking' : mode==='drive' ? 'Driving' : r?.generated ? 'Parked at the door' : 'Stopped';
+const legsLong = r => r.legs.map(l=>`${legName(l.mode, r).toLowerCase()} ${dur(l.s)}`).join(' · ');
+const kindLabel = p => p.kind ? cap(p.kind) : p.saved ? 'Saved place' : 'Place';
+
+/* ---- pieces ---- */
+const UI = {
+  search: () => `<button class="ui-search" data-act="search" title="Search (⌘K)" aria-label="Search, ⌘K">${icon('search',16)}<span>Search</span><kbd>⌘K</kbd></button>`,
+  engines(){ const cur=selEngine(); return `<div class="ui-seg" role="group" aria-label="Engine">${[...availableEngines()].sort((a,b)=>(b.id==='drive')-(a.id==='drive')).map(e=>`<button data-engine="${esc(e.id)}" class="${e.id===cur?'on':''}" aria-pressed="${e.id===cur}" title="${e.real_speed ? 'Real speed, Life360 shows mph and the car' : 'Position only, Life360 shows 0 mph'}">${esc(e.label)}</button>`).join('')}</div>`; },
+  mph: () => selEngine()!=='drive' ? '' : `<label class="ui-mph" title="Speed for Drive, blank for the route's own"><input data-mph type="number" min="1" max="200" step="1" placeholder="Auto" value="${esc(mphValue)}" aria-label="Speed in mph, blank for the route's own"><span>mph</span></label>`,
+  note: () => `<p class="ui-note" data-enote>${esc(engineNote())}</p>`,
+  play: () => `<button class="ui-primary" data-act="play">${icon('play',14)}<span>Play route</span></button>`,
+  set: label => `<button class="ui-primary" data-act="set">${icon('map-pin',15)}<span>${label}</span></button>`,
+  stop: () => `<button class="ui-secondary" data-act="stop">${icon('square',13)}Stop &amp; clear</button>`,
+  follow: () => `<button class="ui-toggle${follow?' on':''}" data-act="follow" aria-pressed="${follow}">${icon('locate-fixed',15)}Follow</button>`,
+  back: () => `<button class="ui-back" data-back>${icon('chevron-left',16)}All countries</button>`,
+  // walk / drive / parked, each as long as it takes: drive in the country's colour, walk a pale step of it, parked hatched
+  legs: (legs, color, cls='') => `<span class="ui-legs ${cls}" style="--c:${color}" aria-hidden="true">${legs.map(l=>`<i class="lg-${l.mode}" style="flex:${l.s} 0 3px"></i>`).join('')}</span>`,
+};
+function engineNote(){
+  if(selEngine()!=='drive') return 'Position only: Life360 shows 0 mph, but follows the route’s slow-downs and stops.';
+  return mphValue ? 'Real speed, held steady at the mph you typed. No stops.' : 'Real speed: Life360 shows mph and the car. Speeds up, slows for bends, stops at the door. Type an mph to hold one speed.';
+}
+// a time that moves with the clock (now, or now + secs, in a city's own time): kept right by text
+// every 20 s (tickClocks), never by re-rendering
+const atTime = (tz, secs=0, day=false) => `<span class="num" data-clock="${esc(tz || '')}" data-in="${secs}"${day ? ' data-day' : ''}>${clockAt(tz, Date.now()+secs*1000, day)}</span>`;
+function tickClocks(){
+  document.querySelectorAll('[data-clock]').forEach(e=>{ const s=clockAt(e.dataset.clock || undefined, Date.now()+(+e.dataset.in || 0)*1000, e.hasAttribute('data-day')); if(e.textContent!==s) e.textContent=s; });
 }
 
-/* a static map: tiles framed to fit the items, with their routes drawn on top (w×h px) */
-function mercator(lat, lon, z){
-  const n=256*2**z, s=Math.sin(lat*Math.PI/180);
-  return [(lon+180)/360*n, (.5-Math.log((1+s)/(1-s))/(4*Math.PI))*n];
+/* ---- the world list ---- */
+const orList = a => a.length<2 ? a.join('') : a.slice(0,-1).join(', ')+' or '+a[a.length-1];
+function worldRow(k){
+  const aps=[...new Set(k.cities.map(c=>cityInfo(c).airport).filter(Boolean))];
+  const sub = k.name===OTHER ? k.cities.join(', ') : !k.routes ? `Pin only · ${k.cities.flatMap(c=>cityPlaces(c).map(p=>p.name)).join(', ')}` : aps.length ? `Land at ${orList(aps)}` : k.cities.join(', ');
+  const lc=liveCity(), isLive = !!lc && countryOf(lc)===k.name;
+  return `<button class="p1-row${k.name===hoverCountry?' hov':''}${isLive?' is-live':''}" data-country="${esc(k.name)}" style="--c:${k.color}"><span class="dot"></span><span class="n">${esc(k.name)}</span><span class="s">${esc(sub)}</span><span class="r num">${isLive ? 'Live' : k.routes ? plural(k.routes,'route') : plural(k.places,'place')}</span></button>`;
 }
-function mapArt(items, w, h, color, pad=26){
-  const thin = line => { const st=Math.max(1, Math.floor(line.length/80)); return line.filter((_,i)=>i%st===0 || i===line.length-1); };
-  const pts=items.flatMap(itemPoints);
-  if(!pts.length) return '<div class="art"></div>';
-  let z=15;
-  for(; z>2; z--){
-    const px=pts.map(p=>mercator(p[0],p[1],z)), xs=px.map(p=>p[0]), ys=px.map(p=>p[1]);
-    if(Math.max(...xs)-Math.min(...xs)<=w-pad*2 && Math.max(...ys)-Math.min(...ys)<=h-pad*2) break;
-  }
-  const px=pts.map(p=>mercator(p[0],p[1],z)), xs=px.map(p=>p[0]), ys=px.map(p=>p[1]);
-  const x0=(Math.max(...xs)+Math.min(...xs))/2-w/2, y0=(Math.max(...ys)+Math.min(...ys))/2-h/2;
-  let tiles='';
-  for(let tx=Math.floor(x0/256); tx<=Math.floor((x0+w)/256); tx++)
-    for(let ty=Math.floor(y0/256); ty<=Math.floor((y0+h)/256); ty++)
-      tiles+=`<img src="${TILE_URL.replace('{z}',z).replace('{x}',tx).replace('{y}',ty).replace('{r}','@2x')}" style="left:${(tx*256-x0).toFixed(1)}px;top:${(ty*256-y0).toFixed(1)}px" alt="" draggable="false" decoding="async">`;
-  const P=(lat,lon)=>{ const [a,b]=mercator(lat,lon,z); return [(a-x0).toFixed(1), (b-y0).toFixed(1)]; };
-  let svg='';
-  for(const it of items){
-    if(it.type==='route' && it.def.line.length>1){
-      const line=thin(it.def.line), d='M'+line.map(p=>P(p[0],p[1]).join(' ')).join(' L');
-      const a=P(...line[0]), b=P(...line[line.length-1]);
-      svg+=`<path class="glow" d="${d}"/><path class="core" d="${d}"/><circle class="start" cx="${a[0]}" cy="${a[1]}" r="2.6"/><circle class="end" cx="${b[0]}" cy="${b[1]}" r="3.6"/>`;
-    } else if(it.type==='place'){
-      const [a,b]=P(it.def.lat, it.def.lon);
-      svg+=`<circle class="pl" cx="${a}" cy="${b}" r="4"/>`;
-    }
-  }
-  return `<div class="art" style="--t:${color}"><div class="stage" style="width:${w}px;height:${h}px;margin:${-h/2}px 0 0 ${-w/2}px">${tiles}<svg width="${w}" height="${h}">${svg}</svg></div></div>`;
+function worldHtml(){
+  if(!COUNTRIES.length) return `<div class="p1-empty">No routes in core/routes/ or places in core/places.json yet.</div>`;
+  const cities=COUNTRIES.reduce((s,k)=>s+k.cities.length, 0), arrivals=ROUTES.filter(r=>r.generated && r.from?.kind==='airport').length;
+  return `<header class="p1-head"><div><h1>Destinations</h1><p class="p1-sub num">${plural(COUNTRIES.length,'country')} · ${plural(cities,'city')} · ${plural(arrivals,'airport arrival')}</p></div>${UI.search()}</header>`
+    + byContinent(COUNTRIES).map(([c, ks])=>`<section class="p1-cg"><h2>${esc(c)}</h2>${ks.map(worldRow).join('')}</section>`).join('');
 }
 
-const plural = (n, word) => `${n} ${n===1 ? word : word.endsWith('y') ? word.slice(0,-1)+'ies' : word+'s'}`;
-const liveBadge = '<span class="livebadge"><i></i>Live</span>';
-// one city card; `half` is the smaller one used 2-up when a country has several cities
-function cityCard(c, w, half){
-  const C=cityInfo(c), items=cityItems(c);
-  const r=items.filter(i=>i.type==='route').length, p=items.length-r;
-  const miles=items.reduce((s,i)=>s+(i.def.meters||0),0)/1609.34;
-  const word = (n, s) => half ? n : plural(n, s);
-  return `<button class="gcard" data-city="${esc(c)}" style="--t:${C.color}">
-    ${mapArt(items, w, half ? 136 : 168, C.color, half ? 22 : 36)}<div class="shade"></div>
-    <div class="top">${liveBadge}<span class="go">${icon('arrow-right',15)}</span></div>
-    <div class="bot"><div class="cn">${esc(c)}</div><div class="mchips">
-      ${r?`<span class="mchip">${icon('route',12)}${word(r,'route')}</span>`:''}
-      ${p?`<span class="mchip">${icon('map-pin',12)}${word(p,'place')}</span>`:''}
-      ${miles?`<span class="mchip">${miles.toFixed(miles<10?1:0)} mi</span>`:''}</div></div>
-  </button>`;
+/* ---- a country ---- */
+const isSel = (type, id) => !!selected && selected.type===type && selected.def.id===id;
+function liveCity(){ return !live ? null : live.kind==='route' ? ROUTES.find(r=>r.id===live.route)?.city : live.place?.city; }
+const isLive = (type, id) => !!live && (type==='route' ? live.kind==='route' && live.route===id : live.kind==='place' && live.place?.id===id);
+function legCols(r){
+  return `<div class="p1-legs">${r.legs.map(l=>`<div class="p1-leg" style="flex:${Math.max(l.s, r.seconds*.16)} 1 0"><span class="k">${legName(l.mode, r)}</span><span class="v num">${dur(l.s)}</span><span class="s num">${l.mode==='stop' ? (r.generated ? 'at the door' : 'in place') : l.mode==='drive' && cruise(r) ? `${miles(l.m)} · cruise ${cruise(r)} mph` : l.m<1000 ? l.m+' m' : miles(l.m)}</span></div>`).join('')}</div>`;
 }
-function galleryHtml(W){
-  const names=cityNames(), countries=countryNames();
-  if(!names.length) return `<div class="bempty">no routes in core/routes/ or places in core/places.json yet</div>`;
-  return `<div class="bhead"><div><h2>Destinations</h2><div class="sub">${plural(names.length,'city')} in ${plural(countries.length,'country')}</div></div>
-      <button id="cmdk" onclick="Palette.open()" title="Search (⌘K)" aria-label="Search">${icon('search',15)}</button>
-      <button id="resetview" onclick="resetView()" title="Reset view" aria-label="Reset view">${icon('rotate-ccw',15)}</button></div>`
-    + countries.map(k=>{
-      const cs=countryCities(k), shut=shutCountries.has(k);
-      const r=countryItems(k).filter(i=>i.type==='route').length;
-      return `<div class="cgroup"><button class="chead${shut?' shut':''}" data-country="${esc(k)}" aria-expanded="${!shut}" style="--t:${cityInfo(cs[0]).color}">
-          <span class="fl">${countryFlag(k)}</span>
-          <div><div class="nm">${esc(k)}</div><div class="sb">${plural(cs.length,'city')}${r?' · '+plural(r,'route'):''}</div></div>
-          ${liveBadge}<span class="chev">${icon('chevron-down',16)}</span></button>
-        ${shut ? '' : cs.length===1 ? cityCard(cs[0], W-28)
-          : `<div class="halves">${cs.map(c=>cityCard(c, Math.floor((W-38)/2), true)).join('')}</div>`}</div>`;
-    }).join('');
+function linkRow(r, withLabel, open){
+  const lv=isLive('route', r.id), sel=isSel('route', r.id), c=cityColor(r.city), tz=cityInfo(r.city).tz;
+  const exp = open && !sel && !lv ? `<span class="p1-exp"><span class="p1-when">Land now, at the door <b>${atTime(tz, r.seconds)}</b> local</span>${legCols(r)}</span>` : '';
+  return `<li class="p1-link${sel?' is-sel':''}${lv?' is-live':''}"><button data-route="${esc(r.id)}" style="--c:${c}">${withLabel ? `<span class="p1-from">${esc(r.label)}</span>` : ''}<span class="p1-lk"><span class="p1-bar"${lv?' data-live-bar':''}>${UI.legs(r.legs, c)}${lv ? `<span class="p1-over">${UI.legs(r.legs, c)}</span>` : ''}</span><span class="p1-t num">${dur(r.seconds)}</span><span class="p1-d num">${miles(routeMeters(r))}</span></span>${exp || `<span class="p1-ls">${esc(cap(legsLong(r)))}</span>`}</button></li>`;
 }
-function hoursTag(def, tz){
-  const open=openNow(def.hours, tz);
-  if(open===null) return '';
-  return `<span class="oc${open?' on':''}">${open ? 'open now' : 'opens '+fmtHour(def.hours[0])}</span>`;
+function spotNode(p){
+  if(!p) return '';
+  const o=openState(p), lv=isLive('place', p.id), sel=isSel('place', p.id);
+  const sub=[kindLabel(p), p.hours ? hoursLabel(p.hours) : null, p.note].filter(Boolean).join(' · ');
+  return `<li class="p1-node p1-spot${sel?' is-sel':''}${lv?' is-live':''}"><button data-place="${esc(p.id)}" style="--c:${cityColor(p.city)}"><span class="p1-m"></span><span class="n">${esc(p.name)}</span><span class="s">${esc(sub)}</span><span class="v${o?.open ? ' open-now' : ''}">${lv ? 'Holding here' : o ? esc(o.label) : ''}</span></button></li>`;
 }
-function cityHtml(W){
-  const c=openCity, C=cityInfo(c), items=cityItems(c);
-  const R=items.filter(i=>i.type==='route'), P=items.filter(i=>i.type==='place');
-  const miles=R.reduce((s,i)=>s+i.def.meters,0)/1609.34, secs=R.reduce((s,i)=>s+i.def.seconds,0);
-  const cardW=Math.floor((W-38)/2);
-  return `<div class="chero" style="--t:${C.color}">${mapArt(items, W, 200, C.color, 40)}<div class="shade"></div>
-      <button class="backb" data-back>${icon('chevron-left',16)}Destinations</button>
-      <button class="cmdkb" onclick="Palette.open()" title="Search (⌘K)" aria-label="Search">${icon('search',15)}</button>
-      <div class="in"><div class="cn"><span class="flag">${C.flag}</span>${esc(c)}</div>${C.country?`<div class="cc">${esc(C.country)}${C.tz?` · ${esc(localTime(C.tz))} there`:''}</div>`:''}</div></div>
-    <div class="cstats"><div><b>${R.length}</b><span>${R.length===1?'route':'routes'}</span></div>
-      <div><b>${R.length?miles.toFixed(miles<10?1:0)+' mi':'—'}</b><span>of road</span></div>
-      <div><b>${R.length?Math.round(secs/60)+' min':'—'}</b><span>of driving</span></div></div>
-    ${P.length?`<div class="bsec">Places<span class="n">${P.length}</span></div>
-      <div class="pchips" style="--t:${C.color}">${P.map(({def})=>`<button class="pchip" data-id="${esc(def.id)}" data-kind="place"><span class="ic">${icon('map-pin',14)}</span>${esc(def.name)}${hoursTag(def, C.tz)}</button>`).join('')}</div>`:''}
-    ${R.length?`<div class="bsec">Routes<span class="n">${R.length}</span></div>
-      <div class="mcards" style="--t:${C.color}">${R.map(it=>`<button class="mcard" data-id="${esc(it.def.id)}" data-kind="route">
-        <div class="pic">${mapArt([it], cardW, 104, C.color, 16)}${liveBadge}</div>
-        <div class="tx"><div class="nm">${esc(it.def.label)}</div><div class="sb">${esc(it.def.cardSub)}</div></div></button>`).join('')}</div>`:''}`;
+function alsoRow(item){
+  if(item.type==='route'){
+    const r=item.def;
+    return `<button class="p1-also-r${isSel('route', r.id)?' is-sel':''}${isLive('route', r.id)?' is-live':''}" data-route="${esc(r.id)}"><span class="n">${esc(r.label)}</span><span class="b">${UI.legs(r.legs, cityColor(r.city))}</span><span class="v num">${dur(r.seconds)}</span></button>`;
+  }
+  const p=item.def, o=openState(p);
+  return `<button class="p1-also-r${isSel('place', p.id)?' is-sel':''}${isLive('place', p.id)?' is-live':''}" data-place="${esc(p.id)}"><span class="n">${esc(p.name)}</span><span class="b muted">${esc([kindLabel(p), p.note].filter(Boolean).join(' · '))}</span><span class="v${o?.open ? ' open-now' : ''}">${isLive('place', p.id) ? 'Holding here' : o ? esc(o.label) : ''}</span></button>`;
 }
+function cityPlan(c, one, oneTz){
+  const C=cityInfo(c), ch=chain(c), out=[];
+  for(const a of ch.arrivals){
+    out.push(`<li class="p1-node p1-air"><span class="p1-m"></span><span class="n">${esc(C.airport_name || a.from.name || a.from.id)}</span><span class="s">Arrival airport · ${esc(a.from.id)}</span></li>`);
+    out.push(linkRow(a, false, one), spotNode(routeEnd(a)));
+    const next=ch.onward.filter(o=>o.from.id===a.to.id);
+    if(next.length===1) out.push(linkRow(next[0], false, one), spotNode(routeEnd(next[0])));
+    else if(next.length) out.push(`<li class="p1-branch"><span class="p1-bl">From ${esc(a.to.name)}, ${next.length} ways out</span><ol>${next.map(o=>linkRow(o, true)+spotNode(routeEnd(o))).join('')}</ol></li>`);
+  }
+  // onward routes whose start has no arrival of its own still get listed, under "Also in"
+  const shown=new Set(ch.arrivals.flatMap(a=>ch.onward.filter(o=>o.from.id===a.to.id).map(o=>o.id)));
+  const also=[...ch.onward.filter(o=>!shown.has(o.id)), ...ch.other].map(def=>alsoRow({ type:'route', def })).concat(ch.loose.map(def=>alsoRow({ type:'place', def })));
+  const meta = one ? '' : oneTz ? [plural(cityRoutes(c).length,'route'), plural(cityPlaces(c).length,'place')].join(' · ') : C.tz ? `${atTime(C.tz, 0, true)} · ${utcOffset(C.tz)}` : '';
+  return `<section class="p1-city${one?' one':''}">${one ? '' : `<div class="p1-cityh"><h2>${esc(c)}</h2><span class="num">${meta}</span></div>`}${out.length ? `<ol class="p1-chain">${out.join('')}</ol>` : ''}${also.length ? `<div class="p1-also"><h3>${out.length ? 'Also in '+esc(c) : esc(c)}</h3>${also.join('')}</div>` : ''}</section>`;
+}
+function countryHtml(k){
+  const one=k.cities.length===1, c0=k.cities[0], tz0=cityInfo(c0).tz;
+  const oneTz=new Set(k.cities.map(c=>utcOffset(cityInfo(c).tz))).size===1;
+  const clock0 = tz0 ? ` · ${atTime(tz0, 0, true)} · ${utcOffset(tz0)}` : '';
+  const sub = one ? esc(c0)+clock0 : [plural(k.cities.length,'city'), plural(k.routes,'route'), plural(k.places,'place')].join(' · ')+(oneTz ? clock0 : '');
+  return `<div class="p1-top">${UI.back()}${UI.search()}</div><header class="p1-chead" style="--c:${k.color}"><h1>${esc(k.name)}</h1><p class="num">${sub}</p></header>${k.cities.map(c=>cityPlan(c, one, oneTz)).join('')}`;
+}
+
+/* ---- the dock: what's picked, then what the phone is doing ---- */
+function arrivalCheck(r){
+  const p=routeEnd(r);
+  if(!p) return `<p class="p1-chk">A test route, not a catalog arrival. It ends where its last leg stops.</p>`;
+  const note = p.note ? ` Its note says ${esc(p.note)}.` : '';
+  if(!p.hours) return `<p class="p1-chk">${esc(p.name)} is a ${esc((p.kind || 'place').toLowerCase())}, any hour works.${note}</p>`;
+  const o=openState(p, Date.now()+r.seconds*1000);
+  if(!o) return '';
+  return o.open ? `<p class="p1-chk"><b class="open-now">Open when you get there</b>, ${esc(o.label.toLowerCase())}.${note}</p>` : `<p class="p1-chk"><b class="warn">Closed when you get there.</b> ${esc(p.name)} ${esc(o.label.toLowerCase())}, hours ${esc(hoursLabel(p.hours))}.${note}</p>`;
+}
+function selCard(){
+  const d=selected.def;
+  if(selected.type==='route'){
+    const c=cityColor(d.city);
+    return `<div class="p1-card" style="--c:${c}"><div class="p1-ct"><span class="dot"></span><b>${esc(d.label)}</b><span class="muted">${esc(d.city)}</span></div><p class="p1-big">Leave now, at the door ${atTime(cityInfo(d.city).tz, d.seconds)}</p>${arrivalCheck(d)}${UI.legs(d.legs, c, 'p1-wide')}${legCols(d)}<div class="p1-ctl">${UI.engines()}${UI.mph()}${UI.play()}</div>${UI.note()}</div>`;
+  }
+  if(selected.type==='pin'){
+    return `<div class="p1-card"><div class="p1-ct">${icon('map-pin',16)}<b>${esc(d.name)}</b><span class="muted">${d.pinLabel ? 'Dropped pin' : ''}</span><button class="p1-x" data-act="unpin" title="Remove the pin" aria-label="Remove the pin">${icon('x',15)}</button></div><p class="p1-chk">${d.place ? esc(d.place)+' · ' : ''}<span class="num">${d.lat.toFixed(5)}, ${d.lon.toFixed(5)}</span>. Click the map to move it.</p><div class="p1-ctl end">${UI.set('Set location here')}</div></div>`;
+  }
+  const o=openState(d), tz=cityInfo(d.city).tz;
+  const when = !tz ? '' : d.hours && o ? `${o.open ? '<b class="open-now">Open now</b>' : '<b>Closed now</b>'}, ${esc(hoursLabel(d.hours))} local, it's ${atTime(tz)} there.` : `No opening hours, any time works. It's ${atTime(tz)} there.`;
+  return `<div class="p1-card" style="--c:${cityColor(d.city)}"><div class="p1-ct"><span class="dot"></span><b>${esc(d.name)}</b><span class="muted">${esc(kindLabel(d))} · ${esc(d.city)}</span></div><p class="p1-chk">${when}${d.note ? ` Note: ${esc(d.note)}.` : ''}</p><div class="p1-ctl"><span class="p1-co num">${d.lat.toFixed(5)}, ${d.lon.toFixed(5)}</span>${UI.set('Set location')}</div></div>`;
+}
+function liveCard(){
+  if(live.kind==='place'){
+    const since=new Date(live.started*1000).toLocaleTimeString('en-US',{ hour:'numeric', minute:'2-digit' }).toLowerCase();
+    return `<div class="p1-card p1-live"${live.place ? ` style="--c:${cityColor(live.place.city)}"` : ''}><div class="p1-ct">${icon('map-pin',16)}<b>Holding at ${esc(live.label)}</b></div><p class="p1-chk">Since <span class="num">${since}</span> here. The phone stays there until you stop.</p><div class="p1-ctl">${UI.stop()}</div></div>`;
+  }
+  const r=ROUTES.find(x=>x.id===live.route), c=r ? cityColor(r.city) : DEFAULT_ACCENT, legs=live.legs;
+  const name=r?.label || live.route, total=routeMetersLive();
+  return `<div class="p1-card p1-live" style="--c:${c}"><div class="p1-ct"><span class="dot"></span><b>${esc(name)}</b><span class="muted">${esc(live.how)}</span></div><p class="p1-big"><span><span data-live="doing">${esc(live.doing || 'Starting')}</span><span data-live="mphwrap">, <span class="num" data-live="mph">0</span> mph</span></span><span class="p1-at">at the door <span class="num" data-live="arrive">–</span></span></p><div class="p1-prog" data-live-bar style="--pct:0%">${UI.legs(legs, c, 'p1-wide')}<span class="p1-over">${UI.legs(legs, c, 'p1-wide')}</span><i class="p1-cur"></i></div><div class="p1-nums num"><span><b data-live="elapsed">0:00</b> of ${clockT(live.total)}</span><span><b data-live="left">${clockT(live.total)}</b> left</span><span><b data-live="dist">0.0</b> of ${miles(total)}</span></div><div class="p1-ctl">${UI.stop()}${UI.follow()}</div></div>`;
+}
+
+/* ---- drawing ---- */
 function renderBrowse(animate){
-  const el=$('browse'), W=el.clientWidth || 400;
-  el.innerHTML = openCity && cityItems(openCity).length ? cityHtml(W) : galleryHtml(W);
+  const el=$('browse'), keep=el.scrollTop, k=openCountry && country(openCountry);
+  if(openCountry && !k) openCountry=null;
+  el.innerHTML = k ? countryHtml(k) : worldHtml();
   if(animate){ el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); el.scrollTop=0; }
-  if(selected) el.querySelectorAll('[data-id]').forEach(b=>b.classList.toggle('sel', b.dataset.id===selected.def.id && b.dataset.kind===selected.type));
-  markLive();
+  else el.scrollTop=keep;
   drawBrowseMap();
 }
-function openCityPage(c){ openCity=c; renderBrowse(true); frameBrowse(); }
-$('browse').addEventListener('click', e=>{
-  const t=e.target.closest('[data-city],[data-country],[data-back],[data-id]');
-  if(!t) return;
-  if(t.dataset.city) openCityPage(t.dataset.city);
-  else if(t.dataset.country){ const k=t.dataset.country; shutCountries.has(k) ? shutCountries.delete(k) : shutCountries.add(k); renderBrowse(); }
-  else if(t.dataset.back!==undefined){ openCity=null; renderBrowse(true); frameBrowse(); }
-  else {
-    const def=(t.dataset.kind==='route'?ROUTES:PLACES).find(x=>x.id===t.dataset.id);
-    if(def) selectItem({ type:t.dataset.kind, def });
-  }
-});
-$('browse').addEventListener('dblclick', e=>{ if(e.target.closest('[data-id]')) runSelected(); });
-// like panning: the border light holds still while the list scrolls so the scroll gets the frames
-let scrollEnd;
-$('browse').addEventListener('scroll', ()=>{
-  document.body.classList.add('scrolling');
-  clearTimeout(scrollEnd); scrollEnd=setTimeout(()=>document.body.classList.remove('scrolling'), 150);
-}, { passive:true });
-let browseResize;
-window.addEventListener('resize', ()=>{ clearTimeout(browseResize); browseResize=setTimeout(()=>renderBrowse(), 150); });
-
-// the map follows along: city tags on the world view, a city's routes faintly drawn inside it
-let browseLayer=null;
-// world view: cities whose tags would overlap at this zoom share one tag (the biggest city's,
-// "+N"); clicking it zooms in until they split. Redone on every zoom.
-function cityClusters(){
-  const out=[];
-  for(const c of cityNames()){
-    const p=map.latLngToLayerPoint(cityCenter(c));
-    const hit=out.find(k=>Math.abs(k.p.x-p.x)<130 && Math.abs(k.p.y-p.y)<34);
-    if(hit) hit.cities.push(c); else out.push({ p, cities:[c] });
-  }
-  return out;
+let dockSig='';
+// rebuilt only when what it shows changes (not on every status poll), so the mph box keeps what's typed
+function renderDock(force){
+  const showSel = selected && !(live && ((selected.type==='route' && isLive('route', selected.def.id)) || (selected.type==='place' && isLive('place', selected.def.id))));
+  const sig=[showSel ? selected.type+':'+selected.def.id+':'+selected.def.lat+':'+selected.def.seconds : '', live ? live.key+':'+!!live.arrived : '', selEngine(), availableEngines().map(e=>e.id).join(), follow].join('|');
+  if(!force && sig===dockSig) return;
+  dockSig=sig;
+  const dock=$('dock'), typing=!!document.activeElement?.matches?.('#dock [data-mph]');
+  dock.innerHTML = (showSel ? selCard() : '') + (live ? liveCard() : '');
+  if(typing) dock.querySelector('[data-mph]')?.focus();
+  refreshActions();
+  if(live) tickLiveCard(serverNow()-live.started, live.lastS, live.lastMph);
 }
+function renderPanel(animate){ renderBrowse(animate); renderDock(true); }
+
+/* ---- the globe on the world list, the street map inside a country ---- */
+let globe=null;
+const globeWanted = () => !openCountry && selected?.type!=='pin';
+function syncGlobe(){
+  const on=globeWanted();
+  document.body.classList.toggle('globe-on', on);
+  if(!globe) return;
+  if(openCountry) globe.focus(openCountry, 2.4);   // it zooms in as it fades out over the street map
+  else if(hoverCountry){ globe.focus(hoverCountry); globe.zoomTo(1); }
+  else {
+    // nothing hovered: the country that's playing, if any, lit and turned to
+    const lc=liveCity(), lk=lc && countryOf(lc);
+    if(lk && country(lk)) globe.focus(lk); else globe.highlight(null);
+    globe.zoomTo(1);
+  }
+}
+async function initGlobe(){
+  try{
+    const shapes=await (await fetch('static/countries.json')).json();
+    globe=new Globe($('globe'), shapes, { style:'silhouette', tint:'hover', lon:-35, lat:28,
+      onHover: name => { if(!openCountry) hoverOn(name); },
+      onClick: name => { if(name && !openCountry) openCountryPage(name); } });
+    paintGlobe();
+    syncGlobe();
+  }catch(e){ logLine('globe: '+e.message,'warn'); }
+}
+function paintGlobe(){
+  if(!globe) return;
+  globe.setPlaces(COUNTRIES.flatMap(k=>k.cities.map(c=>{ const C=cityInfo(c); return C.lat!=null ? { country:k.name, lat:C.lat, lon:C.lon } : null; }).filter(Boolean)));
+  globe.setLit(COUNTRIES.map(k=>k.name));
+  globe.setPalette(Object.fromEntries(COUNTRIES.map(k=>[k.name, k.color])));
+}
+function hoverOn(name){
+  if(name===hoverCountry) return;
+  hoverCountry=name;
+  document.querySelectorAll('#browse [data-country]').forEach(b=>b.classList.toggle('hov', b.dataset.country===name));
+  syncGlobe();
+}
+
+function openCountryPage(k, opts={}){
+  if(!country(k)) return;
+  openCountry=k; hoverCountry=null;
+  if(selected && selected.type!=='pin' && countryOf(selected.def.city)!==k){ clearSelection(); renderDock(); }
+  renderBrowse(true);
+  if(!opts.noFrame) frameBrowse(false, true);   // under the globe, so the street map is there when it fades
+  syncGlobe();
+}
+function closeCountry(){
+  hoverCountry=null;
+  openCountry=null;
+  if(selected?.type!=='pin') clearSelection();
+  renderPanel(true);
+  syncGlobe();
+}
+function clearSelection(){
+  selected=null;
+  if(!live) clearPreview();
+  setAccent(live?.accent || DEFAULT_ACCENT);
+}
+
+// the street map follows along: inside a country its routes and spots, faint, in its colour
+let browseLayer=null;
 function drawBrowseMap(){
   if(!map) return;
   if(!browseLayer) browseLayer=L.layerGroup().addTo(map);
   browseLayer.clearLayers();
-  if(!openCity){
-    if(map.getZoom()>=16) return;   // down at street level a city tag only gets in the way of placing a pin
-    for(const k of cityClusters()){
-      const c=k.cities[0], C=cityInfo(c), more=k.cities.length-1;
-      const n=k.cities.reduce((s,x)=>s+cityItems(x).length, 0);
-      L.marker(cityCenter(c), { icon:L.divIcon({ className:'', iconSize:null,
-        html:`<div class="bub" style="--t:${C.color}"><span class="fl">${C.flag}</span>${esc(c)}${more?`<span class="more">+${more}</span>`:''}<span class="n">${n}</span></div>` }) })
-        .on('click', ()=> more ? map.flyToBounds(L.latLngBounds(k.cities.map(cityCenter)).pad(.4), { duration:.9, maxZoom:9 }) : openCityPage(c))
-        .addTo(browseLayer);
-    }
-    return;
-  }
-  const color=cityInfo(openCity).color;
-  for(const it of cityItems(openCity)){
-    if(it.type==='route') L.polyline(it.def.line, { color, weight:2.5, opacity:.35, interactive:false }).addTo(browseLayer);
-    else L.circleMarker([it.def.lat, it.def.lon], { radius:4, color, weight:2, fillColor:'#fff', fillOpacity:.9, interactive:false }).addTo(browseLayer);
+  const k=openCountry && country(openCountry);
+  if(!k) return;
+  for(const c of k.cities){
+    for(const r of cityRoutes(c)) if(r.line.length>1) L.polyline(r.line, { color:k.color, weight:2.5, opacity:.35, interactive:false }).addTo(browseLayer);
+    for(const p of cityPlaces(c)) L.circleMarker([p.lat, p.lon], { radius:4, color:k.color, weight:2, fillColor:'#fff', fillOpacity:.9, interactive:false }).addTo(browseLayer);
   }
 }
 function frameBrowse(force, instant){
   if((live && !force) || !map) return;   // don't yank the map away from something that's playing
-  const pts = openCity ? cityItems(openCity).flatMap(itemPoints) : cityNames().map(cityCenter);
+  const k=openCountry && country(openCountry);
+  if(!k) return;
+  const pts=k.cities.flatMap(c=>[...cityRoutes(c).flatMap(r=>r.line), ...cityPlaces(c).map(p=>[p.lat, p.lon])]);
   if(!pts.length) return;
-  const b = L.latLngBounds(pts).pad(openCity ? .15 : .35), maxZoom = openCity ? 14 : 4;
-  instant ? map.fitBounds(b, { animate:false, maxZoom }) : map.flyToBounds(b, { duration:1.1, maxZoom });
+  const b=L.latLngBounds(pts).pad(.15);
+  instant ? map.fitBounds(b, { animate:false, maxZoom:14 }) : map.flyToBounds(b, { duration:1.1, maxZoom:14 });
+}
+function resetView(){
+  echoCommand('reset view');
+  clearPreview();
+  if(live && marker) map.flyTo(marker.getLatLng(), 14, { duration:1.2 });
+  else frameBrowse();
 }
 
+/* ---- picking ---- */
 function availableEngines(){ return ENGINES.length ? ENGINES : [{id:'spoof',label:'Spoof',real_speed:false}]; }
 function selEngine(){
   const ids=availableEngines().map(e=>e.id);
@@ -849,95 +918,63 @@ function selEngine(){
   if(ids.includes(engineChoice)) return engineChoice;
   return ids.includes('drive') ? 'drive' : ids[0];
 }
-function renderEngines(){
-  const seg=$('engine-seg'), cur=selEngine();
-  seg.innerHTML = availableEngines().map(e=>
-    `<button data-engine="${esc(e.id)}" class="${e.id===cur?'on':''}">${esc(e.label.toUpperCase())}${e.real_speed?' · MPH':''}</button>`).join('');
-  seg.querySelectorAll('button').forEach(b=>b.onclick=()=>{ engineChoice=b.dataset.engine; renderEngines(); updateRouteNote(); });
-  $('mph-wrap').hidden = cur!=='drive';
-}
-function updateRouteNote(){
-  if(!selected || selected.type!=='route') return;
-  const note = selEngine()==='drive'
-    ? ($('mph').value ? 'real speed, held steady at the mph you typed. no stops.'
-                       : 'real speed — Life360 shows mph + the car icon. speeds up, slows for bends, stops. type an mph to hold one steady speed.')
-    : 'position only — Life360 shows 0 mph, but follows the route\'s slow-downs and stops.';
-  $('hero-note').textContent = note;
-}
 function selectItem(item){
   selected=item;
   setAccent(item.def.accent);
-  document.querySelectorAll('#browse [data-id]').forEach(b=>b.classList.toggle('sel', b.dataset.id===item.def.id && b.dataset.kind===item.type));
-  $('hero').hidden=false;
-  $('hero-thumb').innerHTML=thumbHtml(item,62);
-  $('hero-name').textContent=item.def.label || item.def.name;
-  $('hero-sub').textContent=item.def.sub;
-  const stats=$('hero-stats');
-  $('hero-opts').hidden = item.type!=='route';
-  $('hero-note').textContent='';
   if(!live) clearPreview();
   if(item.type==='route'){
     const r=item.def;
-    stats.innerHTML=`<div class="stat"><div class="k">CRUISE</div><div class="v" id="st-a"></div></div>
-      <div class="stat"><div class="k">DIST</div><div class="v" id="st-b"></div></div>
-      <div class="stat"><div class="k">TIME</div><div class="v" id="st-c"></div></div>`;
-    countUp($('st-a'), (r.speed_mps||0)*MPS_TO_MPH, 0, '<small>mph</small>');
-    countUp($('st-b'), r.meters/1609.34, 1, '<small>mi</small>');
-    countUp($('st-c'), r.seconds/60, 0, '<small>min</small>');
-    renderEngines(); updateRouteNote();
     if(!live && r.line.length>1){
       preview=L.polyline(r.line,{ color:r.accent, weight:2.5, opacity:.6, dashArray:'4 6' }).addTo(map);
       map.flyToBounds(preview.getBounds().pad(.25), { duration:.9 });
     }
-  } else {
+  } else if(item.type==='place' && !live){
     const p=item.def;
-    stats.innerHTML=`<div class="stat"><div class="k">LAT</div><div class="v" id="st-a"></div></div>
-      <div class="stat"><div class="k">LON</div><div class="v" id="st-b"></div></div>
-      <div class="stat"><div class="k">ZOOM</div><div class="v" id="st-c"></div></div>`;
-    countUp($('st-a'), p.lat, 4, '°');
-    countUp($('st-b'), p.lon, 4, '°');
-    countUp($('st-c'), p.zoom||14, 0, 'x');
-    if(item.type==='pin'){
-      $('hero-note').textContent='click anywhere on the map to move the pin.';
-    } else if(!live){
-      pinCandidate=L.circleMarker([p.lat,p.lon],{ radius:7, color:p.accent, weight:2, fillOpacity:.25 }).addTo(map);
-      map.flyTo([p.lat,p.lon], p.zoom||14, { duration:1.1 });
-    }
+    pinCandidate=L.circleMarker([p.lat,p.lon],{ radius:7, color:p.accent, weight:2, fillOpacity:.25 }).addTo(map);
+    map.flyTo([p.lat,p.lon], p.zoom||14, { duration:1.1 });
   }
-  refreshHeroButton();
+  renderPanel();
+  syncGlobe();
+  // the dock grew under the list: keep the picked row in sight
+  $('browse').querySelector('.is-sel')?.scrollIntoView({ block:'nearest' });
 }
 const PIN_SVG='<svg width="32" height="32" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>';
-// name: what to call the pin when it's on a looked-up address, moving it makes it a plain pin again
-function dropPin(lat, lon, name){
+// name/place: what to call the pin when it's on a looked-up address, moving it makes it a plain pin again
+function dropPin(lat, lon, name, place){
   if(pinCandidate) map.removeLayer(pinCandidate);
   if(preview && !live){ map.removeLayer(preview); preview=null; }
   // not interactive, so a click right on the pin still reaches the map and moves it
   pinCandidate=L.marker([lat,lon],{ icon:L.divIcon({ className:'wp-pin', html:PIN_SVG, iconSize:[32,32], iconAnchor:[16,29] }), interactive:false, keyboard:false }).addTo(map);
-  document.querySelectorAll('#browse [data-id]').forEach(b=>b.classList.remove('sel'));
-  const def={ id:'pin', name:name||'Dropped pin', pinLabel:name, sub:`${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon, zoom:Math.round(map.getZoom()), accent:DEFAULT_ACCENT };
+  const def={ id:'pin', name:name||'Dropped pin', pinLabel:name, place:place||'', lat, lon, zoom:Math.round(map.getZoom()), accent:DEFAULT_ACCENT };
   const keep=pinCandidate; pinCandidate=null;   // selectItem clears selection layers
   selectItem({ type:'pin', def });
   pinCandidate=keep;
 }
+function unpin(){
+  if(pinCandidate){ map.removeLayer(pinCandidate); pinCandidate=null; }
+  clearSelection();
+  renderPanel();
+  syncGlobe();
+}
 const ADDRESS_ZOOM=17;   // the closest of the levels in 21st.dev's Expanded Map, street level
 let flightId=0;
 // fly to a looked-up address and put a pin there to move around. Doesn't touch the phone: that's still
-// the hero's SET LOCATION HERE
+// the dock's Set location here. Inside one of our countries it opens that country first
 function flyToAddress(a){
   const id=++flightId;
   if(live && follow) toggleFollow();   // a playing route would pull the map straight back
+  const k=countryOf(cityOf(a.lat, a.lon));
+  if(k!==OTHER && k!==openCountry && country(k)) openCountryPage(k, { noFrame:true });
+  document.body.classList.remove('globe-on');   // the street map, now, even on the world list
   const land=()=>{
     if(id!==flightId) return;
     flightId++;
     document.body.classList.remove('flying');
     if(!live) setCoord(a.lat, a.lon);
-    dropPin(a.lat, a.lon, a.name);
+    dropPin(a.lat, a.lon, a.name, a.sub);
   };
   const b=a.bounds && L.latLngBounds(a.bounds);
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches){
-    map.setView([a.lat,a.lon], ADDRESS_ZOOM, { animate:false });
-    return land();
-  }
+  if(RM){ map.setView([a.lat,a.lon], ADDRESS_ZOOM, { animate:false }); return land(); }
   // far away takes longer, but nobody should sit through a long flight to the other side of the world
   const km=map.distance(map.getCenter(), [a.lat,a.lon])/1000;
   const duration=Math.min(2.8, 1.4+Math.log10(1+km)*.35);
@@ -948,42 +985,130 @@ function flyToAddress(a){
   map.once('moveend', land);
   setTimeout(land, duration*1000+500);   // moveend can be missed if something else moves the map
 }
-function refreshHeroButton(){
-  const b=$('hero-action');
-  if(!selected){ b.disabled=true; return; }
-  const noPhone = STATUS && !STATUS.devices.length;
-  b.disabled = !!(STATUS && STATUS.busy) || noPhone;
-  b.title = noPhone ? 'plug in + unlock the iPhone' : '';
-  if(selected.type==='route') b.textContent = noPhone ? 'NO PHONE' : '▸ PLAY ROUTE';
-  else b.textContent = noPhone ? 'NO PHONE' : (selected.type==='pin' ? '◉ SET LOCATION HERE' : '◉ SET LOCATION');
+// the dock's buttons follow the phone: no phone or busy, nothing starts
+function refreshActions(){
+  const noPhone = !!STATUS && !STATUS.devices.length, busy = !!STATUS?.busy;
+  document.querySelectorAll('#dock [data-act="play"], #dock [data-act="set"]').forEach(b=>{
+    b.disabled = busy || noPhone;
+    b.title = noPhone ? 'Plug in and unlock the iPhone' : busy ? 'Waiting for the phone: '+STATUS.busy : '';
+    const span=b.querySelector('span'), want = noPhone ? 'No phone' : b.dataset.act==='play' ? 'Play route' : selected?.type==='pin' ? 'Set location here' : 'Set location';
+    if(span && span.textContent!==want) span.textContent=want;
+  });
 }
 function runSelected(){
-  if(!selected || $('hero-action').disabled) return;
+  const b=$('dock').querySelector('[data-act="play"], [data-act="set"]');
+  if(!selected || !b || b.disabled) return;
   if(selected.type==='route') playRoute(selected.def);
   else if(selected.type==='pin') setPoint(selected.def.lat, selected.def.lon, selected.def.pinLabel);
   else setPlace(selected.def);
 }
-function markLive(){
-  const kind = live?.kind==='route' ? 'route' : 'place';
-  const def = !live ? null : kind==='route' ? ROUTES.find(r=>r.id===live.label) : PLACES.find(p=>p.name===live.label);
-  document.querySelectorAll('#browse [data-id]').forEach(b=>b.classList.toggle('live', !!def && b.dataset.id===def.id && b.dataset.kind===kind));
-  document.querySelectorAll('#browse [data-city]').forEach(b=>b.classList.toggle('live', !!def && b.dataset.city===def.city));
-  document.querySelectorAll('#browse [data-country]').forEach(b=>b.classList.toggle('live', !!def && b.dataset.country===countryOf(def.city)));
+
+/* ---- the live card, updated by text from tick() ---- */
+function routeMetersLive(){ return live?.cum ? live.cum[live.cum.length-1] : 0; }
+function liveLegAt(el){
+  const legs=live.legs || [];
+  for(const l of legs) if(el<l.end) return l.mode;   // live.legs: [{ mode, s, start, end }], see syncLive
+  return legs.length ? legs[legs.length-1].mode : 'drive';
+}
+function tickLiveCard(el, s, mph){
+  if(!live || live.kind!=='route') return;
+  const r=ROUTES.find(x=>x.id===live.route), done=el>=live.total;
+  const mode=liveLegAt(el), doing = done ? 'Arrived' : legDoing(mode, r);
+  live.doing=doing;
+  const pct=(live.total ? Math.min(1, el/live.total) : 1)*100;
+  const tz=r ? cityInfo(r.city).tz : null;
+  let m=0;
+  if(s && live.cum){ const tl=live.timeline, i=s.i, a=tl[i], b=tl[Math.min(i+1, tl.length-1)]; m=live.cum[i]+(b===a ? 0 : dist([a[1],a[2]],[s.lat,s.lon])); }
+  else if(done) m=routeMetersLive();
+  const set=(k, v)=>document.querySelectorAll('[data-live="'+k+'"]').forEach(e=>{ if(e.textContent!==v) e.textContent=v; });
+  set('doing', doing);
+  set('mph', String(Math.round(mph||0)));
+  set('elapsed', clockT(Math.min(el, live.total)));
+  set('left', clockT(live.total-el));
+  set('arrive', done ? 'now' : clockAt(tz, Date.now()+(live.total-el)*1000));
+  set('dist', milesN(m));
+  document.querySelectorAll('[data-live="mphwrap"]').forEach(e=>{ e.hidden = done || mode==='stop'; });
+  document.querySelectorAll('[data-live-bar]').forEach(e=>e.style.setProperty('--pct', pct.toFixed(2)+'%'));
 }
 
+/* ---- clicks, hovers, keys ---- */
+$('browse').addEventListener('click', e=>{
+  const t=e.target.closest('[data-country],[data-back],[data-route],[data-place],[data-act]');
+  if(!t) return;
+  if(t.dataset.act==='search') return Palette.open();
+  if(t.dataset.country) return openCountryPage(t.dataset.country);
+  if(t.dataset.back!==undefined) return closeCountry();
+  const def = t.dataset.route ? ROUTES.find(r=>r.id===t.dataset.route) : PLACES.find(p=>p.id===t.dataset.place);
+  if(def) selectItem({ type:t.dataset.route ? 'route' : 'place', def });
+});
+$('browse').addEventListener('dblclick', e=>{ if(e.target.closest('[data-route],[data-place]')) runSelected(); });
+$('browse').addEventListener('mouseover', e=>{ if(!openCountry){ const t=e.target.closest('[data-country]'); if(t) hoverOn(t.dataset.country); } });
+$('browse').addEventListener('mouseleave', ()=>{ if(!openCountry) hoverOn(null); });
+$('dock').addEventListener('click', e=>{
+  const eng=e.target.closest('[data-engine]');
+  if(eng){ engineChoice=eng.dataset.engine; return renderDock(true); }
+  const a=e.target.closest('[data-act]')?.dataset.act;
+  if(a==='play' || a==='set') runSelected();
+  else if(a==='stop') stopAll();
+  else if(a==='follow') toggleFollow();
+  else if(a==='unpin') unpin();
+});
+$('dock').addEventListener('input', e=>{
+  if(!e.target.matches('[data-mph]')) return;
+  mphValue=e.target.value;
+  const n=$('dock').querySelector('[data-enote]');
+  if(n) n.textContent=engineNote();
+});
+$('dock').addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.matches('[data-mph]')) runSelected(); });
+// like panning: the border light holds still while the list scrolls so the scroll gets the frames
+let scrollEnd;
+$('browse').addEventListener('scroll', ()=>{
+  document.body.classList.add('scrolling');
+  clearTimeout(scrollEnd); scrollEnd=setTimeout(()=>document.body.classList.remove('scrolling'), 150);
+}, { passive:true });
+// clocks by text every 20 s; open/closed and the at-the-door check once a minute, by redrawing
+setInterval(tickClocks, 20000);
+setInterval(()=>{ if(!document.hidden && laidOut){ renderBrowse(); renderDock(true); } }, 60000);
+
 /* ============ DATA ============ */
+// 'jfk-to-hotel' → 'JFK → hotel'
+const ACRONYMS = new Set(['jfk','mia','cdg','dxb','lax','lhr','nyc','sfo']);
+function routeLabel(name){
+  const w=name.replace(/-to-/g,' → ').split(/[-_ ]+/).map(t=>ACRONYMS.has(t.toLowerCase()) ? t.toUpperCase() : t);
+  const s=w.join(' ');
+  return s.charAt(0).toUpperCase()+s.slice(1);
+}
+function shapeRoutes(routes){
+  return routes.map(r=>{
+    const city = r.city || (r.line.length ? cityOf(...r.line[r.line.length-1]) : 'Elsewhere');
+    const mi=miles(r.meters), min=dur(r.seconds);
+    const main = r.modes.includes('drive') ? 'drive' : r.modes.includes('walk') ? 'walk' : '';
+    return { ...r, city, accent:cityColor(city), label:r.label || routeLabel(r.name), legs:r.legs?.length ? r.legs : [{ mode:main || 'drive', s:r.seconds, m:r.meters }],
+      sub:[r.speed_mps ? '~'+Math.round(r.speed_mps*MPS_TO_MPH)+' mph' : r.modes.join('/'), mi, min].join(' · '),
+      cardSub:[mi, min, main].filter(Boolean).join(' · ') };
+  });
+}
 async function loadLibrary(){
   const [places, routes, cities] = await Promise.all([api('/api/places'), api('/api/routes'), api('/api/cities')]);
   Object.assign(CITY_INFO, cities);
   PLACES = places.map(p=>({ ...p, sub:`${p.lat.toFixed(4)}, ${p.lon.toFixed(4)} · ${p.region||''}` }));
-  PLACES.forEach(p=>{ p.city = p.region || cityOf(p.lat, p.lon); p.accent = cityInfo(p.city).color; });
-  ROUTES = routes.map(r=>{
-    const city = r.city || (r.line.length ? cityOf(...r.line[r.line.length-1]) : 'Elsewhere');
-    const mi = (r.meters/1609.34).toFixed(1)+' mi', min = Math.round(r.seconds/60)+' min';
-    return { ...r, city, accent: cityInfo(city).color, label: r.label || routeLabel(r.name),
-      sub: [r.speed_mps ? '~'+Math.round(r.speed_mps*MPS_TO_MPH)+' mph' : r.modes.join('/'), mi, min].join(' · '),
-      cardSub: [mi, min, r.modes.includes('drive') ? 'drive' : r.modes.includes('walk') ? 'walk' : ''].filter(Boolean).join(' · ') };
-  });
+  PLACES.forEach(p=>{ p.city = p.region || cityOf(p.lat, p.lon); p.accent = cityColor(p.city); });
+  ROUTES = shapeRoutes(routes);
+  buildCountries();
+  paintGlobe();
+  if(ROUTES.some(r=>!r.exact)) setTimeout(refreshRouteTimes, 4000);
+}
+// the server times each route the way it really plays on a thread after launch (~12 s the first time);
+// until then the routes carry estimates, so fetch them again until they're all exact
+let timeTries=0;
+async function refreshRouteTimes(){
+  try{
+    ROUTES = shapeRoutes(await api('/api/routes'));
+    buildCountries();
+    if(selected?.type==='route') selected.def = ROUTES.find(r=>r.id===selected.def.id) || selected.def;
+    if(laidOut) renderPanel();
+  }catch(e){ /* the status poll reports a dead server */ }
+  if(ROUTES.some(r=>!r.exact) && ++timeTries<45) setTimeout(refreshRouteTimes, 4000);
 }
 
 /* ============ BOOT SEQUENCE ============ */
@@ -1080,7 +1205,7 @@ function layoutApp(fly){
   if(laidOut) return;
   laidOut=true;
   map.invalidateSize();
-  if(libLoaded){ renderBrowse(fly); frameBrowse(false, !fly); }
+  if(libLoaded){ renderPanel(fly); syncGlobe(); }
 }
 
 /* ============ CONNECT SCREEN ============ */
@@ -1617,5 +1742,5 @@ document.addEventListener('keydown', e=>{
   if(e.key==='Escape' && devOpen) return toggleDevice(null, false);   // close the dropdown, don't stop the spoof
   if(e.key==='Escape' && live) stopAll();
 });
+initGlobe();
 boot();
-$('mph').addEventListener('input', updateRouteNote);
