@@ -7,6 +7,17 @@ what changed, what was decided, what broke, what's next.
 
 ---
 
+## 2026-11-20 — Globe: stars, depth, night side (on trial in the prototype)
+
+- Owner wanted the globe to feel less basic, suggested realistic stars. Built four effects as switches in the world-view prototype's bar (`docs/design/world-view-prototype/`), all off in `globe.js` unless turned on, so style A is still the baseline: **Stars**, **Depth**, **Night**, **Rim**. Nothing picked yet, nothing in `core/web/`.
+- Stars are real: new `core/tools/build_stars.py` → `stars.json` (Yale Bright Star Catalog via brettonw's MIT JSON, 8,404 stars to mag 6.5, 172 KB). `sky.js` draws them on their own canvas under the globe: gnomonic lens, RA turned by sidereal time so the stars behind the globe are the real ones, size/alpha from magnitude, a faint tint from temperature, soft halo on the bright ones, no twinkle. Sky Drifts (12% of the globe's turn) vs Real (all of it).
+- Night uses the real sun position (subsolar point from UTC), soft over 18° of twilight. Depth is limb darkening. Both go on as one overlay worked out at 192 px and stretched. The hovered country is now drawn over the overlay, otherwise Miami pink went dull wine on the night side.
+- Banding: the overlay's dark gradient (about a dozen 8-bit levels across hundreds of px) came out as stripes. Grain added after the blend did nothing (the steps were already baked in); it has to be in the overlay before it's blended, so the overlay is stretched to full device resolution on a second canvas and grained there. Checked with column averages: staircase gone. About 3 ms a frame with everything on.
+- **For the app later:** CDS's own server (cdsarc) failed TLS from here, hence the GitHub copy. Rim uses a canvas radial gradient (the lint flags gradients, it'd be a deliberate exception). stars.json could be packed smaller if 172 KB matters for the DMG.
+- Next: owner flips the switches and picks; then it goes in with the rest of the globe build.
+
+---
+
 ## 2026-11-20 — World view: globe picked, side panel next
 
 - Prototyped the globe outside the app (brief: `docs/handoff/globe-redesign-prompt.md`). Owner picked **style A, solid silhouette** (sphere one tone, land one step lighter, no borders/texture/glow/grid) and then **a colour per country, shown on hover only**: at rest the globe is one tone, the hovered/open country fills with its own colour. 21 colours picked per place (Miami neon pink, Provence lavender, Majorelle blue...), all near the same OKLCH lightness and chroma, every one at least 3:1 against the land. Table is `HUE` in the prototype's `index.html`. List rows carry a dot in the country's colour, replacing the emoji flags (Windows can't draw them).
