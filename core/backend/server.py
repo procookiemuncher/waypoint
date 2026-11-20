@@ -7,6 +7,7 @@ Mac app (mac-version/app.py) wrap it in a native window.
 import os
 import socket
 import sys
+import threading
 
 if __name__ == "__main__":   # run as a script: make `backend` importable
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,7 +21,7 @@ from backend.destinations import city_info
 from backend.geocode import GeocodeError, search as geocode_search
 from backend.license import License
 from backend.places import load_places
-from backend.routes import RouteError, route_files, summary
+from backend.routes import RouteError, route_files, summary, warm_legs
 from backend.session import Session
 from backend.tiles import load_key, tile_url
 
@@ -119,7 +120,8 @@ def create_app(session: Session, license: License | None = None) -> FastAPI:
         for path in route_files():
             mtime = os.path.getmtime(path)
             cached = route_cache.get(path)
-            if not cached or cached[0] != mtime:
+            # an estimate until warm_legs has rendered it, so look again until it's exact
+            if not cached or cached[0] != mtime or not cached[1]["exact"]:
                 try:
                     cached = route_cache[path] = (mtime, summary(path))
                 except (ValueError, OSError) as e:
@@ -168,6 +170,16 @@ def create_app(session: Session, license: License | None = None) -> FastAPI:
     return app
 
 
+def warm_route_legs(session: Session):
+    """Time every route the way it really plays, on a thread (see routes.LEGS_DIR): ~12 s the first
+    time, nothing once they're on disk. /api/routes sends estimates until then."""
+    def go():
+        n = warm_legs(log=lambda line: session.log(line, "warn"))
+        if n:
+            session.log(f"timed {n} route{'s' if n != 1 else ''} the way they play", "dim")
+    threading.Thread(target=go, daemon=True, name="warm-legs").start()
+
+
 def free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
@@ -181,6 +193,7 @@ if __name__ == "__main__":
     lic = License.from_config()
     if lic:
         lic.start()
+    warm_route_legs(session)
     print(f"vida-360 → http://127.0.0.1:{port}")
     try:
         uvicorn.run(create_app(session, lic), host="127.0.0.1", port=port, log_level="warning")
