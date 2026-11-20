@@ -304,7 +304,7 @@ function tickLive(){
   const L = liveNow(); if(!L) return;
   const set = (k, v) => document.querySelectorAll(`[data-live="${k}"]`).forEach(e => { e.textContent = v; });
   set('elapsed', clock(L.a.t)); set('left', clock(L.a.left)); set('arrive', L.arrive); set('pct', Math.round(L.a.pct*100)+'%');
-  set('mph', String(Math.round(L.mphNow))); set('leg', L.a.done ? 'Arrived' : legName(L.a.leg, L.r)); set('doing', L.doing); set('legleft', dur(L.a.legLeft));
+  set('mph', String(Math.round(L.mphNow))); set('leg', L.a.done ? 'Arrived' : legName(L.a.leg, L.r)); set('doing', L.doing); set('doinglc', L.doing.toLowerCase()); set('legleft', dur(L.a.legLeft));
   set('dist', milesN(L.a.dist)); set('pos', `${L.a.pos[0].toFixed(5)}, ${L.a.pos[1].toFixed(5)}`);
   document.querySelectorAll('[data-live-bar]').forEach(e => e.style.setProperty('--pct', (L.a.pct*100).toFixed(2)+'%'));
 }
@@ -361,7 +361,7 @@ function wire(){
     if(t.dataset.sort){ S.sort = t.dataset.sort; return render(); }
     if(t.dataset.act) return act(t.dataset.act);
     if(t.dataset.route){ S.sel = { kind:'route', id:t.dataset.route }; return render(); }
-    if(t.dataset.place){ S.sel = { kind:'place', id:t.dataset.place }; return render(); }
+    if(t.dataset.place){ if(t.dataset.openCountry && !S.open){ S.open = t.dataset.openCountry; S.hover = null; focusGlobe(); } S.sel = { kind:'place', id:t.dataset.place }; return render(); }
     if(t.dataset.pin !== undefined){ S.sel = { kind:'pin' }; return render(); }
     if(t.dataset.country) return openCountry(t.dataset.country);
   });
