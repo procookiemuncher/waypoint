@@ -111,7 +111,7 @@ function dock(){
     const until = p.hours && !st.open ? ` · in ${dur((((p.hours[0]-parts(tz).t)+24)%24)*3600)}` : '';
     h += `<div class="p2-card" style="--c:${hueOfCity(p.city)}"><div class="p2-ct"><b>${esc(p.name)}</b><span>${esc([kindLabel(p), p.city, p.note].filter(Boolean).join(' · '))}</span></div>
       <div class="p2-times num"><div><small>There now</small><b>${clockAt(tz, nowMs(), true)}</b></div><div><small>Hours</small><b>${p.hours ? esc(hoursLabel(p.hours)) : 'any hour'}</b></div>
-        <div><small>${p.hours ? (st.open ? 'Open now' : 'Closed now') : 'No hours'}</small><b class="${st?.open ? 'open-now' : ''}">${p.hours ? esc(st.label)+until : '—'}</b></div></div>
+        <div><small>${p.hours ? (st.open ? 'Open now' : `Closed now, ${esc(st.label.toLowerCase())}`) : 'No hours'}</small><b class="${st?.open ? 'open-now' : ''}">${p.hours ? (st.open ? esc(st.label.replace('Open ','')) : until.replace(' · ','')) : '—'}</b></div></div>
       <div class="p2-ctl"><span class="p2-co num">${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}</span>${UI.set()}</div></div>`;
   }
   if(S.live?.kind==='place') h += `<div class="p2-card p2-live"><div class="p2-ct"><b>Holding at ${esc(S.live.name)}</b><span class="num">${S.live.lat.toFixed(5)}, ${S.live.lon.toFixed(5)}</span></div><div class="p2-ctl">${UI.stop()}</div></div>`;
