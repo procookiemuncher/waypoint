@@ -36,8 +36,7 @@ Numbered in the owner's order. When it isn't clear which one to work on, ask.
 Windows has the launchers (spoof, drive, fly, setup) and the Waypoint window (`waypoint.cmd`,
 2026-11-20), both checked on the phone.
 
-- [ ] Real speed on Windows: the phone takes every speed chunk from Windows (2026-11-20);
-  still to confirm Life360 shows mph + car from a Windows run.
+- [x] Real speed on Windows: Life360 shows mph + the car from a Windows Drive run (2026-11-20).
 - [x] Waypoint window with the real phone: connect, pin, Drive route, Stop, quit clears
   (2026-11-20). `Job.stop()`'s ENTER path works.
 - [x] A Waypoint window on Windows (`windows-version/app.py`, 2026-11-20). The key gate
