@@ -33,14 +33,15 @@ Numbered in the owner's order. When it isn't clear which one to work on, ask.
 
 ### 1. Finish the Windows version
 
-Today Windows has the terminal launchers (spoof, fly, setup) and nothing has run there since
-the Mac work started.
+Windows has the launchers (spoof, drive, fly, setup) and the Waypoint window (`waypoint.cmd`,
+2026-11-20, dry run only). Nothing has touched a real phone there yet.
 
-- [ ] Real speed on Windows: run `core\tools\drive.py emoji-test` with the phone, confirm mph +
-  car on Life360. Add a `drive.cmd` launcher.
-- [ ] Run `core/backend/server.py` + the page in a browser with a real phone. Check
-  `Job.stop()`'s Windows path (writes ENTER to pmd3's stdin).
-- [ ] A Waypoint window on Windows (pywebview works there too), with the key gate.
+- [ ] Real speed on Windows: run `drive.cmd emoji-test` with the phone, confirm mph + car on
+  Life360.
+- [ ] Run the Waypoint window with a real phone: connect screen, a pin, a route, Stop.
+  Checks `Job.stop()`'s Windows path (writes ENTER to pmd3's stdin).
+- [x] A Waypoint window on Windows (`windows-version/app.py`, 2026-11-20). The key gate
+  (`VIDA_LICENSE_URL`) isn't tried there yet.
 - [ ] Packaging: a compiled Windows build + installer. The updater is Mac-only today (ditto,
   codesign), so Windows needs its own swap and signature check.
 - [ ] Airplane mode: the Shortcut trick goes through `xcrun devicectl` (Mac only). Find a pmd3
