@@ -21,8 +21,11 @@ pydantic==2.14.3
 uvicorn==0.54.0
 requests==2.34.2
 
-# Native window for the Mac app (mac-version/app.py). Uses the Mac's own WebKit via pyobjc.
-pywebview==6.2.1; sys_platform == "darwin"
+# Native window for the apps (mac-version/app.py, windows-version/app.py). Mac uses its own WebKit
+# via pyobjc, Windows uses Edge WebView2 via pythonnet.
+pywebview==6.2.1; sys_platform == "darwin" or sys_platform == "win32"
+pythonnet==3.2.1; sys_platform == "win32"
+clr-loader==0.3.1; sys_platform == "win32"
 # pywebview doesn't cap pyobjc; 13.0 is what the 11.59 venv got and what app.py's AppKit hooks run on
 pyobjc-core==13.0; sys_platform == "darwin"
 pyobjc-framework-Cocoa==13.0; sys_platform == "darwin"
