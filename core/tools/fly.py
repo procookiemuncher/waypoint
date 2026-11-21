@@ -7,16 +7,20 @@ real flight, so Life360 never sees the (impossible, compressed) flight itself �
 departure before and the driven arrival after. Full rationale + the sequence table:
 docs/superpowers/specs/2026-07-10-flight-arrival-spoofer-design.md.
 
-The tool cannot toggle airplane mode — you do that by hand when prompted. Sequence:
+Airplane mode flips through two Shortcuts on the phone, vida-airplane-on (Airplane Mode on +
+Wi-Fi off) and vida-airplane-off (the reverse), run over the cable (backend.device
+CoreDevice.airplane, no Xcode). The phone only says it took the request, so you confirm each flip;
+if it didn't happen, you toggle it by hand and press ENTER. Sequence:
 
   1. Tool  : drive to the departure airport (a route), then hold there.
-  2. YOU   : toggle airplane mode ON  -> press ENTER.
+  2. YOU   : press ENTER to take off -> airplane mode ON (the hold keeps running through it).
   3. Tool  : move the spoof to the arrival airport (instant; phone offline, Life360 blind), hold.
-  4. YOU   : toggle airplane mode OFF -> press ENTER.
+  4. YOU   : press ENTER to land -> airplane mode OFF.
   5. Tool  : drive from the arrival airport into the destination Place, then dwell -> "arrived" push.
 
     fly.cmd                # list trips
     fly.cmd nyc            # run the Miami -> New York City trip
+    fly.cmd airplane on    # just flip airplane mode (or off)
 
 Before running:
   - Save the DESTINATION as a Life360 Place in the app (the API can't create Places). Point the
@@ -24,12 +28,13 @@ Before running:
   - Have a SECOND circle member's phone handy — only it can see the "arrived" push (the API can't).
   - Run the Observer alongside to confirm arrival state server-side:
         .venv\\Scripts\\python.exe tools\\observe.py --watch --member "<you>" --log flight.jsonl
-  - Phone plugged in + UNLOCKED (Auto-Lock = Never), Developer Mode on, trusted.
+  - Phone plugged in by CABLE (not Wi-Fi pairing) + UNLOCKED (Auto-Lock = Never), Developer Mode
+    on, trusted. The vida-airplane-on / -off Shortcuts exist on the phone.
 
-⚠ PREREQUISITE GATE (verify once, Step 0 in the spec): does the userspace tunnel survive an
-airplane-mode toggle? Hold any spoof (spoof.cmd eiffel), toggle airplane mode on then off, and
-confirm the spoof holds / re-establishes. If it drops, the arrival can race the phone's first
-real-location upload on reconnect — see the spec's fallback before trusting a real run.
+⚠ PREREQUISITE GATE (Step 0 in the spec), half checked: new tunnels reach the phone over the cable
+in airplane mode (2026-11-21), so the OFF can always be sent. Still unchecked: does a hold that's
+already running keep the spoof through the toggle? If it drops, the arrival can race the phone's
+first real-location upload on reconnect — see the spec's fallback before trusting a real run.
 """
 import os
 import sys
@@ -39,6 +44,7 @@ sys.path.insert(0, ROOT)                       # make `backend` + spoof importab
 
 # Reuse the transport glue + route builder already proven in spoof.py — no duplicated pmd calls.
 from spoof import pmd, ensure_mounted, build_gpx, ROUTES_DIR  # noqa: E402
+from backend.device import CoreDevice, Pmd3  # noqa: E402
 
 # A trip is: drive to the departure airport, hold; (airplane ON); jump to the arrival airport,
 # hold; (airplane OFF); drive into the destination Place. Coords are (lat, lon).
@@ -57,16 +63,32 @@ def route_path(name):
     return os.path.join(ROUTES_DIR, f"{name}.json")
 
 
-def hold(lat, lon, prompt):
-    """Set-hold a fixed point; the pmd `set` keeps the location until the user presses ENTER.
-    We print `prompt` first so the ENTER that exits `set` is the same ENTER that gates the
-    manual airplane-mode step."""
-    print(prompt)
-    pmd("developer", "dvt", "simulate-location", "set", "--userspace", "--", str(lat), str(lon))
+def _pmd_line(line):
+    if not line.startswith("Press "):   # the hold's own "Press ENTER to exit" / "Press Ctrl+C", fly asks itself
+        print("  " + line)
+
+
+def hold(lat, lon):
+    """Hold a fixed point in the background, so it's still held while airplane mode flips.
+    Returns the Job; .stop() lets go."""
+    return Pmd3().hold(lat, lon, _pmd_line)
 
 
 def play(gpx):
     pmd("developer", "dvt", "simulate-location", "play", "--userspace", gpx)
+
+
+def airplane(on, cd):
+    """Flip airplane mode through the phone's Shortcut, then have the owner confirm it: the phone
+    only says it took the launch. A failed send or anything but a yes means doing it by hand."""
+    state = "ON" if on else "OFF"
+    if cd.airplane(on, _pmd_line):
+        seen = "the airplane icon showing" if on else "Wi-Fi and cellular back"
+        if input(f"  Sent. Is {seen} on the phone? [y/n] ").strip().lower() in ("y", "yes"):
+            return
+    else:
+        print("  Couldn't send it to the phone.")
+    input(f"  >> Toggle AIRPLANE MODE {state} by hand on the phone, then press ENTER. <<")
 
 
 def run_trip(trip):
@@ -88,25 +110,32 @@ def run_trip(trip):
     print("   - Destination saved as a Life360 Place? (the arrival push needs it)")
     print("   - A 2nd circle member watching their phone for the push?")
     print("   - Observer running?  core/tools/observe.py --watch --member \"<you>\" --log flight.jsonl")
-    print("   - Phone unlocked, Developer Mode on.")
+    print("   - Phone on the CABLE + unlocked, Developer Mode on.")
     input("\n  Press ENTER to begin the departure drive...")
 
     ensure_mounted()
+    cd, job = CoreDevice(), None
+    try:
+        # Leg 1 — drive to the departure airport, then hold there (phone still ONLINE).
+        dlat, dlon = trip["depart_hold"]
+        print(f"\n> [1/3] Driving to the departure airport ({trip['depart_route']})...")
+        play(depart_gpx)
+        job = hold(dlat, dlon)
+        print("\n> You're at the departure airport, holding.")
+        input("  >> Press ENTER to take off (turns AIRPLANE MODE ON). <<")
+        airplane(True, cd)
 
-    # Leg 1 — drive to the departure airport, then hold there (phone still ONLINE).
-    dlat, dlon = trip["depart_hold"]
-    print(f"\n> [1/3] Driving to the departure airport ({trip['depart_route']})...")
-    play(depart_gpx)
-    hold(dlat, dlon,
-         "\n> You're at the departure airport, holding.\n"
-         "  >> Now toggle AIRPLANE MODE ON on the phone, then press ENTER here. <<")
-
-    # Leg 2 — phone is offline now; jump the spoof to the arrival airport and hold.
-    alat, alon = trip["arrive_hold"]
-    print("\n> [2/3] Phone offline (airplane mode). Moving the spoof to the arrival airport...")
-    hold(alat, alon,
-         "\n> Spoof is at the arrival airport (invisible while offline).\n"
-         "  >> Now toggle AIRPLANE MODE OFF on the phone, then press ENTER here. <<")
+        # Leg 2 — phone is offline now; jump the spoof to the arrival airport and hold.
+        alat, alon = trip["arrive_hold"]
+        print("\n> [2/3] Phone offline (airplane mode). Moving the spoof to the arrival airport...")
+        job.stop()
+        job = hold(alat, alon)
+        print("  Spoof is at the arrival airport (invisible while offline).")
+        input("  >> Press ENTER to land (turns AIRPLANE MODE OFF). <<")
+        airplane(False, cd)
+    finally:
+        if job:
+            job.stop()
 
     # Leg 3 — phone reconnects at the arrival airport; drive into the destination Place.
     print(f"\n> [3/3] Reconnected at the arrival airport. Driving in ({trip['arrive_route']})...")
@@ -121,6 +150,7 @@ def list_trips():
     print("\n  vida-360 flights (fly <name>):")
     for name, t in TRIPS.items():
         print(f"   - {name:<6} {t['label']}")
+    print("\n  fly airplane on / fly airplane off   just flip airplane mode")
     print()
 
 
@@ -129,6 +159,10 @@ def main():
     if not argv:
         list_trips()
         return
+    if argv[0].lower() == "airplane" and argv[1:] in (["on"], ["off"]):
+        ok = CoreDevice().airplane(argv[1] == "on", print)
+        print("  sent, check the phone" if ok else "  couldn't send it to the phone")
+        sys.exit(0 if ok else 1)
     name = argv[0].lower()
     trip = TRIPS.get(name)
     if not trip:
