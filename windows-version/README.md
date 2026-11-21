@@ -16,6 +16,10 @@ All commands from the repo root.
 
 | What | Command |
 |---|---|
+| **Waypoint app** (map, globe, palette) | double-click `windows-version\waypoint.cmd` |
+| Waypoint without touching the phone | `set VIDA_DRY_RUN=1 & windows-version\waypoint.cmd` |
+| Waypoint with its log in the console | `.venv\Scripts\python.exe windows-versionpp.py` |
+| Real-speed drive (mph + car on Life360) | `windows-version\drive.cmd emoji-test` · `windows-version\drive.cmd --clear` |
 | "Where do you want to go?" menu | double-click `windows-version\spoof.cmd` |
 | Play a route / hold a preset | `windows-version\spoof.cmd miami-cruise` · `windows-version\spoof.cmd eiffel` |
 | Explicit coordinate | `windows-version\spoof.cmd 48.8584 2.2945` |
@@ -23,9 +27,13 @@ All commands from the repo root.
 | List flights / run one | `windows-version\fly.cmd` · `windows-version\fly.cmd nyc` |
 | Life360 Observer | `.venv\Scripts\python.exe core\tools\observe.py --watch` |
 
+The app runs in Edge WebView2 (built into Windows 11). `waypoint.cmd` has no console; its log is
+`%LOCALAPPDATA%\Waypoint\Waypoint.log`. Closing the window stops what's playing and clears the
+phone first (a couple of seconds). Killing it from Task Manager leaves the spoof on: recover with
+`spoof.cmd clear` + `drive.cmd --clear`.
+
 ## What Windows can't do yet
 
-**Real speed (mph + the car icon on Life360) is untested on Windows.** It used to need Xcode's
-`devicectl`; since 2026-11 it goes through pymobiledevice3 like everything else, so
-`.venv\Scripts\python.exe core\tools\drive.py emoji-test` should work here, but nobody has tried it.
-There's no `drive.cmd` launcher yet. Spoofed drives show 0 mph on Life360.
+- **Nothing has run against a real phone on Windows yet** (the app was checked in dry run only).
+- No installer or auto-update; run it from this folder.
+- No airplane-mode Shortcut: `fly` asks you to toggle airplane mode by hand.
