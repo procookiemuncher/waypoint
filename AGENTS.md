@@ -248,7 +248,9 @@ with Developer Mode on.
 ## Prerequisites and failure modes
 
 - **Windows:** Apple Mobile Device Support (iTunes or the Apple Devices app), or the phone
-  isn't discovered at all.
+  isn't discovered at all. With the Store Apple Devices app, usbmuxd (`AppleMobileDeviceProcess`,
+  127.0.0.1:27015) only runs once the app has started it, and a phone plugged in before that isn't
+  listed (`usbmux list` = `[]`) until it's replugged.
 - **Developer Mode ON:** Settings → Privacy & Security → Developer Mode (appears only after a
   dev-connection attempt; reboot + confirm). **An iOS update turns it off.**
 - **Trust** the computer on first connect. Keep the phone **unlocked / awake** while spoofing.
