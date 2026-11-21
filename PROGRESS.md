@@ -15,7 +15,6 @@ oldest to `docs/progress-archive.md` as one-liners.
 
 **Open:**
 - Owner opens the Dock app on the Mac and looks at the new map (WKWebView) before the next release.
-- The old Stadia redirect (`/tiles/` in server.py, `tiles.py`, `test_tiles.py`) is unused now. Delete once the owner OKs it.
 - Never tested: a compiled build moving the pin on a real phone, a Mac with no Xcode, Intel Macs, a Windows installer (none yet).
 - Airplane-mode Shortcut is the last devicectl call. Check pmd3 `core-device launch-application`.
 - `fly` has no API in the app (launcher only), so it's not in the palette.
@@ -37,7 +36,8 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Not tested:** the Mac window (WKWebView, WebGL should be fine), a compiled release build, the look next to Stadia on a real Retina screen.
 - Found: `stage_assets.py` opens files without `encoding=`, so on Windows it dies on cp1252 (fine on the Mac; `PYTHONUTF8=1` works). Matters only when Windows gets a release build.
 - Not in yet vs Stadia: road-number shields (A4201, I-95), slightly smaller labels. Both are style edits in the tool if wanted.
-- Next: owner looks at it in the Dock app, then OKs deleting the old Stadia redirect.
+- Owner OK'd it, so the old Stadia redirect is gone (`/tiles/` route, `tiles.py`, `test_tiles.py`): 81 run, 10 skipped. `VIDA_STADIA_KEY` in the Mac's `.env` does nothing now.
+- Next: owner looks at it in the Dock app (`git pull`, no rebuild, it runs the repo), then a release when they say.
 
 ---
 
