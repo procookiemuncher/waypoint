@@ -2,6 +2,7 @@
 player and the connect-screen readiness. Stdlib unittest, no phone, no network."""
 import json
 import os
+import plistlib
 import subprocess
 import sys
 import tempfile
@@ -12,7 +13,7 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend import device  # noqa: E402
-from backend.device import CoreDevice, Pmd3, cd_input, cd_point, cd_route_input, write_route_input  # noqa: E402
+from backend.device import CoreDevice, Pmd3, cd_input, cd_launch_input, cd_point, cd_route_input, write_route_input  # noqa: E402
 from backend.drive import chunk_cmd, chunk_timeline, play_chunks  # noqa: E402
 from backend.session import Session  # noqa: E402
 
@@ -46,6 +47,17 @@ class TestInputs(unittest.TestCase):
         with self.assertRaises(ValueError):
             cd_input("teleport", {})
 
+    def test_launch_input_carries_the_url_as_payload(self):
+        url = "shortcuts://run-shortcut?name=vida-ping"
+        inp = cd_launch_input("com.apple.shortcuts", url)
+        self.assertEqual(inp["applicationSpecifier"], {"bundleIdentifier": {"_0": "com.apple.shortcuts"}})
+        opts = inp["options"]
+        self.assertEqual(opts["payloadURL"], {"relative": url})   # the shape the phone ran 2026-11-21
+        self.assertTrue(opts["terminateExisting"])
+        self.assertEqual(opts["user"], {"active": True})
+        self.assertEqual(plistlib.loads(opts["platformSpecificOptions"]), {})
+        self.assertEqual(cd_input("openurl", {"bundle": "com.apple.shortcuts", "url": url}), inp)
+
     def test_route_file_round_trips(self):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "r.json")
@@ -70,6 +82,23 @@ class TestHelperProcess(unittest.TestCase):
         self.assertEqual(p.returncode, 1)
         self.assertIn("coredevice set failed", p.stdout)
 
+    def test_openurl_without_a_url_fails_cleanly(self):
+        p = self._child("openurl", json.dumps({"bundle": "com.apple.shortcuts"}))
+        self.assertEqual(p.returncode, 1)
+        self.assertIn("coredevice openurl failed", p.stdout)
+
+    def test_airplane_runs_the_matching_shortcut(self):
+        sent = []
+        with mock.patch.object(device, "DRY_RUN", False), \
+                mock.patch.object(device, "run", side_effect=lambda cmd, log, timeout: sent.append(cmd) or True):
+            self.assertTrue(CoreDevice().airplane(True, print))
+            self.assertTrue(CoreDevice().airplane(False, print))
+        self.assertEqual([c[3] for c in sent], ["openurl", "openurl"])
+        self.assertEqual([json.loads(c[4]) for c in sent], [
+            {"bundle": "com.apple.shortcuts", "url": "shortcuts://run-shortcut?name=vida-airplane-on"},
+            {"bundle": "com.apple.shortcuts", "url": "shortcuts://run-shortcut?name=vida-airplane-off"},
+        ])
+
     def test_negative_longitude_is_not_a_flag(self):
         cmd = CoreDevice().set_cmd(25.7617, -80.1918)
         self.assertEqual(json.loads(cmd[-1]), {"latitude": 25.7617, "longitude": -80.1918})
@@ -79,7 +108,9 @@ class TestHelperProcess(unittest.TestCase):
             cd = CoreDevice()
             for cmd, label in [(cd.set_cmd(1, 2), "coredevice set 1.00000 2.00000"),
                                (cd.route_cmd("/x/emoji.json"), "coredevice route emoji.json"),
-                               (cd.clear_cmd(), "coredevice clear")]:
+                               (cd.clear_cmd(), "coredevice clear"),
+                               (cd.open_url_cmd("shortcuts://run-shortcut?name=vida-airplane-on", "com.apple.shortcuts"),
+                                "coredevice openurl shortcuts://run-shortcut?name=vida-airplane-on")]:
                 self.assertNotIn(device._CHILD, cmd)
                 p = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
                 self.assertEqual(p.stdout.strip(), "[dry run] " + label)
