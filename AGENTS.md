@@ -41,11 +41,16 @@ The geofence arrival is purely spatial, so it works on both. Places/pins are hel
 CoreDevice sim (`setsimulatedlocation`), which hands off and exits, no process kept. pmd3 11.59
 mounts its own DDI, so **no Xcode is needed**. Details: docs/research/no-xcode-speed-sim.md.
 
-**Airplane mode (the one thing still on `xcrun devicectl`, not in the app):**
-`xcrun devicectl device process openURL "shortcuts://run-shortcut?name=vida-airplane-on"` runs an
-iOS Shortcut on the phone (`vida-airplane-on` = Airplane On + Wi-Fi Off, `vida-airplane-off` =
-the reverse). Silent, no prompt, phone must be unlocked. Works over the **cable** only (the Mac
-still reaches the phone in airplane mode), not over Wi-Fi pairing.
+**Airplane mode (pmd3, Mac + Windows, not in the app):** two iOS Shortcuts on the phone,
+`vida-airplane-on` (Airplane On + Wi-Fi Off) and `vida-airplane-off` (the reverse), made by hand in
+the Shortcuts app. `CoreDevice.airplane(on)` in device.py runs one through CoreDevice
+`launchapplication` for `com.apple.shortcuts` with the URL in `options.payloadURL`
+(`{"relative": "shortcuts://run-shortcut?name=…"}`, what devicectl's `--payload-url` fills). No
+CoreDevice feature just opens a URL, and pmd3's `launch_application` has no slot for it, so the helper
+builds the input itself. Silent, no prompt, ~0.3 s, phone unlocked. Works over the **cable** only:
+new tunnels still reach the phone in airplane mode; Wi-Fi pairing doesn't. The launch answers before
+the Shortcut runs, so True means "sent", not "toggled", and `fly` asks the owner to confirm each flip.
+`fly airplane on|off` flips it from a terminal. Nothing calls devicectl any more.
 
 ## Detection and limits (details in docs/research/)
 
@@ -136,12 +141,17 @@ with Developer Mode on.
   `spoof miami`, `spoof 48.8584 2.2945`, `spoof clear`. A new JSON in `core/routes/` shows up
   in the menu automatically.
 - **`drive`** is the real-speed path (`core/tools/drive.py`). `drive.command --clear` clears it.
-- **`fly <trip>`** (e.g. `fly nyc`): drive to the departure airport, a manual **airplane-mode**
-  gap (offline like a real flight, so Life360 never sees the impossible hop), then drive from the
-  arrival airport into a saved Place and dwell. ENTER-gated at both toggles. A trip is
+- **`fly <trip>`** (e.g. `fly nyc`): drive to the departure airport, an **airplane-mode** gap
+  (offline like a real flight, so Life360 never sees the impossible hop), then drive from the
+  arrival airport into a saved Place and dwell. ENTER-gated at both toggles: ENTER = take off / land,
+  fly flips airplane mode through the Shortcuts while the airport hold runs (a background DVT `Job`),
+  the owner confirms the flip, anything but a yes falls back to toggling by hand. A trip is
   `{depart route, arrive airport, destination Place + drive-in route}`. Design:
-  docs/superpowers/specs/2026-07-10-flight-arrival-spoofer-design.md. Verify the airplane-mode
-  tunnel gate (Step 0 in the spec) once before trusting a real run. Not in the app (no flight API).
+  docs/superpowers/specs/2026-07-10-flight-arrival-spoofer-design.md. Step 0's tunnel half passed
+  (2026-11-21); whether a running hold keeps the spoof through the toggle is still open, check it
+  before trusting a real run. pmd3's DVT `play` doesn't exit when the route ends: it holds the last
+  point and waits for ENTER (Windows) or Ctrl+C (Mac), and on the Mac that Ctrl+C also cancels fly
+  (read from pmd3's source, not run). Not in the app (no flight API).
 
 ### Waypoint app (Mac)
 
