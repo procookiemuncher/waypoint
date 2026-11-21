@@ -4,8 +4,8 @@ what ships inside Waypoint.app gets this treatment.
 
     python stage_assets.py <core_dir> <out_dir>
 
-out_dir ends up with: web/ (icons/glass/warp/app/palette/ring/globe .js + app.css minified, leaflet, fonts
-and the globe's countries.json as-is),
+out_dir ends up with: web/ (icons/glass/warp/app/palette/ring/globe .js + app.css minified, leaflet,
+maplibre, fonts, the globe's countries.json and the map style as-is),
 destinations.json, places.json, routes/ — the JSON as WPX1 blobs that backend.secret.load_json reads.
 """
 import os
@@ -20,8 +20,8 @@ CORE, OUT = sys.argv[1], sys.argv[2]
 sys.path.insert(0, CORE)
 from backend.secret import obfuscate   # noqa: E402
 
-# Our own front-end files. leaflet/ is third-party (already minified) and fonts/ aren't code, so
-# both are copied untouched.
+# Our own front-end files. leaflet/ and maplibre/ are third-party (already minified) and fonts/
+# aren't code, so they're copied untouched.
 MINIFY_JS = {"icons.js", "glass.js", "warp.js", "app.js", "palette.js", "ring.js", "globe.js"}
 MINIFY_CSS = {"app.css"}
 
