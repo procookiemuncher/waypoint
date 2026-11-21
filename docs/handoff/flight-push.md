@@ -83,6 +83,22 @@ open question (`flight-altitude-hard-gate`). Nobody has publicly spoofed this pu
      bumped).
    - This is research only. Don't build anything that writes to Life360's servers. Path B (API
      injection) is out unless the owner decides it.
+1b. **Can the CoreDevice sim take altitude?** If yes, the altitude gate stops being a wall. The DDI
+   pmd3 mounts is cached at `~/.pymobiledevice3/Xcode_iOS_DDI_Personalized/Image.dmg` (also
+   `Xcode_iOS_DDI_Cryptex/`). Both hold `usr/libexec/dtlocationd` (~333 KB) and
+   `Library/LaunchDaemons/com.apple.coredevice.dtlocationd.plist`, the phone-side service behind
+   `com.apple.coredevice.locationservice` (listed 2026-11-21).
+   - Extract it: **7-Zip on Windows reads these APFS images** (`7z x Image.dmg usr/libexec/dtlocationd`
+     into a new empty directory, confirmed with `7z l`); `hdiutil attach` on the Mac. `strings.exe` is
+     at `C:\msys64\ucrt64\bin`. The binary is arm64, so Ghidra for anything past strings.
+   - Read its strings, symbols and Swift types (Ghidra or `strings`/`nm`) for every key the
+     set/start/scenario actions decode: altitude, verticalAccuracy, course, timestamp, a scenario
+     file or plist payload.
+   - The 2026-10-24 note found "altitude" nowhere in devicectl/CoreDevice on the Mac. That was the
+     host side. The phone-side daemon hasn't been checked. Same for `setlocationscenario`: can it
+     take a scenario's contents, not just a name or path? (Apple's scenario plists are full keyed
+     CLLocations with Altitude.)
+   - If a key turns up, testing it needs a phone. Write it down with the exact input shape.
 2. **The flight-test tool.** Design it from §5/§5b, adjusted by step 1's findings. CoreDevice only:
    - hold within 100 m of the airport A terminal, 20–40 min of dwell, online;
    - taxi, then a takeoff roll along a **real runway** (coordinates from OSM/Overpass, not memory) to
