@@ -1,3 +1,14 @@
+---
+title: Dropping Xcode — the speed location sim and the airplane-mode Shortcut over plain pmd3
+status: device-verified         # research | device-verified | superseded
+last_verified: 2026-11-21
+device_verified: full           # 2026-11-19 Mac: set / route with speed / clear / DDI mount. 2026-11-21 Windows: opening a URL (airplane Shortcut) + tunnel reaching the phone in airplane mode
+open_gates: []
+depends_on: []
+source_tier: mixed              # primary (pmd3 source, CoreDeviceUtilities symbols, the phone's own RSD list) + one OSS project's code for payloadURL (DIYgod/pinky)
+recheck_if: [pmd3 version bump, iOS update, Xcode/CoreDevice version bump (coreDeviceVersion 629.3), phone refuses a launch or location input]
+---
+
 # Dropping Xcode: the speed location sim over plain pmd3 (2026-11-18)
 
 **Status (2026-11-19, on-device, iOS 27.0.1, iPhone19,3, pmd3 11.59.0): DONE, built into the app.**
@@ -35,7 +46,7 @@ Every Xcode dependency goes through `xcrun devicectl` in `mac-version/`:
 | clear | `drive_engine.py` | CoreDevice `clearsimulatedlocation` |
 | lock state | `phone_check.py` | ~~pmd3 `DeviceInfoService.get_lockstate()`~~ refused on iOS 27 ("Action 'com.apple.coredevice.feature.getlockstate' is not implemented", also with action ids `...action.lockstate` / `...action.getlockstate`). **Used instead: lockdown `PasswordProtected`** (`lockdown get "" PasswordProtected`), true while locked and false once unlocked, same as devicectl's `passcodeRequired`, checked both ways on the phone. Plain USB, no tunnel |
 | DDI usable | `phone_check.py` | just run `mounter auto-mount` once per plug-in; 11.59 says "already mounted" (exit 0) or mounts it, and exits non-zero when it can't |
-| airplane-mode Shortcut (`process openURL shortcuts://…`) | airplane flow | **unknown**. pmd3 has `launchapplication`. Need to check if it takes a URL, or capture what devicectl sends |
+| airplane-mode Shortcut (`process openURL shortcuts://…`) | airplane flow | **CoreDevice `launchapplication` with the URL in `options.payloadURL`** (2026-11-21, Windows, see "Opening a URL" below). `CoreDevice.airplane(on)` in device.py, used by `fly` |
 | the DDI itself | Xcode mounted it; pmd3 9.33.1 `auto-mount` crashes (`KeyError: 'ApBoardID'`) | pmd3 11.59 skips the Cryptex1 identity that has no board ID, which should fix it |
 
 ## What devicectl actually calls
@@ -105,3 +116,38 @@ several shapes and prints the phone's decode error for each.
   Services was toggled. The next clear was clean. Not known whether devicectl did the same.
 - Still on devicectl: only the airplane-mode Shortcut (`process openURL`), which isn't in the app.
   pmd3 11.59 has `core-device launch-application`; whether it takes a URL is unchecked.
+  (Done 2026-11-21, below. Nothing calls devicectl any more.)
+
+## Opening a URL: the airplane-mode Shortcut (2026-11-21, Windows, iOS 27.2.1, pmd3 11.59.0)
+
+- **No CoreDevice feature just opens a URL.** The phone's RSD list (85 services) has none. The
+  closest thing is `com.apple.coredevice.appservice` → `com.apple.coredevice.feature.launchapplication`.
+  The other appservice features: installapp, installroot, listapps, listprocesses, listroots,
+  monitorprocesstermination, rebootdevice, sendmemorywarningtoprocess, sendsignaltoprocess,
+  spawnexecutable, streamapplist, streamprocesslist, uninstallapp, uninstallroot.
+- **The URL rides the launch as `options.payloadURL = {"relative": "<url>"}`**, the field devicectl's
+  `process launch --payload-url` fills. pmd3's `AppServiceService.launch_application` has no slot for
+  it (its `extra_options` go into `platformSpecificOptions`), so `device.py` builds the input itself
+  (`cd_launch_input`) and sends it through `CoreDeviceService.invoke`. No pmd3 upgrade.
+- Source of the shape: DIYgod/pinky's Go driver (`internal/driver/ios/apps.go`), which opened links in
+  Safari this way on iOS 27 and found `__PayloadURL` inside `platformSpecificOptions` did nothing. We
+  never tried the `platformSpecificOptions` form. **devicectl itself wasn't captured** (this was on
+  Windows), so "devicectl's openURL sends this" is inferred, not seen.
+- **On the phone**, bundle `com.apple.shortcuts`, `user: {"active": true}`:
+  - `shortcuts://open-shortcut?name=vida-airplane-on` opened that Shortcut's editor (URL delivered,
+    nothing ran).
+  - `shortcuts://run-shortcut?name=vida-ping` (a throwaway Vibrate Shortcut) ran silently, no prompt,
+    with Shortcuts closed, with it open, with `terminateExisting` false and true (3/3 in a row with
+    true while it was open). Every launch we sent ran its Shortcut.
+  - `vida-airplane-on` / `vida-airplane-off`: 3 full on/off runs, all flipped (owner watched). The last
+    one through the built code (`fly airplane on|off`).
+  - ~0.25-0.45 s a call including the tunnel (Windows).
+  - The reply is just a `processToken` for Shortcuts (pid, executable URL): it comes back before the
+    Shortcut runs and says nothing about whether it worked. So success = "sent", not "toggled".
+- `device.py` sets `terminateExisting: true`, so Shortcuts always starts fresh with the URL. Both
+  settings worked; this one doesn't lean on how a running app takes a new URL.
+- **Airplane mode doesn't cut the cable path** (flight spec's Step 0, tunnel half): with airplane mode
+  on and Wi-Fi off, usbmuxd still listed the phone on USB, lockdown answered, new userspace tunnels came
+  up in ~0.23 s, read-only CoreDevice calls worked, and the OFF went through. A second process can open
+  a tunnel while another process holds one open (needed by `fly`, whose holds keep a tunnel).
+  **Not tested:** whether a hold that's already running keeps the spoof through the toggle.
