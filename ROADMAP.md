@@ -19,8 +19,8 @@ How it works and why: AGENTS.md. Current state: PROGRESS.md.
 - **Movement engine:** JSON routes → Valhalla road snapping → per-segment speed profiles, corner
   slowdowns, GPS jitter → validated GPX (docs/MOVEMENT_ENGINE.md). Destinations catalog: 35 spots
   in 28 cities, generated airport → hotel → spot routes.
-- **Flight choreographer:** `fly <trip>` (drive out, airplane-mode gap, drive into a Place, dwell).
-  Built, not yet run end to end on the phone.
+- **Flight choreographer:** `fly <trip>` (drive out, airplane-mode gap, drive into a Place, dwell),
+  airplane mode toggled over pmd3. Built, not yet run end to end on the phone.
 - **Life360 Observer:** reads the circle's server-side view (`core/tools/observe.py`).
 - **Waypoint app (Mac):** map + globe UI, arrival-plan side panel, ⌘K palette, connect screen,
   dev and release builds, access keys + key dashboard, auto-update. 0.1.0-beta.2 is out to testers.
@@ -43,9 +43,10 @@ Windows has the launchers (spoof, drive, fly, setup) and the Waypoint window (`w
   (`VIDA_LICENSE_URL`) isn't tried there yet.
 - [ ] Packaging: a compiled Windows build + installer. The updater is Mac-only today (ditto,
   codesign), so Windows needs its own swap and signature check.
-- [ ] Airplane mode: the Shortcut trick goes through `xcrun devicectl` (Mac only). Find a pmd3
-  way (`core-device launch-application` or similar), which also removes the last devicectl call
-  on the Mac.
+- [x] Airplane mode without devicectl (2026-11-21): CoreDevice `launchapplication` with the
+  Shortcut URL as `payloadURL`, `CoreDevice.airplane(on)` in device.py. `fly` toggles it itself
+  (you confirm), `fly airplane on|off` on its own. Checked on the phone from Windows. Nothing calls
+  devicectl any more.
 - [ ] Keep log and print lines ASCII-safe (cp1252 crashes have bitten twice).
 
 ### 2. Keep adding to the UI
@@ -56,7 +57,8 @@ Windows has the launchers (spoof, drive, fly, setup) and the Waypoint window (`w
 - [ ] The lint leftovers (10 FAIL / 89 WARN): window ring/frame, map sweep, status bar gauge,
   CRT overlay, connect + key screens.
 - [ ] Save / rename / delete places from the UI (presets are hand-edited JSON today).
-- [ ] Flights in the app: a flight API + `fly` in the palette, with the airplane-mode steps.
+- [ ] Flights in the app: a flight API + `fly` in the palette, with the airplane-mode steps. The
+  toggle is ready in device.py (`CoreDevice.airplane`); the app still needs the confirm step.
 - [ ] A structured season/days field for spots, so the panel can say Club 55 is out of season.
 - [ ] Prerequisite checks with fixes (Developer Mode, Trust, driver) and clearer errors.
 
@@ -80,8 +82,9 @@ Windows has the launchers (spoof, drive, fly, setup) and the Waypoint window (`w
   the sim in one line. Test with a ~20-line app (docs/research/life360-detection-and-realism.md).
 - [ ] **Geofence arrival end to end:** save a Place, drive in, dwell 5–10 min, confirm Life360
   pushes "arrived at" to another member's phone.
-- [ ] **Flight run:** `fly` Step 0 (tunnel survives airplane mode), then a real run with a
-  second member watching. Gate #2: does iOS go back to real GPS when we stop setting?
+- [ ] **Flight run:** `fly` Step 0 (new tunnels over the cable work in airplane mode, passed
+  2026-11-21; a running hold keeping the spoof through the toggle is still open), then a real run
+  with a second member watching. Gate #2: does iOS go back to real GPS when we stop setting?
 - [ ] Retry Life360's >100 mph flight-detection gate now that speed is real (expected to still
   fail without altitude, but cheap to check).
 - [ ] Drive parity: Drive lands within a minute or two of Spoof's timing; make the CoreDevice
