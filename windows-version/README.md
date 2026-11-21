@@ -25,6 +25,7 @@ All commands from the repo root.
 | Explicit coordinate | `windows-version\spoof.cmd 48.8584 2.2945` |
 | Clear the spoof | `windows-version\spoof.cmd clear` |
 | List flights / run one | `windows-version\fly.cmd` · `windows-version\fly.cmd nyc` |
+| Airplane mode on / off (cable, needs the vida-airplane-on/-off Shortcuts) | `windows-version\fly.cmd airplane on` · `windows-version\fly.cmd airplane off` |
 | Life360 Observer | `.venv\Scripts\python.exe core\tools\observe.py --watch` |
 
 The app runs in Edge WebView2 (built into Windows 11). `waypoint.cmd` has no console; its log is
@@ -35,4 +36,3 @@ phone first (a couple of seconds). Killing it from Task Manager leaves the spoof
 ## What Windows can't do yet
 
 - No installer or auto-update; run it from this folder.
-- No airplane-mode Shortcut: `fly` asks you to toggle airplane mode by hand.

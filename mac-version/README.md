@@ -50,6 +50,7 @@ All commands from the repo root: `cd ~/Desktop/projects/vida-360`
 | Explicit coordinate | `./mac-version/spoof.command 48.8584 2.2945` |
 | Clear the spoof | `./mac-version/spoof.command clear` |
 | List flights / run one | `./mac-version/fly.command` · `./mac-version/fly.command nyc` |
+| Airplane mode on / off (cable, needs the vida-airplane-on/-off Shortcuts) | `./mac-version/fly.command airplane on` · `./mac-version/fly.command airplane off` |
 | Life360 Observer | `.venv/bin/python core/tools/observe.py --watch` |
 
 **`drive` vs `spoof`:** `drive` uses the phone's CoreDevice location sim (the one Xcode's devicectl
