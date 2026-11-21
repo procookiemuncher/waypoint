@@ -1,8 +1,8 @@
 """The pymobiledevice3 adapter — the one place that talks to pmd3 (ground rule #5).
 
 Everything goes through a subprocess, same as spoof.py has always done (`--userspace` tunnel, no
-admin): the pmd3 CLI where it has the command, and for the CoreDevice location sim, which the CLI
-doesn't cover, `python -c` into coredevice_child() below. Nothing pmd3-shaped leaks out: callers
+admin): the pmd3 CLI where it has the command, and for the CoreDevice calls the CLI doesn't cover
+(the location sim, opening a URL), `python -c` into coredevice_child() below. Nothing pmd3-shaped leaks out: callers
 get plain dicts, bools and Job handles.
 
 Set VIDA_DRY_RUN=1 to swap every phone command for a harmless stand-in — handy for working on
@@ -13,6 +13,7 @@ gets unplugged 30s in and comes back 15s later (for the reconnect screen).
 """
 import json
 import os
+import plistlib
 import signal
 import subprocess
 import sys
@@ -179,7 +180,12 @@ CD_SERVICE = "com.apple.coredevice.locationservice"
 CD_FEATURE = "com.apple.coredevice.feature.simulatelocation"
 CD_ACTIONS = {"set": "setsimulatedlocation", "route": "startlocationsimulation",
               "clear": "clearsimulatedlocation", "scenarios": "availablelocationscenarios"}
-_CHILD = f"import sys; sys.path.insert(0, {CORE!r}); from backend.device import coredevice_child; coredevice_child()"
+# Opening a URL: no CoreDevice feature does just that, so it's launchapplication with the URL as the
+# launch's payload (what devicectl's `process launch --payload-url` fills). Proven 2026-11-21.
+CD_APP_SERVICE = "com.apple.coredevice.appservice"
+CD_LAUNCH = "com.apple.coredevice.feature.launchapplication"
+SHORTCUTS = "com.apple.shortcuts"
+_CHILD =f"import sys; sys.path.insert(0, {CORE!r}); from backend.device import coredevice_child; coredevice_child()"
 
 
 def cd_point(lat, lon) -> dict:
@@ -197,13 +203,36 @@ def cd_route_input(points, speed: float, interval: float = 1.0) -> dict:
     return {"waypoints": pts, "speed": float(speed), "pacing": {"interval": {"_0": float(interval)}}}
 
 
+def cd_launch_input(bundle: str, url: str) -> dict:
+    """launchapplication's input that starts `bundle` with `url`. The URL goes in options.payloadURL
+    (pmd3's launch_application has no slot for it). terminateExisting so the app always starts
+    fresh with the URL; Shortcuts ran the Shortcut both ways on the phone, this one doesn't lean on
+    how a running app takes a new URL."""
+    return {
+        "applicationSpecifier": {"bundleIdentifier": {"_0": bundle}},
+        "options": {
+            "arguments": [],
+            "environmentVariables": {},
+            "platformSpecificOptions": plistlib.dumps({}),
+            "standardIOUsesPseudoterminals": True,
+            "startStopped": False,
+            "terminateExisting": True,
+            "user": {"active": True},
+            "payloadURL": {"relative": url},
+        },
+        "standardIOIdentifiers": {},
+    }
+
+
 def cd_input(action: str, data: dict) -> dict:
-    """Normalise a request for `action` (set / route / clear / scenarios) into what the phone takes."""
+    """Normalise a request for `action` (set / route / clear / scenarios / openurl) into what the phone takes."""
     if action == "set":
         return cd_point(data["latitude"], data["longitude"])
     if action == "route":
         interval = (data.get("pacing") or {}).get("interval", {}).get("_0", 1.0)
         return cd_route_input(data["waypoints"], data["speed"], interval)
+    if action == "openurl":
+        return cd_launch_input(data["bundle"], data["url"])
     if action in CD_ACTIONS:
         return {}
     raise ValueError(f"unknown coredevice action {action!r}")
@@ -229,11 +258,15 @@ def _cd_error(e: Exception) -> str:
 async def _cd_send(action: str, inp: dict):
     from pymobiledevice3.remote.core_device.core_device_service import CoreDeviceService
     from pymobiledevice3.remote.userspace_tunnel import UserspaceRsdTunnel
+    if action == "openurl":
+        service, feature, action_id = CD_APP_SERVICE, CD_LAUNCH, None
+    else:
+        service, feature, action_id = CD_SERVICE, CD_FEATURE, "com.apple.coredevice.action." + CD_ACTIONS[action]
     async with UserspaceRsdTunnel(serial=os.environ.get("PYMOBILEDEVICE3_UDID") or None) as rsd:
-        if CD_SERVICE not in rsd.peer_info.get("Services", {}):
-            raise LookupError("the phone has no location service yet, the developer disk image isn't mounted")
-        async with CoreDeviceService(rsd, CD_SERVICE) as svc:
-            return await svc.invoke(CD_FEATURE, inp, action_identifier="com.apple.coredevice.action." + CD_ACTIONS[action])
+        if service not in rsd.peer_info.get("Services", {}):
+            raise LookupError(f"the phone has no {service} yet, the developer disk image isn't mounted")
+        async with CoreDeviceService(rsd, service) as svc:
+            return await svc.invoke(feature, inp, action_identifier=action_id)
 
 
 def coredevice_child():
@@ -265,8 +298,8 @@ def coredevice_child():
 
 
 class CoreDevice:
-    """Hold / route / clear through the CoreDevice sim. Each method's call returns as soon as the
-    phone has it (like devicectl), so the Jobs here finish on their own with exit 0."""
+    """Hold / route / clear through the CoreDevice sim, and open a URL in an app. Each method's call
+    returns as soon as the phone has it (like devicectl), so the Jobs here finish on their own with exit 0."""
 
     def set_cmd(self, lat: float, lon: float) -> list[str]:
         cmd = [sys.executable, "-c", _CHILD, "set", json.dumps(cd_point(lat, lon))]
@@ -288,3 +321,18 @@ class CoreDevice:
 
     def clear(self, log) -> bool:
         return run(self.clear_cmd(), log, timeout=30)
+
+    def open_url_cmd(self, url: str, bundle: str) -> list[str]:
+        cmd = [sys.executable, "-c", _CHILD, "openurl", json.dumps({"bundle": bundle, "url": url})]
+        return _dry(cmd, False, f"coredevice openurl {url}") if DRY_RUN else cmd
+
+    def open_url(self, url: str, bundle: str, log) -> bool:
+        return run(self.open_url_cmd(url, bundle), log, timeout=30)
+
+    def airplane(self, on: bool, log) -> bool:
+        """Run the vida-airplane-on / vida-airplane-off Shortcut on the phone (Airplane Mode + Wi-Fi,
+        made by hand in the Shortcuts app). The tunnel rides the cable, so it still gets through in
+        airplane mode. True means the phone took the launch, NOT that airplane mode changed: the
+        launch answers before the Shortcut runs and says nothing about how it went."""
+        name = "vida-airplane-on" if on else "vida-airplane-off"
+        return self.open_url(f"shortcuts://run-shortcut?name={name}", SHORTCUTS, log)
