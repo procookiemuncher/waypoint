@@ -26,7 +26,7 @@ iOS ships a developer location-simulation service (what Xcode's "Simulate Locati
 injects at the CoreLocation layer, so **every** app sees the fake location. No jailbreak. On
 iOS 17+ it sits behind Apple's RemoteXPC tunnel (RSD), reached with
 [`pymobiledevice3`](https://github.com/doronz88/pymobiledevice3) (pmd3). The phone is on
-**iOS 27.0.1**, so the tunnel is the only path.
+**iOS 27.2.1**, so the tunnel is the only path.
 
 There are **two location services**, and the difference matters:
 
@@ -62,7 +62,7 @@ still reaches the phone in airplane mode), not over Wi-Fi pairing.
 
 ## Environment and layout
 
-- **Hosts:** Windows and macOS. **Target:** iPhone on iOS 27.0.1.
+- **Hosts:** Windows and macOS. **Target:** iPhone on iOS 27.2.1.
 - **Language:** Python for the engine and server, plain JS/CSS for the page (`core/web/`, no
   framework, no build step outside release minifying), a tiny C launcher for the Mac app. No Swift.
 - **Python 3.12/3.13** in `.venv` (3.14 doesn't work). Deps pinned exactly in requirements.txt.
@@ -165,8 +165,9 @@ with Developer Mode on.
 - **Windows:** `windows-version\waypoint.cmd` opens the same page in a pywebview window (Edge
   WebView2), under pythonw, log in `%LOCALAPPDATA%\Waypoint\Waypoint.log`. The titlebar drags via
   `WM_NCLBUTTONDOWN`/`HTCAPTION`. Close clears the phone like the Mac. No splash, updater or
-  release build. **Dry run only so far**; `Job.stop()` on Windows writes ENTER to pmd3's stdin
-  (the dry-run stand-in does the same), untested against real pmd3.
+  release build. Works on the phone (2026-11-20): connect, DVT pin + Stop (`Job.stop()` writes
+  ENTER to pmd3's stdin, the dry-run stand-in does the same), Drive with speed, quit clears.
+  CoreDevice calls take ~1.5 s each here (~0.8 s on the Mac).
 - **Force-quit / kill -9 leaves the pmd3 child holding the spoof** (normal close, Cmd+Q and
   SIGTERM all clear). Recover with `spoof clear` + `drive.command --clear`.
 

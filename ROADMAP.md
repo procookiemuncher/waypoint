@@ -34,12 +34,12 @@ Numbered in the owner's order. When it isn't clear which one to work on, ask.
 ### 1. Finish the Windows version
 
 Windows has the launchers (spoof, drive, fly, setup) and the Waypoint window (`waypoint.cmd`,
-2026-11-20, dry run only). Nothing has touched a real phone there yet.
+2026-11-20), both checked on the phone.
 
-- [ ] Real speed on Windows: run `drive.cmd emoji-test` with the phone, confirm mph + car on
-  Life360.
-- [ ] Run the Waypoint window with a real phone: connect screen, a pin, a route, Stop.
-  Checks `Job.stop()`'s Windows path (writes ENTER to pmd3's stdin).
+- [ ] Real speed on Windows: the phone takes every speed chunk from Windows (2026-11-20);
+  still to confirm Life360 shows mph + car from a Windows run.
+- [x] Waypoint window with the real phone: connect, pin, Drive route, Stop, quit clears
+  (2026-11-20). `Job.stop()`'s ENTER path works.
 - [x] A Waypoint window on Windows (`windows-version/app.py`, 2026-11-20). The key gate
   (`VIDA_LICENSE_URL`) isn't tried there yet.
 - [ ] Packaging: a compiled Windows build + installer. The updater is Mac-only today (ditto,

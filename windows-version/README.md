@@ -34,6 +34,7 @@ phone first (a couple of seconds). Killing it from Task Manager leaves the spoof
 
 ## What Windows can't do yet
 
-- **Nothing has run against a real phone on Windows yet** (the app was checked in dry run only).
+- Real speed runs from Windows (the phone takes every speed chunk), but nobody has checked
+  Life360's mph + car from a Windows run yet.
 - No installer or auto-update; run it from this folder.
 - No airplane-mode Shortcut: `fly` asks you to toggle airplane mode by hand.
