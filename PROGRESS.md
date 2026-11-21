@@ -7,14 +7,14 @@ oldest to `docs/progress-archive.md` as one-liners.
 ## Current state (2026-11-20)
 
 - **App:** Waypoint Mac app. Dock app = keyless dev build, `release.command` = key-gated production build with auto-update. Live release: 0.1.0-beta.2 (build 2), two testers.
-- **No Xcode needed:** pmd3 11.59 CoreDevice path does set / route-with-speed / clear. Drive is in core, so Windows should get real speed too (untested).
+- **No Xcode needed:** pmd3 11.59 CoreDevice path does set / route-with-speed / clear. Same on Windows (mph + car confirmed 11-20).
 - **UI:** globe + "Arrival plan" side panel are in the app (11-20), dry-run tested only. Owner hasn't tried it in the Dock app yet.
-- **Windows:** Waypoint window runs from the repo (`windows-version\waypoint.cmd`, 11-20) and works with the phone (pin, Drive, Stop, quit clears). Not yet seen: Life360 mph + car from a Windows run.
+- **Windows:** Waypoint window runs from the repo (`windows-version\waypoint.cmd`, 11-20) and works with the phone (pin, Drive, Stop, quit clears). Life360 shows mph + car from a Windows Drive run.
 - **Phone is on iOS 27.2.1** now (was 27.0.1); Developer Mode survived, pmd3 11.59 still mounts and drives.
 
 **Open:**
 - Stadia key isn't in release builds, so testers hit the map rate limit. Proxy via the key dashboard or bake it in.
-- Never tested: a compiled build moving the pin on a real phone, a Mac with no Xcode, Intel Macs, anything on Windows.
+- Never tested: a compiled build moving the pin on a real phone, a Mac with no Xcode, Intel Macs, a Windows installer (none yet).
 - Airplane-mode Shortcut is the last devicectl call. Check pmd3 `core-device launch-application`.
 - `fly` has no API in the app (launcher only), so it's not in the palette.
 - Globe effects (stars/depth/night/rim/UFOs) are switches in the prototype, none picked yet.
@@ -33,8 +33,10 @@ oldest to `docs/progress-archive.md` as one-liners.
 - Page shows Ctrl+K / Ctrl+V off a Mac (was the cmd symbol).
 - **Tested, dry run, on this PC:** window opens with globe + panel, Ctrl+K opens the palette in WebView2, titlebar drag moved the window exactly with the mouse, page x and WM_CLOSE both exit in 2-3 s, pin + route + Stop through the API (Stop ~60 ms).
 - **Then with the phone (iOS 27.2.1, USB):** connect probe ready in ~7 s (DDI already mounted). `server.py`: Eiffel DVT hold, Stop sent ENTER, pmd3 exited, clear ok in ~3 s. Drive `emoji-test`: 16 of 48 speed chunks over 2.5 min, all accepted, none late, ~1.5 s a call (Mac ~0.8 s), Stop cleared the CoreDevice sim. The window: Live, map on the Eiffel pin (through Drive's placer), page x with the pin on exited in 4.7 s after the clear (no warning). `drive.py --clear` exit 0.
-- **Not tested:** whether Life360 showed mph + car during the Windows drive (owner to say), the key gate, other DPI scales, `fly` on Windows.
-- Next: owner confirms Life360 mph + car from a Windows run. Then packaging, if testers should get it.
+- Owner confirmed afterwards: **Life360 showed mph + the car** during the Windows drive.
+- **Not tested:** the key gate, other DPI scales, `fly` on Windows.
+- Commits now go out as juanmendoza (AGENTS.md, Git).
+- Next: the Stadia map key for release builds (owner wants it in a fresh session). Windows packaging only once Windows testers are wanted.
 
 ---
 
