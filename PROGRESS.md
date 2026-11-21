@@ -28,6 +28,16 @@ oldest to `docs/progress-archive.md` as one-liners.
 
 ---
 
+## 2026-11-21 — Flight push: dtlocationd looked at, handoff updated
+
+- Task: prep for the "landed" flight push while the owner's away. Nothing built, phone not touched.
+- Cached DDI has `dtlocationd` + `CoreDeviceUtilities`; 7-Zip reads the APFS images on Windows. Installed Ghidra 12.2 + jadx 1.5.7 under `C:\Users\superCookie\tools` (hashes match GitHub), extracted to `C:\Users\superCookie\work` (outside the repo).
+- **Strings result:** `dtlocationd` wraps `CLSimulationManager` and only reads `latitude`/`longitude` (`initWithLatitude:longitude:`, one speed per run). No altitude anywhere in it or `CoreDeviceUtilities`. So `set`/`start` can't carry altitude. The scenario-from-URL path (`SetLocationScenario.Input.fromURL`) is the one open lead; that logic is in CoreLocation (shared cache), not the DDI.
+- Owner widened access in chat: full phone access, tokens OK (no `.env` on this PC yet). Rules kept in the handoff.
+- Next: Ghidra pass, APK static analysis, flight-test tool. All in `docs/handoff/flight-push.md`.
+
+---
+
 ## 2026-11-21 — Airplane mode without Xcode (Windows)
 
 - Task: toggle airplane mode without devicectl so it works on Windows (ROADMAP path 1, the last devicectl call).
