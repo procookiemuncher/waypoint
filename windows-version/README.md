@@ -18,7 +18,7 @@ All commands from the repo root.
 |---|---|
 | **Waypoint app** (map, globe, palette) | double-click `windows-version\waypoint.cmd` |
 | Waypoint without touching the phone | `set VIDA_DRY_RUN=1 & windows-version\waypoint.cmd` |
-| Waypoint with its log in the console | `.venv\Scripts\python.exe windows-versionpp.py` |
+| Waypoint with its log in the console | `.venv\Scripts\python.exe windows-version\app.py` |
 | Real-speed drive (mph + car on Life360) | `windows-version\drive.cmd emoji-test` · `windows-version\drive.cmd --clear` |
 | "Where do you want to go?" menu | double-click `windows-version\spoof.cmd` |
 | Play a route / hold a preset | `windows-version\spoof.cmd miami-cruise` · `windows-version\spoof.cmd eiffel` |
