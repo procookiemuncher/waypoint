@@ -24,15 +24,17 @@ goes into the two segments Life360 *does* see: the airport departure and the des
 
 ## The choreographed sequence
 
-Part tool, part human (the owner toggles airplane mode by hand — the tool cannot). A guided
-launcher (`fly.py`) walks it with ENTER-gated prompts:
+Part tool, part human. A guided launcher (`fly.py`) walks it with ENTER-gated prompts. Since
+2026-11-21 the tool flips airplane mode itself (the phone's `vida-airplane-on/off` Shortcuts, run
+over the cable) while the hold runs, and the owner confirms each flip; if it didn't happen, the
+owner toggles by hand as below:
 
 | # | Actor | Action |
 |---|-------|--------|
 | 1 | Tool  | Play `mia-departure` route → drive to MIA, hold there (believable "last seen before the flight"). |
-| 2 | Human | Toggle **airplane mode ON** → press ENTER. Phone goes offline. |
+| 2 | Human | Press ENTER → the tool turns **airplane mode ON** (owner confirms; by hand if not). Phone goes offline. |
 | 3 | Tool  | `set` the spoof to **JFK** (instant teleport is free — phone is offline, Life360 blind) → hold. |
-| 4 | Human | Toggle **airplane mode OFF** → press ENTER. Phone reconnects **at JFK**. |
+| 4 | Human | Press ENTER → the tool turns **airplane mode OFF** (owner confirms; by hand if not). Phone reconnects **at JFK**. |
 | 5 | Tool  | Immediately play `jfk-to-hotel` route → drive JFK → Manhattan hotel Place. |
 | 6 | Tool  | Cross into the hotel Place → dwell 2–5 min → **"arrived" push** fires (confirmed by a 2nd circle member). |
 
@@ -63,6 +65,14 @@ stack (`life360-flight-detection.md` flagged it "verify").
 
 **Step 0 of the build is this on-device test** (hold a spoof, toggle airplane mode on/off, confirm
 the spoof holds/re-establishes) — before investing in the full run.
+
+**Step 0 result so far (2026-11-21, Windows, iOS 27.2.1, pmd3 11.59, no spoof held):** the transport
+half **passed**. With airplane mode on and Wi-Fi off, the phone stayed on usbmuxd over USB, new
+userspace tunnels came up in ~0.23 s, CoreDevice calls worked, and airplane-off was sent over the same
+cable (3 on/off runs). So the tool can always reconnect and send the OFF. Still **untested**: whether a
+hold that's *already running* keeps the spoof through the toggle (the owner chose no hold for this
+run). `fly` now starts each hold before the toggle and keeps it running through it, so that's the
+case a real run exercises. Details: `docs/research/no-xcode-speed-sim.md` → "Opening a URL".
 
 ## Components
 
@@ -114,6 +124,7 @@ is the reference; other cities are copies with swapped coordinates.
 4. On-device dry run (no 2nd member), then the real run with a 2nd member watching for the push.
 
 ## Open on-device gates (carried from research)
-- `flight-tunnel-survives-airplane-mode` (NEW — Step 0, gates the design).
+- `flight-tunnel-survives-airplane-mode` (Step 0): new tunnels over the cable **pass** (2026-11-21);
+  a running hold keeping the spoof through the toggle is still open.
 - `geofence-crossing-required`, `geofence-dwell-latency` (does the drive-in fire the push; how long).
 - `flight-altitude-hard-gate` (bonus: does the literal landing push fire).
