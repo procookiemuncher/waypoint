@@ -69,7 +69,7 @@ still reaches the phone in airplane mode), not over Wi-Fi pairing.
 
 ```
 mac-version/       Mac launchers (spoof, drive, fly, setup), the Waypoint window (app.py), release/
-windows-version/   Windows launchers (spoof, fly, setup)
+windows-version/   Windows launchers (spoof, drive, fly, setup, waypoint), the Waypoint window (app.py)
 core/              shared engine: spoof.py, routes/, backend/ (server, session, device, drive,
                    movement/, life360/), tools/, tests/, web/, build/ (generated, ignored)
 docs/              design docs + research
@@ -125,7 +125,7 @@ transport detail in the adapter makes a future break a one-file fix.
 
 ### Launchers
 
-Per platform: `windows-version/` (`spoof.cmd`, `fly.cmd`, `setup.cmd`) and `mac-version/`
+Per platform: `windows-version/` (`spoof.cmd`, `drive.cmd`, `fly.cmd`, `setup.cmd`) and `mac-version/`
 (`spoof.command`, `drive.command`, `fly.command`, `setup.command`). Each folder has a README.
 Needs the `.venv`, the Apple Mobile Device Service (Windows only), and the phone **unlocked**
 with Developer Mode on.
@@ -162,8 +162,11 @@ with Developer Mode on.
   the phone must pass the confirm step, keep it that way.**
 - **New static JS** must be added to `MINIFY_JS` in `mac-version/release/stage_assets.py`, and
   use single-line strings only (rjsmin breaks multiline ones; the build `node --check`s output).
-- **Windows** should be able to run `core/backend/server.py` in a browser. **Untested**,
-  including `Job.stop()`'s Windows path (writes ENTER to pmd3's stdin).
+- **Windows:** `windows-version\waypoint.cmd` opens the same page in a pywebview window (Edge
+  WebView2), under pythonw, log in `%LOCALAPPDATA%\Waypoint\Waypoint.log`. The titlebar drags via
+  `WM_NCLBUTTONDOWN`/`HTCAPTION`. Close clears the phone like the Mac. No splash, updater or
+  release build. **Dry run only so far**; `Job.stop()` on Windows writes ENTER to pmd3's stdin
+  (the dry-run stand-in does the same), untested against real pmd3.
 - **Force-quit / kill -9 leaves the pmd3 child holding the spoof** (normal close, Cmd+Q and
   SIGTERM all clear). Recover with `spoof clear` + `drive.command --clear`.
 
