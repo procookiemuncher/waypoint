@@ -15,6 +15,7 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Airplane mode is pmd3 now (11-21)**, Mac + Windows: `CoreDevice.airplane(on)` runs the phone's Shortcuts, `fly` toggles it itself (owner confirms), `fly airplane on|off`. Nothing calls devicectl any more.
 
 **Open:**
+- **Active job: Life360's "landed" flight push** (owner's goal, 11-21). Handoff with the plan: `docs/handoff/flight-push.md`. `fly nyc` can't do it (DVT sim, speed −1); the flight test has to be CoreDevice.
 - Owner opens the Dock app on the Mac and looks at the new map (WKWebView) before the next release.
 - Never tested: a compiled build moving the pin on a real phone, a Mac with no Xcode, Intel Macs, a Windows installer (none yet).
 - `fly` Step 0, hold half: does a running hold keep the spoof through the airplane toggle? Then a full `fly nyc` run.
@@ -40,6 +41,12 @@ oldest to `docs/progress-archive.md` as one-liners.
 - Not in the app (fly has no API), noted in ROADMAP path 2. No release.
 - **Not tested:** a full `fly nyc` run, a running hold through the toggle, any of it on the Mac.
 - Next: Step 0 hold half (hold a point, toggle, owner checks Maps), then a real flight with a second member watching.
+- Later the same day, the owner picked the goal: **Life360's "landed" flight push**, not the drive and not the geofence arrival. Worked out:
+  - `fly`'s DVT drives report speed −1, so they can never pass the >100 mph gate. The flight test has to be CoreDevice.
+  - pmd3 has screenshot commands for the phone (untested on iOS 27).
+  - The Observer can't see pushes and has no token on this PC.
+  - An Xcode simulator can't run Life360, so there's no "other phone" without hardware. The owner has a spare iPhone (Lightning; needs iOS 17+) to set up as a test traveler.
+  - The owner OK'd static analysis of Life360's Android app. Plan + rules: `docs/handoff/flight-push.md`.
 
 ---
 
