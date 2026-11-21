@@ -270,21 +270,22 @@ reasoning intact, don't shred briefs into key-value dumps.
 - Commit messages read like a human wrote them. **No AI attribution** (no `Co-Authored-By`, no
   "Generated with" trailer). Commit and push after every meaningful change. Never force-push or
   rewrite pushed history without asking.
-- Identity: `procookiemuncher <thegoatcodercookie@gmail.com>`. Remote:
-  `git@github.com:procookiemuncher/vida-360.git`.
-- **This machine has two GitHub identities.** The default SSH key is a different account
-  (`juanmendoza-dev`) that can't see this private repo, so an un-pinned push fails with
-  `ERROR: Repository not found`. `~/.ssh/vida360_signing` is registered on procookiemuncher as
-  both Authentication and Signing key (`SHA256:aB2iV8fKwRIHqgN0ztNl7DOHN/sacv6VMbTcazbxDEg`).
-  "Verified" also needs the email verified on that account.
+- **Commit as `juanmendoza <juanmendoza6159@gmail.com>`** (GitHub `juanmendoza-dev`), since
+  2026-11-20. The owner spreads the history across both accounts; older commits were split
+  between them with a rewrite (`backup-before-split` holds the pre-rewrite history).
+- Signing key: `~/.ssh/juanmendoza_signing`, registered on juanmendoza-dev as a Signing key
+  (`SHA256:W1yLj6HBCJLwUnER5T0CfgmHjGBKOH0lMuG89z64Hfw`), so commits show "Verified".
+  `procookiemuncher` (`~/.ssh/vida360_signing`, `SHA256:aB2iV8fKwRIHqgN0ztNl7DOHN/sacv6VMbTcazbxDEg`)
+  is the other identity; juanmendoza-dev has push access to the repo too.
+- Remote: `procookiemuncher/waypoint` on GitHub. The Windows clone pushes over HTTPS through
+  `gh auth git-credential`. Over SSH the default key is juanmendoza-dev's.
 
 Repo-local config (once, after a clone):
 
 ```
-git config user.name  "procookiemuncher"
-git config user.email "thegoatcodercookie@gmail.com"
+git config user.name  "juanmendoza"
+git config user.email "juanmendoza6159@gmail.com"
 git config commit.gpgsign true
 git config gpg.format ssh
-git config user.signingkey ~/.ssh/vida360_signing.pub
-git config core.sshCommand "ssh -i ~/.ssh/vida360_signing -o IdentitiesOnly=yes"
+git config user.signingkey ~/.ssh/juanmendoza_signing.pub
 ```
