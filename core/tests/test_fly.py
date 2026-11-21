@@ -61,6 +61,14 @@ class TestAirplaneStep(unittest.TestCase):
         self.assertIn("by hand", asked[0])
 
 
+class TestDryRun(unittest.TestCase):
+    def test_play_doesnt_touch_the_phone(self):
+        with mock.patch.object(fly, "DRY_RUN", True), mock.patch.object(fly, "pmd") as pmd, \
+                mock.patch("builtins.print"):
+            fly.play("/x/mia-departure.gpx")
+        pmd.assert_not_called()
+
+
 class TestTrip(unittest.TestCase):
     TRIP = {"label": "test", "depart_route": "a", "depart_hold": (1.0, 2.0),
             "arrive_hold": (3.0, 4.0), "arrive_route": "b"}

@@ -44,7 +44,7 @@ sys.path.insert(0, ROOT)                       # make `backend` + spoof importab
 
 # Reuse the transport glue + route builder already proven in spoof.py — no duplicated pmd calls.
 from spoof import pmd, ensure_mounted, build_gpx, ROUTES_DIR  # noqa: E402
-from backend.device import CoreDevice, Pmd3  # noqa: E402
+from backend.device import DRY_RUN, CoreDevice, Pmd3  # noqa: E402
 
 # A trip is: drive to the departure airport, hold; (airplane ON); jump to the arrival airport,
 # hold; (airplane OFF); drive into the destination Place. Coords are (lat, lon).
@@ -75,6 +75,9 @@ def hold(lat, lon):
 
 
 def play(gpx):
+    if DRY_RUN:   # the holds + toggles are dry too (backend.device), so a dry fly touches nothing
+        print(f"  [dry run] play {os.path.basename(gpx)}")
+        return
     pmd("developer", "dvt", "simulate-location", "play", "--userspace", gpx)
 
 
@@ -83,8 +86,8 @@ def airplane(on, cd):
     only says it took the launch. A failed send or anything but a yes means doing it by hand."""
     state = "ON" if on else "OFF"
     if cd.airplane(on, _pmd_line):
-        seen = "the airplane icon showing" if on else "Wi-Fi and cellular back"
-        if input(f"  Sent. Is {seen} on the phone? [y/n] ").strip().lower() in ("y", "yes"):
+        ask = "Is the airplane icon showing" if on else "Are Wi-Fi and cellular back"
+        if input(f"  Sent. {ask} on the phone? [y/n] ").strip().lower() in ("y", "yes"):
             return
     else:
         print("  Couldn't send it to the phone.")
@@ -113,7 +116,8 @@ def run_trip(trip):
     print("   - Phone on the CABLE + unlocked, Developer Mode on.")
     input("\n  Press ENTER to begin the departure drive...")
 
-    ensure_mounted()
+    if not DRY_RUN:
+        ensure_mounted()
     cd, job = CoreDevice(), None
     try:
         # Leg 1 — drive to the departure airport, then hold there (phone still ONLINE).
