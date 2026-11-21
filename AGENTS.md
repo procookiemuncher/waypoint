@@ -167,8 +167,9 @@ with Developer Mode on.
 - **Command palette:** ⌘K / ctrl+K, `core/web/static/palette.js`. go / play / pin / open / stop.
   `go` geocodes an address (`/api/geocode`, Photon) and drops a movable pin. **Anything that moves
   the phone must pass the confirm step, keep it that way.**
-- **New static JS** must be added to `MINIFY_JS` in `mac-version/release/stage_assets.py`, and
-  use single-line strings only (rjsmin breaks multiline ones; the build `node --check`s output).
+- **New static JS of our own** must be added to `MINIFY_JS` in `mac-version/release/stage_assets.py`,
+  and use single-line strings only (rjsmin breaks multiline ones; the build `node --check`s output).
+  Third-party `leaflet/` and `maplibre/` are already minified and must stay out of it.
 - **Windows:** `windows-version\waypoint.cmd` opens the same page in a pywebview window (Edge
   WebView2), under pythonw, log in `%LOCALAPPDATA%\Waypoint\Waypoint.log`. The titlebar drags via
   `WM_NCLBUTTONDOWN`/`HTCAPTION`. Close clears the phone like the Mac. No splash, updater or
