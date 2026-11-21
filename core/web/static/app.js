@@ -131,28 +131,33 @@ function setAccent(hex){
 }
 
 /* ============ MAP ============ */
-const TILE_URL='/tiles/{z}/{x}/{y}{r}.png';   // the server sends these on to Stadia with the API key
+// OpenFreeMap's vector tiles (free, no key, no rate limit) in our colours, see tools/build_map_style.py
+const MAP_STYLE='static/map-style.json';
 let map, tilesReady=false;
 let marker=null, lineDim=null, lineGlow=null, lineDone=null, lineHead=null;   // live layers
 let preview=null, pinCandidate=null;                           // selection layers
 function initMap(){
-  map = L.map('map', { zoomControl:false, attributionControl:true, zoomSnap:.5 })
+  map = L.map('map', { zoomControl:false, attributionControl:true, zoomSnap:.5, maxZoom:20 })
     .setView([25.7617,-80.1918], 13);
   L.control.zoom({ position:'bottomright' }).addTo(map);
   // the blurred route glow gets its own layer under the lines, so redrawing the line as the
   // marker moves doesn't re-blur it every frame
   map.createPane('glow').style.zIndex=399;
-  // Stadia's dark style (CARTO wants an API key now)
-  const tiles = L.tileLayer(TILE_URL, {
-    attribution:'© Stadia Maps © OpenMapTiles © OpenStreetMap', maxZoom:20,
-    // every zoom level a flight passes through was costing tiles, against a rate limit without a key
-    updateWhenZooming:false,
-  });
-  tiles.once('load', ()=>{ tilesReady=true; });
-  // only after the page's load event: pywebview keeps the window black until load fires, and
-  // load waits on every image, so internet tiles on a slow cold start held the whole app back
-  if(document.readyState==='complete') tiles.addTo(map);
-  else window.addEventListener('load', ()=>tiles.addTo(map), { once:true });
+  // MapLibre draws the map in Leaflet's tile pane (so the tile filter in app.css still applies),
+  // everything on top stays Leaflet. customAttribution keeps the credit plain text, like before.
+  const tiles = L.maplibreGL({ style:MAP_STYLE,
+    attributionControl:{ customAttribution:'© OpenFreeMap © OpenMapTiles © OpenStreetMap' } });
+  const show = ()=>{
+    tiles.addTo(map);
+    // ready = a tile actually arrived. MapLibre's 'load' fires offline too (the style is local)
+    const gl = tiles.getMaplibreMap();
+    const arrived = e=>{ if(e.tile){ tilesReady=true; gl.off('sourcedata', arrived); } };
+    gl.on('sourcedata', arrived);
+  };
+  // only after the page's load event: pywebview keeps the window black until load fires, so the
+  // map's startup work shouldn't hold the whole app back on a slow cold start
+  if(document.readyState==='complete') show();
+  else window.addEventListener('load', show, { once:true });
   // the border light + frosted HUDs repaint every frame; pause them while the map moves
   map.on('movestart', ()=> document.body.classList.add('panning'));
   map.on('moveend', ()=> document.body.classList.remove('panning'));
