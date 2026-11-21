@@ -23,6 +23,9 @@ document.getElementById('titlebar').addEventListener('mousedown', e=>{
 
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = id => document.getElementById(id);
+// shortcut labels: ⌘ on a Mac, Ctrl+ everywhere else (the keys themselves already take either)
+const MOD = /Mac/.test(navigator.platform) ? '⌘' : 'Ctrl+';
+if(MOD!=='⌘') $('key-hint').querySelector('kbd').textContent = MOD+'V';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ============ API ============ */
@@ -676,7 +679,7 @@ const kindLabel = p => p.kind ? cap(p.kind) : p.saved ? 'Saved place' : 'Place';
 
 /* ---- pieces ---- */
 const UI = {
-  search: () => `<button class="ui-search" data-act="search" title="Search (⌘K)" aria-label="Search, ⌘K">${icon('search',16)}<span>Search</span><kbd>⌘K</kbd></button>`,
+  search: () => `<button class="ui-search" data-act="search" title="Search (${MOD}K)" aria-label="Search, ${MOD}K">${icon('search',16)}<span>Search</span><kbd>${MOD}K</kbd></button>`,
   engines(){ const cur=selEngine(); return `<div class="ui-seg" role="group" aria-label="Engine">${[...availableEngines()].sort((a,b)=>(b.id==='drive')-(a.id==='drive')).map(e=>`<button data-engine="${esc(e.id)}" class="${e.id===cur?'on':''}" aria-pressed="${e.id===cur}" title="${e.real_speed ? 'Real speed, Life360 shows mph and the car' : 'Position only, Life360 shows 0 mph'}">${esc(e.label)}</button>`).join('')}</div>`; },
   mph: () => selEngine()!=='drive' ? '' : `<label class="ui-mph" title="Speed for Drive, blank for the route's own"><input data-mph type="number" min="1" max="200" step="1" placeholder="Auto" value="${esc(mphValue)}" aria-label="Speed in mph, blank for the route's own"><span>mph</span></label>`,
   note: () => `<p class="ui-note" data-enote>${esc(engineNote())}</p>`,
