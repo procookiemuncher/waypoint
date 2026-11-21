@@ -22,6 +22,7 @@ Old PROGRESS.md entries, boiled down to one line each. The full text is in git h
 
 ## 2026-11
 
+- 11-18 Research + probe for dropping Xcode: devicectl's speed sim is phone-side (`dtlocationd`, RSD `com.apple.coredevice.locationservice`), pmd3 11.59 looked like it fixed the ApBoardID mount crash. `probe_coredevice_location.py` + `probe-no-xcode.command`, nothing on the phone yet.
 - 11-04 Release app crashed every 4 s (pmd3 child segfault via inquirer3/editor under Nuitka), fixed by stubbing `editor`. Dock app became the keyless dev build with a DEV BUILD badge.
 - 11-02 Stadia API key for map tiles via `/tiles/` redirect (`tiles.py`). Key in root `.env`, not in release builds.
 - 11-02 "Account limit exceeded" on the map = Stadia keyless rate limit. `updateWhenZooming:false` cut tile use.

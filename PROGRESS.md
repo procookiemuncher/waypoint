@@ -12,16 +12,34 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Map:** OpenFreeMap vector tiles through MapLibre (11-21), no key or rate limit. Checked in Chrome and the Windows WebView2 window, not the Mac window yet. Ships with the next release.
 - **Windows:** Waypoint window runs from the repo (`windows-version\waypoint.cmd`, 11-20) and works with the phone (pin, Drive, Stop, quit clears). Life360 shows mph + car from a Windows Drive run.
 - **Phone is on iOS 27.2.1** now (was 27.0.1); Developer Mode survived, pmd3 11.59 still mounts and drives.
+- **Airplane mode is pmd3 now (11-21)**, Mac + Windows: `CoreDevice.airplane(on)` runs the phone's Shortcuts, `fly` toggles it itself (owner confirms), `fly airplane on|off`. Nothing calls devicectl any more.
 
 **Open:**
 - Owner opens the Dock app on the Mac and looks at the new map (WKWebView) before the next release.
 - Never tested: a compiled build moving the pin on a real phone, a Mac with no Xcode, Intel Macs, a Windows installer (none yet).
-- Airplane-mode Shortcut is the last devicectl call. Check pmd3 `core-device launch-application`.
+- `fly` Step 0, hold half: does a running hold keep the spoof through the airplane toggle? Then a full `fly nyc` run.
+- `fly` on the Mac: pmd3's DVT `play` waits for Ctrl+C after the route, which also cancels fly (from pmd3's source, not run).
 - `fly` has no API in the app (launcher only), so it's not in the palette.
 - Globe effects (stars/depth/night/rim/UFOs) are switches in the prototype, none picked yet.
 - CRT scanlines sit over the new panel. Keep or drop?
 - Old release zips pile up in Vercel Blob (~70 MB each).
 - `isSimulatedBySoftware` still untested (see AGENTS.md).
+
+---
+
+## 2026-11-21 — Airplane mode without Xcode (Windows)
+
+- Task: toggle airplane mode without devicectl so it works on Windows (ROADMAP path 1, the last devicectl call).
+- **Found, on the phone from Windows:** no CoreDevice feature opens a URL (85 RSD services; appservice's 15 features, none for URLs). What works: `launchapplication` for `com.apple.shortcuts` with `options.payloadURL = {"relative": url}`, devicectl's `--payload-url` field. Shape from DIYgod/pinky's Go driver. pmd3's `launch_application` can't carry it, so our helper builds the input. No pmd3 upgrade. devicectl itself wasn't captured (Windows).
+- Harmless checks first: `open-shortcut?name=vida-airplane-on` opened the editor; a throwaway `vida-ping` (Vibrate) Shortcut ran silently, no prompt, from cold and with Shortcuts open, terminateExisting false and true (3/3 in a row with true).
+- **Gate 0, transport half, passed:** with airplane mode on and Wi-Fi off, usbmuxd still lists the phone on USB, tunnels come up in ~0.23 s, CoreDevice calls work, airplane-off goes out the same way. 3 on/off runs, the last through the built `fly airplane on|off`. A second tunnel works while another process holds one open. **Hold half untested** (owner chose no hold).
+- The launch reply is a processToken that comes back before the Shortcut runs, so success = "sent", not "toggled".
+- Built: `device.py` `cd_launch_input`, helper action `openurl` (on the appservice), `CoreDevice.open_url` / `airplane(on)`, dry-run stand-in, terminateExisting on. `fly.py`: the airport holds are background `Pmd3.hold` Jobs so each toggle fires while the hold runs; ENTER = take off / land; the owner answers y to confirm the flip, anything else → toggle by hand + ENTER; Ctrl+C lets go of the hold. Tests: 3 new in `test_coredevice.py`, new `test_fly.py` (6). **90 run, 10 skipped.**
+- Found, not fixed (both there before): pmd3 11.59's DVT `play` doesn't exit after the route, it waits for ENTER (Windows) / Ctrl+C (Mac), so on the Mac that Ctrl+C cancels fly (from source, not run). And there's a ~1-2 s gap between DVT processes (drive → airport hold, arrival hold → drive-in) with nothing held while online.
+- Windows: usbmuxd (Apple Devices' `AppleMobileDeviceProcess`) wasn't running. Opening Apple Devices started it; the phone listed only after a replug.
+- Not in the app (fly has no API), noted in ROADMAP path 2. No release.
+- **Not tested:** a full `fly nyc` run, a running hold through the toggle, any of it on the Mac.
+- Next: Step 0 hold half (hold a point, toggle, owner checks Maps), then a real flight with a second member watching.
 
 ---
 
@@ -137,13 +155,3 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Not tested:** the actual Waypoint window on this branch (owner signed off on the Session-level runs), a compiled build moving the pin, Windows at all, a Mac with no Xcode installed (this Mac still has it and CoreDeviceService runs; the unmount test stands in for it).
 - **Seen once:** after clearing the steady route, Maps kept a grey dot on the last point until Location Services was toggled off/on. The next clear (after the varying drive) went back to real GPS fine. Watch for it.
 - Next: rebuild the tester DMG from this, try the window, check `core-device launch-application` for the airplane Shortcut so devicectl can go completely.
-
----
-
-## 2026-11-18 — Can we drop Xcode? (research + probe, not on-device yet)
-
-- Goal: users shouldn't need Xcode. Today it's needed for devicectl (drive speed, pins, clear, lock state, airplane Shortcut) and because pmd3 9.33.1 can't mount the DDI on iOS 27.
-- Found: devicectl's speed sim is a phone-side service (`dtlocationd` → RSD `com.apple.coredevice.locationservice`, feature `simulatelocation`, actions `setsimulatedlocation` / `startlocationsimulation {waypoints, speed, pacing}` / `clearsimulatedlocation`). pmd3 speaks CoreDevice already and has a stub for this service. pmd3 11.59 looks like it fixes the ApBoardID mount crash. Details: docs/research/no-xcode-speed-sim.md.
-- Added `core/tools/probe_coredevice_location.py` + `mac-version/probe-no-xcode.command` (own venv, newest pmd3, app venv untouched). Checked that it installs and starts. Nothing tested on the phone yet, it wasn't connected.
-- If it works, the speed path also works on Windows and drive can move into core.
-- **Next:** reboot phone → run the probe → put the accepted input shapes into device.py → find a pmd3 way to open the `shortcuts://` URL → upgrade pmd3 in the app and get it through the Nuitka build check.
