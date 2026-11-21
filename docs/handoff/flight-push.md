@@ -50,8 +50,18 @@ open question (`flight-altitude-hard-gate`). Nobody has publicly spoofed this pu
 ## Devices
 
 - **Owner's phone** (iPhone19,3, iOS 27.2.1): anything on it moves their pin or toggles airplane mode
-  **in front of their real circle**. **Ask before every on-device action**, screenshots included. When
-  the owner is away, don't touch it at all.
+  **in front of their real circle**.
+  - **Update 2026-11-21 (owner, in chat):** "you are free to do anything you want, you have full access
+    to the phone and you can also use tokens." So no per-action asking any more, **including while the
+    owner is away**. It's still their real account in front of their real circle, so keep the
+    account-safety rules: Ctrl+C / `clear` always leaves the phone on its real location and airplane
+    mode off, at most a couple of fake flights a week, no loops, and put the phone back how you found
+    it. The spare-iPhone + test-circle plan is still the better way to run the flight push; use the
+    owner's phone for harmless checks (screenshots, `availablescenarios`, a hold + toggle).
+  - **Tokens:** the owner OK'd using them. There is **no `.env` on this Windows PC** and I don't have the
+    token. Don't ask for it in chat. Check `.env` here and on the Mac, else the owner runs Method A in
+    OBSERVER_SETUP_AT_HOME.md and saves it. Still never print it, still `--member <the owner>`, still
+    4 s polls.
 - **Spare iPhone** (owner has one, Lightning cable, which is fine). It's not set up yet. To be the
   "traveler" it needs:
   - **iOS 17+** (iPhone XS/XR or newer). iOS 16 and older has no CoreDevice, so there's no speed path.
@@ -65,7 +75,7 @@ open question (`flight-altitude-hard-gate`). Nobody has publicly spoofed this pu
 - An observer the agent can read itself (an Android phone, or an emulator via `adb shell dumpsys
   notification`) was offered. The owner hasn't set one up. Life360 may refuse emulators.
 
-## Work, in order (offline while the owner is away)
+## Work, in order (steps 1, 1b, 2, 3 need no phone and can run while the owner is away)
 
 1. **Static analysis of Life360's Android app.** Owner OK'd it 2026-11-21, knowing Life360's terms
    likely forbid reverse engineering.
@@ -99,6 +109,30 @@ open question (`flight-altitude-hard-gate`). Nobody has publicly spoofed this pu
      take a scenario's contents, not just a name or path? (Apple's scenario plists are full keyed
      CLLocations with Altitude.)
    - If a key turns up, testing it needs a phone. Write it down with the exact input shape.
+   - **Done so far (2026-11-21, strings only, no Ghidra yet).** Tools are installed, hashes checked
+     against GitHub: Ghidra 12.2 in `C:\Users\superCookie\tools\ghidra`, jadx 1.5.7 in
+     `...\tools\jadx\bin\jadx.bat`, Java 24 on PATH. Extracted `dtlocationd` and
+     `CoreDeviceUtilities` (the framework that holds the Swift action/input types) from the
+     Personalized DDI into `C:\Users\superCookie\work` (outside the repo, scratch). Strings dumps are
+     `work\dtl_strings.txt` and `work\cdu_strings.txt`. What they say:
+     - `dtlocationd` is a thin wrapper over CoreLocation's `CLSimulationManager`
+       (`appendSimulatedLocation:`, `startLocationSimulation`, `stopLocationSimulation`,
+       `clearSimulatedLocations`, `setLocationSpeed:`/`Distance:`/`Interval:`, `loadScenarioFromURL:`,
+       `selectScenario:`). Entitlements `com.apple.locationd.simulation` + `preauthorized`.
+     - It builds every point with **`initWithLatitude:longitude:`**, and the only `SimulatedLocation`
+       getters it imports are **`latitude` and `longitude`**. No altitude, course, timestamp or accuracy
+       is read anywhere in `dtlocationd`, and `CoreDeviceUtilities` has **0** hits for altitude,
+       elevation or verticalAccuracy. Speed is one number for the whole `start` run
+       (`StartLocationSimulation.Input.speed`, m/s). So `setsimulatedlocation` / `start` can't carry
+       altitude: **expect the altitude gate to be a wall on this path.**
+     - **Not settled:** `SetLocationScenario.Input` is an enum, `.named(String)` or `.fromURL(URL)`.
+       The phone loads the scenario file itself through `CLSimulationManager`, inside CoreLocation, which
+       is in the dyld shared cache and not in the DDI. Whether a scenario file can carry altitude is
+       unknown. It's the one live altitude lead left. Needs the phone's shared cache (or Apple's
+       scenario docs) plus a test: can the phone reach a URL / file path we control?
+     - Next if continuing: Ghidra on `dtlocationd` (confirm no other `CLLocation` init is reachable),
+       read the `SimulatedLocation` / `Input` field names in `CoreDeviceUtilities`, then try
+       `availablescenarios` on the phone to see what scenarios exist.
 2. **The flight-test tool.** Design it from §5/§5b, adjusted by step 1's findings. CoreDevice only:
    - hold within 100 m of the airport A terminal, 20–40 min of dwell, online;
    - taxi, then a takeoff roll along a **real runway** (coordinates from OSM/Overpass, not memory) to
