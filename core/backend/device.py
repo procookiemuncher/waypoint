@@ -38,7 +38,8 @@ def _dry(cmd: list[str], hold: bool, label: str | None = None) -> list[str]:
     """Stand-in for a phone command: print what would have run, and stay alive if it's a hold."""
     code = f"print('[dry run] ' + {label or ' '.join(cmd[2:])!r}, flush=True)"
     if hold:
-        code += "\nimport time\ntry:\n    while True: time.sleep(1)\nexcept KeyboardInterrupt: pass"
+        # held until Job.stop(): SIGINT on Mac, ENTER on stdin on Windows (like pmd3)
+        code += "\nimport sys\ntry:\n    sys.stdin.readline()\nexcept KeyboardInterrupt: pass"
     return [sys.executable, "-c", code]
 
 
