@@ -4,16 +4,18 @@ Newest entry on top. After a work session, add a short entry: what changed, what
 what broke, what's next. Keep about the last 10 entries here. When it grows past that, move the
 oldest to `docs/progress-archive.md` as one-liners.
 
-## Current state (2026-11-20)
+## Current state (2026-11-21)
 
-- **App:** Waypoint Mac app. Dock app = keyless dev build, `release.command` = key-gated production build with auto-update. Live release: 0.1.0-beta.2 (build 2), two testers.
+- **App:** Waypoint Mac app. Dock app = keyless dev build, `release.command` = key-gated production build with auto-update. Live release: 0.1.0-beta.2 (build 2, still on Stadia's rate-limited map), two testers.
 - **No Xcode needed:** pmd3 11.59 CoreDevice path does set / route-with-speed / clear. Same on Windows (mph + car confirmed 11-20).
 - **UI:** globe + "Arrival plan" side panel are in the app (11-20), dry-run tested only. Owner hasn't tried it in the Dock app yet.
+- **Map:** OpenFreeMap vector tiles through MapLibre (11-21), no key or rate limit. Checked in Chrome and the Windows WebView2 window, not the Mac window yet. Ships with the next release.
 - **Windows:** Waypoint window runs from the repo (`windows-version\waypoint.cmd`, 11-20) and works with the phone (pin, Drive, Stop, quit clears). Life360 shows mph + car from a Windows Drive run.
 - **Phone is on iOS 27.2.1** now (was 27.0.1); Developer Mode survived, pmd3 11.59 still mounts and drives.
 
 **Open:**
-- Stadia key isn't in release builds, so testers hit the map rate limit. Proxy via the key dashboard or bake it in.
+- Owner opens the Dock app on the Mac and looks at the new map (WKWebView) before the next release.
+- The old Stadia redirect (`/tiles/` in server.py, `tiles.py`, `test_tiles.py`) is unused now. Delete once the owner OKs it.
 - Never tested: a compiled build moving the pin on a real phone, a Mac with no Xcode, Intel Macs, a Windows installer (none yet).
 - Airplane-mode Shortcut is the last devicectl call. Check pmd3 `core-device launch-application`.
 - `fly` has no API in the app (launcher only), so it's not in the palette.
@@ -21,6 +23,21 @@ oldest to `docs/progress-archive.md` as one-liners.
 - CRT scanlines sit over the new panel. Keep or drop?
 - Old release zips pile up in Vercel Blob (~70 MB each).
 - `isSimulatedBySoftware` still untested (see AGENTS.md).
+
+---
+
+## 2026-11-21 — Map off Stadia, onto OpenFreeMap
+
+- Task was getting the Stadia key into release builds. Checked first: Stadia's Free plan is non-commercial (Starter $20/mo for a paid app), desktop apps use an API key with no domain setup, and their limits page bans proxying tiles (so the Vercel proxy idea was out on terms too). Owner asked for a free alternative instead. Only OpenFreeMap is free + commercial + keyless + uncapped. CARTO gives 1M free commercial tiles but its key "must not be shared", MapTiler/Protomaps free tiers are non-commercial. OpenFreeMap is vector only, so the app draws the map itself.
+- Side-by-side test page (throwaway, scratch dir): stock OpenFreeMap dark was much darker and flatter than Stadia; a quick recolour got close. Owner picked it.
+- Built: MapLibre GL 5.24.1 + `leaflet-maplibre-gl` 0.1.4 vendored in `core/web/static/maplibre/` (copied untouched into the release, like Leaflet). `core/tools/build_map_style.py` → `core/web/static/map-style.json` (their dark style + the test page's colours; it also drops 3 images their sprite doesn't have; stops if a recoloured layer disappears upstream). `app.js` swaps the one `L.tileLayer` for `L.maplibreGL`; `maxZoom:20` moved onto the map. `tilesReady` now waits for a real tile, because MapLibre's `load` fired with OpenFreeMap blocked and the card said "Tiles loaded".
+- No dashboard change, no Vercel env var, no Stadia account needed.
+- **Tested (dry run):** Chrome headless (software GL): map ready ~2.7-3.9 s after page load (Stadia raster was ~0.6 s), boot step still `[ OK ]` since it runs ~11 s in; blocked OpenFreeMap → `[ OFFLINE ]` + card "Loading…" (same as Stadia blocked); France / Paris z15 / Miami route preview, route lines sit on the same roads as on Stadia; resize; license-gated server against a local `/api/check` stub (map files 200 while the API is 402, map full size after unlock). **Windows WebView2 window** (RTX 2060, D3D11): map draws, Paris → Saint-Tropez flyTo worst frame 7 ms, no console errors, closes cleanly. Release staging (`stage_assets.py` to a temp dir): minified app.js passes `node --check`, maplibre + style copied as is.
+- Tests: `test_map_style.py` (7), locked-state test in `test_license.py` also asks for the map files. 87 run, 10 skipped (updater, Mac only).
+- **Not tested:** the Mac window (WKWebView, WebGL should be fine), a compiled release build, the look next to Stadia on a real Retina screen.
+- Found: `stage_assets.py` opens files without `encoding=`, so on Windows it dies on cp1252 (fine on the Mac; `PYTHONUTF8=1` works). Matters only when Windows gets a release build.
+- Not in yet vs Stadia: road-number shields (A4201, I-95), slightly smaller labels. Both are style edits in the tool if wanted.
+- Next: owner looks at it in the Dock app, then OKs deleting the old Stadia redirect.
 
 ---
 

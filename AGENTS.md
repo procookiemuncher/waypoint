@@ -120,6 +120,7 @@ transport detail in the adapter makes a future break a one-file fix.
 | All transport glue in one adapter module | Resilience against Apple's transport churn. |
 | Everything stays local | A hosted server can't reach a USB-connected phone. |
 | No paid Apple developer account (yet) | Testers use "Open Anyway" or `xattr -dr com.apple.quarantine`. |
+| OpenFreeMap vector map, not Stadia/CARTO/MapTiler | Only free host that allows a paid app with no key or cap. Stadia/MapTiler free = non-commercial, CARTO's key can't be shared across installs, proxying tiles is banned by Stadia and CARTO. |
 
 ## Running it
 
@@ -149,10 +150,16 @@ with Developer Mode on.
 
 - **`VIDA_DRY_RUN=1`** makes every phone command a printed no-op. **Use it for UI work.**
   `VIDA_DRY_PHONE=slow` fakes a late, locked phone; `=none` a phone that never shows.
-- **Map tiles:** Stadia `alidade_smooth_dark`. The page asks `/tiles/...`, `tiles.py` redirects
-  to Stadia with `VIDA_STADIA_KEY` from the env or the gitignored root `.env`. **No key = keyless
-  localhost access, strictly rate limited ("Account limit exceeded" on the map). Release builds
-  have no key yet.**
+- **Map tiles:** [OpenFreeMap](https://openfreemap.org) vector tiles (free, commercial use OK, no
+  key, no rate limit), drawn by MapLibre GL 5.24.1 through the `leaflet-maplibre-gl` plugin, both
+  vendored in `core/web/static/maplibre/`. MapLibre draws in Leaflet's tile pane (the tile filter
+  in app.css still applies); markers, routes and pins stay Leaflet. The look is
+  `core/web/static/map-style.json`, made by `core/tools/build_map_style.py` (their dark style,
+  recoloured toward the old Stadia map). Change colours there and rerun, don't hand-edit the JSON.
+  `tilesReady` waits for a real tile (MapLibre's `load` fires offline too). Release builds need
+  nothing extra. Risk: one maintainer, no SLA; the tiles are OpenMapTiles schema, so moving to
+  another host is a new source URL in the tool. MapLibre stays on 5.x (6 is ESM-only + a separate
+  worker file).
 - **Connect screen** (after the boot log) waits for plugged in + unlocked + DDI, all in
   `Session.phone()`/`_probe()`. Unlocked comes from lockdown `PasswordProtected` (plain USB, no
   tunnel, ~0.6 s; CoreDevice's `getlockstate` is refused on iOS 27). `mounter auto-mount` runs

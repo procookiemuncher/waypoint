@@ -12,7 +12,7 @@ platform-specific — if something only works on one OS, it goes in that version
 | `backend/life360/` | Read-only Life360 client used by the Observer. |
 | `tools/` | `fly.py` (flight choreographer), `observe.py` + `correlate.py` (Observer), `build_route.py`, `play_route.py`, `gen_destinations.py` (catalog → routes). |
 | `tests/` | Offline unit tests: `.venv/bin/python core/tests/test_speed_planning.py` |
-| `web/` | The Waypoint app page (Leaflet map + panel), served by `backend/server.py`. Leaflet + fonts vendored, map tiles from Stadia. |
+| `web/` | The Waypoint app page (Leaflet map + panel), served by `backend/server.py`. Leaflet, MapLibre + fonts vendored, map tiles from OpenFreeMap (look: `web/static/map-style.json` from `tools/build_map_style.py`). |
 | `backend/server.py` | Local FastAPI server for the app (127.0.0.1 only). Run bare: `.venv/bin/python core/backend/server.py` and open the URL. |
 | `backend/session.py` · `device.py` | One phone job at a time + the pmd3 adapter (the only place that shells out to pymobiledevice3). `VIDA_DRY_RUN=1` = touch nothing. |
 | `backend/routes.py` · `places.py` · `places.json` | Route list/summary/GPX build shared by spoof.py and the app; static presets. |

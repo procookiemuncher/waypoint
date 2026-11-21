@@ -62,8 +62,9 @@ Windows has the launchers (spoof, drive, fly, setup) and the Waypoint window (`w
 
 ### 3. Start getting users
 
-- [ ] **Map key for release builds.** Testers are on Stadia's keyless, rate-limited access.
-  Proxy through the key dashboard or bake it in; check Stadia's plan allows a paid product.
+- [x] **Map without a rate limit (2026-11-21).** Stadia's free plan is non-commercial and keyless
+  access is rate limited, so the map moved to OpenFreeMap vector tiles (free, commercial OK, no
+  key). Nothing for release builds to carry. Owner still has to see it in the Mac Dock app.
 - [ ] Prove a compiled build moves the pin on a real phone (only dry runs + read-only calls so
   far). Also: a Mac with no Xcode installed, and the update swap after a normal window quit.
 - [ ] Intel Macs: the release build is arm64 only.
