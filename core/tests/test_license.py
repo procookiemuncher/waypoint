@@ -143,6 +143,10 @@ class ServerGate(unittest.TestCase):
     def test_locked_still_serves_page_key_check_and_stop(self):
         self.assertEqual(self.code("/"), 200)
         self.assertEqual(self.code("/static/app.js"), 200)
+        # the map starts loading behind the key screen
+        for path in ("/static/map-style.json", "/static/maplibre/maplibre-gl.js",
+                     "/static/maplibre/leaflet-maplibre-gl.js", "/static/maplibre/maplibre-gl.css"):
+            self.assertEqual(self.code(path), 200, path)
         self.assertEqual(self.code("/api/license"), 200)
         self.assertEqual(self.code("/api/stop", "POST"), 200)
 
