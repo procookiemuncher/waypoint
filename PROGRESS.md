@@ -9,6 +9,7 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **App:** Waypoint Mac app. Dock app = keyless dev build, `release.command` = key-gated production build with auto-update. Live release: 0.1.0-beta.2 (build 2), two testers.
 - **No Xcode needed:** pmd3 11.59 CoreDevice path does set / route-with-speed / clear. Drive is in core, so Windows should get real speed too (untested).
 - **UI:** globe + "Arrival plan" side panel are in the app (11-20), dry-run tested only. Owner hasn't tried it in the Dock app yet.
+- **Windows:** Waypoint window runs from the repo (`windows-version\waypoint.cmd`, 11-20), dry run only. Real phone on Windows is next.
 
 **Open:**
 - Stadia key isn't in release builds, so testers hit the map rate limit. Proxy via the key dashboard or bake it in.
@@ -19,6 +20,19 @@ oldest to `docs/progress-archive.md` as one-liners.
 - CRT scanlines sit over the new panel. Keep or drop?
 - Old release zips pile up in Vercel Blob (~70 MB each).
 - `isSimulatedBySoftware` still untested (see AGENTS.md).
+
+---
+
+## 2026-11-20 — Windows: the Waypoint window
+
+- Owner's goal today: a working Windows version, run from the repo folder (no installer). Checked this PC first: Apple Devices app installed, usbmuxd up, `.venv` on 3.12 + pmd3 11.59, test suite 80 run / 10 skipped (updater, Mac only), `server.py` serves the page in dry run with both engines.
+- New `windows-version/app.py`: same flow as the Mac app (uvicorn thread, frameless pywebview window on Edge WebView2, `use_placer(drive)`, closing hides, clears the phone, then exits). Titlebar drag = `ReleaseCapture` + `WM_NCLBUTTONDOWN`/`HTCAPTION` on the form's thread, so it's native and the window follows the cursor exactly. No splash (it's AppKit), no updater. Under pythonw stdout goes to `%LOCALAPPDATA%\Waypoint\Waypoint.log`; pmd3 run from pythonw still returns its output.
+- `waypoint.cmd` (pythonw, no console) and `drive.cmd`. pywebview + pythonnet + clr-loader pinned for win32 in requirements.txt.
+- Dry-run hold stand-in now waits on stdin, so Windows' Stop (ENTER) ends it at once; it used to sit 5 s then get killed. Mac's SIGINT still ends it.
+- Page shows Ctrl+K / Ctrl+V off a Mac (was the cmd symbol).
+- **Tested, dry run, on this PC:** window opens with globe + panel, Ctrl+K opens the palette in WebView2, titlebar drag moved the window exactly with the mouse, page x and WM_CLOSE both exit in 2-3 s, pin + route + Stop through the API (Stop ~60 ms).
+- **Not tested:** a real phone on Windows (none plugged in), the key gate, the window on a high-DPI scale other than this one.
+- Next: plug in the phone, `drive.cmd emoji-test` for mph + car, then the window with the phone.
 
 ---
 
