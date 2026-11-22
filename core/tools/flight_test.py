@@ -38,6 +38,7 @@ left offline or on a fake location.
 
 Usage:
   python core/tools/flight_test.py              # MIA -> MCO flight-detection test
+  python core/tools/flight_test.py --wait 10 --land-wait 10   # longer holds at MIA / MCO (default 5 / 5 min)
   python core/tools/flight_test.py --quick      # short dwells/waits, for dry runs
   python core/tools/flight_test.py geofence     # fallback geofence arrival at MCO
   python core/tools/flight_test.py airplane on  # just toggle airplane mode (on|off)
@@ -209,8 +210,10 @@ def _mount_or_die():
         sys.exit(f"Phone not ready ({state}): {msg}")
 
 
-def run_flight_test(quick: bool = False, cd: CoreDevice | None = None):
-    """Execute the MIA -> MCO flight-detection test."""
+def run_flight_test(quick: bool = False, cd: CoreDevice | None = None,
+                    wait_min: float = 5, land_min: float = 5):
+    """Execute the MIA -> MCO flight-detection test. wait_min = minutes at the MIA terminal before
+    take-off, land_min = minutes held at MCO after reconnecting."""
     cd = cd or CoreDevice()
     print("\n" + "=" * 68)
     print("  vida-360: Life360 Flight Detection 'Landed' Push Test")
@@ -238,7 +241,7 @@ def run_flight_test(quick: bool = False, cd: CoreDevice | None = None):
         d_mia = runway_distance(MIA_RWY, *MIA_TERMINAL)
         print(f"\n> [2/6] Holding at MIA terminal {MIA_TERMINAL} ({d_mia:.0f} m from the 09/27 runway, ONLINE)...")
         cd.hold(*MIA_TERMINAL, _log_line)
-        dwell = 5 if quick else 20 * 60
+        dwell = 5 if quick else round(wait_min * 60)
         print(f"  Dwelling {dwell}s so Life360 settles 'at MIA' and arms the runway candidate...")
         time.sleep(dwell)
         _safe_input("  >> Press ENTER to taxi and take off... << ")
@@ -261,7 +264,8 @@ def run_flight_test(quick: bool = False, cd: CoreDevice | None = None):
         print(f"\n> [4/6] OFFLINE. Spoof moved to MCO landing hold {MCO_LANDING} ({dist_km:.0f} km, "
               f"{d_mco:.0f} m from runway)...")
         cd.hold(*MCO_LANDING, _log_line)
-        print("  Held airside at MCO with no transmission (simulated ~55 min flight).")
+        print(f"  Held airside at MCO with no transmission. Went offline at {time.strftime('%H:%M')}.")
+        print(f"  A real MIA -> MCO flight is ~35-45 min in the air; land around {time.strftime('%H:%M', time.localtime(time.time() + 35 * 60))} or later.")
         _safe_input("  >> Press ENTER to LAND (turns AIRPLANE MODE OFF)... << ")
 
         # Phase 5 — airplane OFF: reconnect uploads the landing fix.
@@ -271,7 +275,7 @@ def run_flight_test(quick: bool = False, cd: CoreDevice | None = None):
         # Phase 6 — post-landing dwell.
         print(f"\n> [6/6] Reconnected at MCO. Holding the landing fix (<=1000 m from runway, 0 mph,")
         print("  altitude 0 <= elev+1000). Watch the 2nd device / observer for the push.")
-        dwell = 5 if quick else 12 * 60
+        dwell = 5 if quick else round(land_min * 60)
         print(f"  Dwelling {dwell}s...")
         time.sleep(dwell)
         print("\n  >> Flight sequence complete. <<")
@@ -335,6 +339,10 @@ def main():
     ap.add_argument("state", nargs="?", choices=["on", "off"], help="state for the 'airplane' command")
     ap.add_argument("--quick", action="store_true", help="short dwells/waits (dry runs)")
     ap.add_argument("--clear", action="store_true", help="clear the location sim and exit")
+    ap.add_argument("--wait", type=float, default=5, metavar="MIN",
+                    help="minutes at the MIA terminal before take-off (default 5)")
+    ap.add_argument("--land-wait", type=float, default=5, metavar="MIN",
+                    help="minutes held at MCO after landing (default 5)")
     args = ap.parse_args()
 
     cd = CoreDevice()
@@ -367,7 +375,7 @@ def main():
         if args.command == "geofence":
             run_geofence_arrival(quick=args.quick, cd=cd)
             return
-        run_flight_test(quick=args.quick, cd=cd)
+        run_flight_test(quick=args.quick, cd=cd, wait_min=args.wait, land_min=args.land_wait)
     except KeyboardInterrupt:
         print("\n> Interrupted — clearing the location sim...")
         cd.clear(_log_line)
