@@ -61,7 +61,7 @@ CHUNK_SPREAD_MPS = 2.5    # cut a chunk early once the rendered speed moved this
 WANDER = (0.95, 1.05)     # cruise drifts within ±5% of the rendered speed (which already varies by road)...
 WANDER_EVERY_S = (30, 60)  # ...picking a new target this often
 MIN_MOVE_MPS = 1.0
-MAX_MOVE_MPS = 33.5       # ~75 mph, whatever the wander does: Life360 flags 80+ as speeding
+MAX_MOVE_MPS = 33.5       # ~75 mph: the wander never pushes past it (Life360 flags 80+ as speeding)
 
 
 def _wander(rng, total_s):
@@ -150,8 +150,9 @@ def plan_chunks(route_path: str, seed=None, log=print):
             if len(near) == 2 and None not in near:
                 speed = (3 * raw[k] + sum(near)) / 5
             secs = c["dist"] / speed if speed > 0 else 0.0
-            speed *= wander(t + secs / 2)
-            c["speed"] = max(MIN_MOVE_MPS, min(MAX_MOVE_MPS, speed))
+            # the wander never takes a chunk over 75 mph; a route written faster (miami-drift) keeps its own
+            speed = min(speed * wander(t + secs / 2), max(MAX_MOVE_MPS, speed))
+            c["speed"] = max(MIN_MOVE_MPS, speed)
             c["secs"] = c.pop("dist") / c["speed"]
             if c["secs"] < 1:   # skip slivers, not worth a phone call
                 continue

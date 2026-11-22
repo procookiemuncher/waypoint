@@ -76,6 +76,20 @@ class DriveChunksTest(unittest.TestCase):
             chunks = self._chunks([], cruise=33.0, meters=6000, seed=seed)
             self.assertLessEqual(max(c["speed"] for c in chunks if c["kind"] == "move"), drive.MAX_MOVE_MPS)
 
+    def test_a_route_written_faster_keeps_its_speed(self):
+        # miami-drift is a steady 80 mph on purpose: the 75 mph ceiling is for the wander, not for it
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = os.path.join(tmp.name, "fast.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"name": "fast", "segments": [{"mode": "drive", "speed_mps": 35.7, "steady": True,
+                                                     "waypoints": _east(8000)}]}, f)
+        chunks = drive.plan_chunks(path, seed=1, log=lambda *_: None)[1]
+        fastest = max(c["speed"] for c in chunks if c["kind"] == "move")
+        self.assertGreater(fastest, 34.0)
+        self.assertLessEqual(fastest, 35.7 + 0.5)
+        self.assertFalse([c for c in chunks if c["kind"] == "stop"])
+
     def test_timeline_and_legs_agree(self):
         chunks = self._chunks([roads.Control(900.0, "light", dwell_s=40.0)])
         self.assertAlmostEqual(drive.chunk_legs(chunks)[-1][1], drive.chunk_timeline(chunks)[-1][0], delta=0.5)

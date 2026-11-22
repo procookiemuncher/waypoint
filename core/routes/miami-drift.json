@@ -6,6 +6,7 @@
       "mode": "drive",
       "speed_mps": 35.7,
       "snap": true,
+      "steady": true,
       "waypoints": [
         [25.78100, -80.19400],
         [25.79300, -80.27800]
