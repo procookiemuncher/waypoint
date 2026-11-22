@@ -297,6 +297,11 @@ reasoning intact, don't shred briefs into key-value dumps.
   (`SHA256:W1yLj6HBCJLwUnER5T0CfgmHjGBKOH0lMuG89z64Hfw`), so commits show "Verified".
   `procookiemuncher` (`~/.ssh/vida360_signing`, `SHA256:aB2iV8fKwRIHqgN0ztNl7DOHN/sacv6VMbTcazbxDEg`)
   is the other identity; juanmendoza-dev has push access to the repo too.
+- **This Mac (2026-11-22):** juanmendoza-dev's key here is `~/.ssh/id_ed25519.pub`
+  (`SHA256:yi/WaqtbeBMlDHY46HPxoLxs7oNbxJWgXhMsEUhHsHA`), a different key than the one above —
+  registered on juanmendoza-dev as the signing key "Mac-waypoint", so commits verify. Repo-local
+  config points at it; on this Mac use that path, not `~/.ssh/juanmendoza_signing` (which isn't
+  here). `~/.ssh/id_ed25519_procookiemuncher.pub` is the procookiemuncher key on this Mac.
 - Remote: `procookiemuncher/waypoint` on GitHub. The Windows clone pushes over HTTPS through
   `gh auth git-credential`. Over SSH the default key is juanmendoza-dev's.
 

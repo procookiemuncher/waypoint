@@ -148,6 +148,15 @@ open question (`flight-altitude-hard-gate`). Nobody has publicly spoofed this pu
      this dense), and whether a *second* altitude gate exists in `k5g.java` before the real
      `/v1/ingest` POST. Doesn't change step 1b's conclusion (no altitude injection path exists
      regardless of which way this sign goes) — it only changes whether that matters.
+   - **Update 2026-11-22 (smali, resolved):** read `smali_classes2/g5g.smali` directly. The landing
+     altitude branch is `if-gtz … :cond_6` on `altitude − (elevation+1000)` → the gate is
+     **`altitude ≤ elevation+1000`**, an upper bound a spoof at altitude 0 clears for free (pass 2
+     was right). `k5g.java` is just the uploader — the `device-flight-landed.v1` event carries only
+     takeoff/landing airport codes + times, **no altitude**, so there is no second gate. The landing
+     path keys off the loose ≤1000 m "nearby runway" record, not a confirmed >100 mph takeoff. Net:
+     on Android every gate is satisfiable at altitude 0; the only open unknowns are iOS-side
+     (`isSimulatedBySoftware`, what iOS reports for a simulated altitude). Full writeup:
+     `life360-flight-detection.md` (2026-11-22 smali update). `landing-altitude-sign` closed.
 2. **The flight-test tool.** Design it from §5/§5b, adjusted by step 1's findings. CoreDevice only:
    - hold within 100 m of the airport A terminal, 20–40 min of dwell, online;
    - taxi, then a takeoff roll along a **real runway** (coordinates from OSM/Overpass, not memory) to
@@ -163,8 +172,17 @@ open question (`flight-altitude-hard-gate`). Nobody has publicly spoofed this pu
    piped answers). Write tests.
    - Optional, needs the owner on the phone: a Shortcut that reports the phone's own altitude/speed
      (§5b.4), run through `CoreDevice.open_url`.
+   - **Done (2026-11-22):** `core/tools/flight_test.py` + launchers (`mac-version/flight-test.command`,
+     `windows-version/flight-test.cmd`). Runway coords are from Life360's own `runways.csv` (not OSM):
+     a stepped roll (45/55/65/75 m/s, every point ≤100 m from the MIA 09/27 centreline, +10 m/s steps
+     for accel >0.5) and a landing hold airside at MCO (405 m from a runway — the main terminal is
+     ~1200 m and misses the ≤1000 m gate). Each leg is played with `play_chunks` so it's held for its
+     own distance/speed; cleanup turns airplane mode back off, then clears. Geometry-checked tests
+     (108 pass) + dry runs across every mode.
 3. **Fallback prep:** an "arrived at <airport>" geofence trip. Drive (CoreDevice, real speed) into a
    saved airport Place and dwell. Dry runs + tests only.
+   - **Done (2026-11-22):** authored `core/routes/mco-geofence-arrival.json`, built into `flight_test.py geofence`.
+     Plans varying speeds with CoreDevice chunks, passes validation and dry-run tests.
 4. When the owner is back:
    - set up the spare iPhone (above) and the Observer token;
    - do a positive control (§5b.1);
@@ -174,7 +192,9 @@ open question (`flight-altitude-hard-gate`). Nobody has publicly spoofed this pu
 ## Rules
 
 - Small, human-sounding, signed commits as `juanmendoza` (AGENTS.md → Git), pushed as you go.
-  **On the Mac that git identity isn't set up yet: tell the owner before committing there.**
+  **Set up on this Mac (2026-11-22):** repo-local `user.juanmendoza <juanmendoza6159@gmail.com>`,
+  signing with `~/.ssh/id_ed25519.pub`, registered on GitHub as the signing key "Mac-waypoint", so
+  commits verify.
 - **No release** until the owner says so.
 - Don't upgrade pmd3 (11.59.0) unless it's the only way. If you do, re-pin exactly and note that the
   Mac Nuitka build check (`release/build.command`) needs rerunning.

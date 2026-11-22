@@ -13,10 +13,12 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Windows:** Waypoint window runs from the repo (`windows-version\waypoint.cmd`, 11-20) and works with the phone (pin, Drive, Stop, quit clears). Life360 shows mph + car from a Windows Drive run.
 - **Phone is on iOS 27.2.1** now (was 27.0.1); Developer Mode survived, pmd3 11.59 still mounts and drives.
 - **Airplane mode is pmd3 now (11-21)**, Mac + Windows: `CoreDevice.airplane(on)` runs the phone's Shortcuts, `fly` toggles it itself (owner confirms), `fly airplane on|off`. Nothing calls devicectl any more.
+- **Flight-test tool & fallback prep built (11-22)**: `core/tools/flight_test.py` + launchers (`mac-version/flight-test.command`, `windows-version/flight-test.cmd`). CoreDevice only. MIA→MCO: terminal dwell, stepped runway roll (45/55/65/75 m/s, each ≤100 m from the real runway, +10 m/s steps for accel >0.5), climb, airplane-mode gap, landing hold airside at MCO (405 m from a runway). Runway coords come from Life360's own `runways.csv`, not OSM. Fallback geofence arrival `mco-geofence-arrival.json`. Dry-run tested end to end; cleanup turns airplane mode back off then clears.
+- **Landing altitude gate resolved (11-22, smali):** the disputed sign in `g5g` is `altitude ≤ elevation+1000` — an upper bound a spoof at altitude 0 clears for free. `k5g` (the `flight-landed` upload) carries no altitude, so there's no second gate. No airplane-mode or mock-location check in `g5g`. (Still Android-only; iOS unseen.)
 
 **Open:**
-- **Active job: Life360's "landed" flight push** (owner's goal, 11-21). Handoff with the plan: `docs/handoff/flight-push.md`. `fly nyc` can't do it (DVT sim, speed −1); the flight test has to be CoreDevice.
-  - **11-22, step 1 (APK static analysis), pass 2:** got the full Android takeoff/landing state machine from `g5g.java` (speeds, radii, the 3-6s acceleration buffer, 20-min debounce, no airplane-mode or mock-location check in this code at all). One number is disputed and blocks a verdict: whether the landing altitude check is `altitude <= elevation+1000` (satisfiable at altitude 0, pass-2's reading) or `altitude > elevation+1000` (requires real altitude, my own re-read of the same branch) — opposite signs, and jadx can misattribute branches in code this obfuscated. Next: a smali-level opcode check, and whether `k5g.java` applies a second altitude gate before the real upload. Doesn't touch the separate, already-confirmed finding that no non-jailbroken iOS path can inject altitude at all. Writeup: `life360-flight-detection.md` (search "pass 2") + `docs/handoff/flight-push.md` step 1.
+- **Active job: Life360's "landed" flight push** (owner's goal, 11-21). Handoff: `docs/handoff/flight-push.md`. Steps 1, 1b, 2, 3 complete; the landing-altitude sign is now settled (favorable).
+  - Step 4 (when owner is back): set up spare iPhone (iOS 17+), positive control, run flight test on the spare with a test circle. Not the owner's phone in front of their real circle.
 - Owner opens the Dock app on the Mac and looks at the new map (WKWebView) before the next release.
 - Never tested: a compiled build moving the pin on a real phone, a Mac with no Xcode, Intel Macs, a Windows installer (none yet).
 - `fly` Step 0, hold half: does a running hold keep the spoof through the airplane toggle? Then a full `fly nyc` run.
@@ -26,6 +28,22 @@ oldest to `docs/progress-archive.md` as one-liners.
 - CRT scanlines sit over the new panel. Keep or drop?
 - Old release zips pile up in Vercel Blob (~70 MB each).
 - `isSimulatedBySoftware` still untested (see AGENTS.md).
+
+---
+
+## 2026-11-22 — Flight push: flight-test tool + fallback built, landing-altitude sign settled (steps 1b/2/3)
+
+- Task: continue the flight-push job from `docs/handoff/flight-push.md` (a local model had drafted the tool). Settled the one disputed RE number, then reviewed and fixed the tool before calling steps 2 & 3 done.
+- **RE, smali-confirmed (`g5g.smali`, 26.44.0):** the landing altitude comparison is `getAltitude() > elevation+1000 → skip` — i.e. the gate is `altitude ≤ elevation+1000`, an upper bound a spoof at altitude 0 clears. So the earlier "pass 2" reading was right and my own re-read was wrong. `k5g.java` (the `com.life360.device.device-flight-landed.v1` upload) carries only takeoff/landing airport codes + times, **no altitude** — no second gate. No airplane-mode / mock-location check anywhere in `g5g`. The landing path only needs the loose ≤1000 m "nearby runway" record set at airport A, not a confirmed >100 mph takeoff. Net: on Android every gate is satisfiable on our stack at altitude 0. Still Android-only; the iOS build is unseen. Writeup: `docs/research/life360-flight-detection.md` (2026-11-22 smali update).
+- **Flight-test tool (`core/tools/flight_test.py`), CoreDevice only (no DVT speed −1):** MIA→MCO (~310 km / 193 mi; runways ~310 km apart, well past the 40 mi gate).
+  - Runway geometry is pulled from Life360's own bundled `runways.csv` rows + a port of `Runway.distanceFromMeters`, so proximity is measured the way the app measures it. The MIA 09/27 runway (start `25.78610,-80.31484`, 3963 m) is the takeoff roll.
+  - Sequence: dwell at the MIA terminal (855 m from the runway → arms the ≤1000 m candidate) → taxi → **stepped** roll 45/55/65/75 m/s, every point ≤100 m from the centreline, each +10 m/s step over ~5 s so accel ≈2 m/s² (>0.5 gate) → climb pulling east off the runway → airplane ON → move offline to the MCO landing hold (`28.4336,-81.3000`, 405 m from an MCO runway — the main terminal is ~1200 m and misses the gate) → airplane OFF → post-landing dwell → clear.
+  - Each leg is played with `backend.drive.play_chunks`, so it's held for its own distance/speed (the earlier draft fired a route then slept a few seconds, teleporting past km-long legs). `--quick` shrinks only the waits. Cleanup (Ctrl+C / error) turns airplane mode back **off** if it was on, then clears — never leaves the phone offline on a fake fix.
+  - Launchers: `mac-version/flight-test.command`, `windows-version/flight-test.cmd`.
+- **Fallback geofence trip (`core/routes/mco-geofence-arrival.json`):** approach drive into the saved MCO Place at varying road speed (real mph + car icon), 300 s dwell. Run via `flight_test.py geofence`.
+- **Tested:** rewrote `test_flight_test.py` to check geometry against the runway formula (firing points ≤100 m from the runway, accel steps >0.5, both holds ≤1000 m, runways ≥64,373.6 m apart, each leg held ≥ its distance) plus the interrupt→airplane-off cleanup. **108 tests pass** (`.venv/bin/python -m unittest discover -s core/tests`). End-to-end dry run across every mode (`flight`/`geofence --quick`, `airplane on`, `--clear`, `status`) with piped answers.
+- Git identity set up on this Mac: committing as `juanmendoza <juanmendoza6159@gmail.com>`, signing with `~/.ssh/id_ed25519.pub` (registered as a GitHub signing key "Mac-waypoint"), so commits verify.
+- Next: Step 4 (owner back): spare iPhone setup, positive control, run the flight on the spare.
 
 ---
 
