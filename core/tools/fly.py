@@ -118,7 +118,7 @@ def run_trip(trip):
 
     if not DRY_RUN:
         ensure_mounted()
-    cd, job = CoreDevice(), None
+    cd, job, airplane_on = CoreDevice(), None, False
     try:
         # Leg 1 — drive to the departure airport, then hold there (phone still ONLINE).
         dlat, dlon = trip["depart_hold"]
@@ -127,6 +127,7 @@ def run_trip(trip):
         job = hold(dlat, dlon)
         print("\n> You're at the departure airport, holding.")
         input("  >> Press ENTER to take off (turns AIRPLANE MODE ON). <<")
+        airplane_on = True            # the send goes out inside airplane(); mark it before the confirm
         airplane(True, cd)
 
         # Leg 2 — phone is offline now; jump the spoof to the arrival airport and hold.
@@ -137,9 +138,15 @@ def run_trip(trip):
         print("  Spoof is at the arrival airport (invisible while offline).")
         input("  >> Press ENTER to land (turns AIRPLANE MODE OFF). <<")
         airplane(False, cd)
+        airplane_on = False
     finally:
         if job:
             job.stop()
+        if airplane_on:
+            # Cancelled mid-flight (Ctrl+C after take-off): don't leave the phone stuck offline in
+            # airplane mode — put it back online, same as flight_test.py's cleanup does.
+            print("\n> Putting the phone back online (airplane mode OFF)...")
+            airplane(False, cd)
 
     # Leg 3 — phone reconnects at the arrival airport; drive into the destination Place.
     print(f"\n> [3/3] Reconnected at the arrival airport. Driving in ({trip['arrive_route']})...")

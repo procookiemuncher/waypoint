@@ -116,6 +116,17 @@ class TestTrip(unittest.TestCase):
         self.assertFalse(any(j.running for j in jobs))
         self.assertNotIn(("play", "b.json"), events)
 
+    def test_ctrl_c_after_takeoff_turns_airplane_back_off(self):
+        # Cancelling mid-flight (after airplane ON) must put the phone back online, not leave it
+        # stuck offline in airplane mode.
+        def fake_input(prompt=""):
+            if "land" in prompt:
+                raise KeyboardInterrupt
+            return "y"
+        events, _ = self._trip(fake_input)
+        flips = [e for e in events if e[0] == "airplane"]
+        self.assertEqual(flips[-1][:2], ("airplane", False))
+
 
 if __name__ == "__main__":
     unittest.main()
