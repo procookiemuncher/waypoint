@@ -40,7 +40,7 @@ FAST = 5
 # km/h band per class when OSM has no limit; Valhalla's own estimate is clamped into it
 CLASS_KMH = {"motorway": (90, 115), "trunk": (70, 100), "primary": (45, 70), "secondary": (40, 60),
              "tertiary": (35, 55), "unclassified": (30, 50), "residential": (25, 40),
-             "service_other": (18, 30)}
+             "service_other": (25, 40)}   # airport and access roads are often tagged service; lots have their own use
 # slow kinds of road, whatever their class says (km/h ceiling)
 USE_KMH = {"ramp": 60, "turn_channel": 30, "driveway": 12, "parking_aisle": 10, "alley": 15,
            "drive_through": 8, "culdesac": 25, "emergency_access": 20}
