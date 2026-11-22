@@ -1,9 +1,9 @@
 ---
 title: Life360 Flight Detection / Landing Notifications — how it works, has anyone spoofed it, and can we?
 status: research                # research | device-verified | superseded
-last_verified: 2026-10-24
+last_verified: 2026-11-22
 device_verified: partial        # 2026-10-24: airplane toggle automated, sim holds offline, tunnel survives (cable); the push itself is still UNTESTED
-open_gates: [flight-push-manual-toggle, flight-altitude-hard-gate, isSimulatedBySoftware]
+open_gates: [flight-push-manual-toggle, flight-altitude-hard-gate, isSimulatedBySoftware, landing-altitude-sign]
 depends_on: [life360-notification-triggers, coremotion-injection-feasibility]
 source_tier: mixed              # PRIMARY (Life360 support/press/blog, Apple docs, 3 independent API reverse-engineerings) + third-party (spoof-scene blogs, forums)
 recheck_if: [Life360 app update changes flight-detection triggers or gating, iOS point release changes location-sim/altitude behavior, someone publishes a landing-notification spoof, the phone->server ingest schema is dumped]
@@ -22,6 +22,64 @@ recheck_if: [Life360 app update changes flight-detection triggers or gating, iOS
 > flagged **PRIMARY** (Life360 official docs/press, Apple docs, reverse-engineered API source) or
 > **THIRD-PARTY** (blogs/forums). A separate axis — *tested on our own phone* — is `device_verified:
 > none` for everything here; the decisive experiment (§5) is an **open gate**, not a result.
+
+> **Update 2026-11-22 — step 1, Android APK static analysis (pass 2, Windows, decompiled
+> `com.life360.android.safetymapd-26.44.0`, no install/run, per the step-1 rules in
+> `docs/handoff/flight-push.md`):** a local model ran a follow-up pass over the jadx output and
+> reported the flight-detection state machine in detail. I read the same decompiled source myself
+> (`sources/p000/g5g.java`) before trusting any of it, since the previous verdict here hinges on
+> one number.
+>
+> **Confirmed by my own read, matches the pass-2 summary:** flight detection is entirely
+> **on-device** (`g5g`/`i5g`, hosted in a foreground `EventController` service, `:service`
+> process, restarted by job services if killed, state in `SharedPreferences`). Takeoff fires on:
+> accuracy ≤100 m, `hasSpeed()`, speed×2.23694 ≥100 mph, nearest runway within **100 m**,
+> acceleration computed from a rolling buffer (current sample's speed minus a buffered sample from
+> 3-6 s earlier, over elapsed seconds) **>0.5 m/s²**, debounced 20 min
+> (`lastFlightDetectionTime`). A **candidate** arms earlier and more loosely: accuracy ≤400 m,
+> within 1000 m of any runway. The altitude fallback to `FLYING` (`altitude > elevation + 5000`)
+> is an **OR**, not required — the primary takeoff path needs no altitude at all. Landing's other
+> three gates (within 1000 m of a *different*-airport runway, ground speed ≤100 mph, elapsed
+> <24 h, the two runways ≥64,373.6 m / 40 mi apart) also match. No `AIRPLANE_MODE` /
+> `isAirplaneMode*` reference anywhere in `g5g.java`, and no `isFromMockProvider`/`isMock` in it
+> either (those strings exist elsewhere in the tree, in unrelated classes) — on **this Android
+> build**, flight detection doesn't appear to check either. Also found, not previously
+> documented: a `is_mocked_flying_user_activity_enabled` config flag behind what looks like an
+> internal debug switch (`p72.f129539a`) — Life360's own mocked-flying test toggle, unrelated to
+> us, defaults off.
+>
+> **Disputed, and this is the one that matters:** pass-2 described the landing altitude check as
+> `altitude <= elevation + 1000` — an upper bound, satisfiable at altitude 0, which would mean a
+> speed-only spoof clears it for free. Reading the same branch myself (the one that builds
+> `FlightDetectionLandingInfo` and POSTs `landing-stats`), the comparison is
+> `location.getAltitude() > runwayElevation + 1000` — the **opposite sign**: it requires still
+> being *above* ~1000 m AGL, not below it. That's the difference between "altitude is a non-issue
+> for a 0-altitude spoof" and "altitude is still the wall it always was." I can't settle which
+> reading is right from jadx alone — this part of the APK is heavily obfuscated/control-flow-
+> flattened, exactly where a decompiler can misattribute a branch — and it's also not confirmed
+> that this branch is the one that actually gates the real `/v1/ingest` upload (pass-2 places that
+> in a separate class, `k5g.java`, which may apply its own, later altitude check on a subsequent
+> lower sample — a two-stage candidate→confirm, same shape as takeoff's candidate→fire). Needs a
+> smali-level check (`apktool/.../smali_classes2/g5g.smali`, the `if_icmp`/`cmp` opcode around the
+> lines pass-2 cited) and a trace of what reads `flightDetectionLandingDetected` before this
+> status changes either direction.
+>
+> **What this changes vs. the bottom line below:** nothing yet. The standing altitude-injection
+> finding (no non-jailbroken path carries altitude — confirmed independently, multiple tool
+> searches, pmd3/devicectl/scenario-files all dead ends, most recently the 2026-11-21
+> `dtlocationd`-strings pass in `docs/handoff/flight-push.md` step 1b) is untouched by this. The
+> airplane-mode-as-algorithmic-gate assumption looks weaker than stated (nothing in `g5g.java`
+> checks it), but that doesn't help — altitude is still the wall, we just don't yet know for
+> certain which direction it faces. Verdict stays **NO-until-tried**, now narrowed to one specific,
+> checkable claim instead of "altitude in general."
+>
+> **The cross-platform caveat, restated because it matters more now:** every class above is from
+> the **Android** APK. There is no decompiled iOS build in `~/Desktop/life360-re` (checked). The
+> thresholds are very likely shared, since they feed a cross-platform backend event
+> (`com.life360.device.device-flight-landed.v1`), but that's inference, not confirmation — iOS's
+> own flight-detection code (reading CoreLocation/CoreMotion instead of Android's `LocationManager`)
+> could differ, and the decisive `isSimulatedBySoftware` gate lives in a part of the stack this
+> Android analysis can't see at all.
 
 > **Update 2026-10-24 (on-device, Mac):** the airplane-mode gates no longer need hands. A devicectl
 > `openURL` to `shortcuts://run-shortcut?name=vida-airplane-on|off` toggles airplane mode + Wi-Fi with no

@@ -133,6 +133,21 @@ open question (`flight-altitude-hard-gate`). Nobody has publicly spoofed this pu
      - Next if continuing: Ghidra on `dtlocationd` (confirm no other `CLLocation` init is reachable),
        read the `SimulatedLocation` / `Input` field names in `CoreDeviceUtilities`, then try
        `availablescenarios` on the phone to see what scenarios exist.
+   - **Update 2026-11-22 (pass 2, Windows, jadx on `com.life360.android.safetymapd-26.44.0`, no
+     install/run):** answered the Android-side questions. Flight detection is entirely on-device
+     (`g5g.java`/`i5g`, a foreground `EventController` service in `:service`), not server-side.
+     Takeoff: speed ≥100 mph, accuracy ≤100 m, within 100 m of a runway, acceleration >0.5 m/s²
+     from a 3-6s-prior buffered sample, 20-min debounce — no altitude needed on the primary path.
+     Landing: within 1000 m of a different-airport runway, ≤100 mph, <24 h, runways ≥40 mi apart,
+     **plus an altitude check whose sign I couldn't settle** — pass-2 read it as an upper bound
+     (satisfiable at altitude 0), my own read of the same branch found the opposite (requires
+     *high* altitude). No airplane-mode or mock-location check anywhere in this code. Full
+     writeup, with line numbers and the exact disputed comparison: the new update block in
+     `life360-flight-detection.md` (search "pass 2"). **Still open, blocks a verdict:** a
+     smali-level check of the actual opcode (jadx can misattribute branches in obfuscated code
+     this dense), and whether a *second* altitude gate exists in `k5g.java` before the real
+     `/v1/ingest` POST. Doesn't change step 1b's conclusion (no altitude injection path exists
+     regardless of which way this sign goes) — it only changes whether that matters.
 2. **The flight-test tool.** Design it from §5/§5b, adjusted by step 1's findings. CoreDevice only:
    - hold within 100 m of the airport A terminal, 20–40 min of dwell, online;
    - taxi, then a takeoff roll along a **real runway** (coordinates from OSM/Overpass, not memory) to

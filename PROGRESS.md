@@ -4,7 +4,7 @@ Newest entry on top. After a work session, add a short entry: what changed, what
 what broke, what's next. Keep about the last 10 entries here. When it grows past that, move the
 oldest to `docs/progress-archive.md` as one-liners.
 
-## Current state (2026-11-21)
+## Current state (2026-11-22)
 
 - **App:** Waypoint Mac app. Dock app = keyless dev build, `release.command` = key-gated production build with auto-update. Live release: 0.1.0-beta.2 (build 2, still on Stadia's rate-limited map), two testers.
 - **No Xcode needed:** pmd3 11.59 CoreDevice path does set / route-with-speed / clear. Same on Windows (mph + car confirmed 11-20).
@@ -16,6 +16,7 @@ oldest to `docs/progress-archive.md` as one-liners.
 
 **Open:**
 - **Active job: Life360's "landed" flight push** (owner's goal, 11-21). Handoff with the plan: `docs/handoff/flight-push.md`. `fly nyc` can't do it (DVT sim, speed −1); the flight test has to be CoreDevice.
+  - **11-22, step 1 (APK static analysis), pass 2:** got the full Android takeoff/landing state machine from `g5g.java` (speeds, radii, the 3-6s acceleration buffer, 20-min debounce, no airplane-mode or mock-location check in this code at all). One number is disputed and blocks a verdict: whether the landing altitude check is `altitude <= elevation+1000` (satisfiable at altitude 0, pass-2's reading) or `altitude > elevation+1000` (requires real altitude, my own re-read of the same branch) — opposite signs, and jadx can misattribute branches in code this obfuscated. Next: a smali-level opcode check, and whether `k5g.java` applies a second altitude gate before the real upload. Doesn't touch the separate, already-confirmed finding that no non-jailbroken iOS path can inject altitude at all. Writeup: `life360-flight-detection.md` (search "pass 2") + `docs/handoff/flight-push.md` step 1.
 - Owner opens the Dock app on the Mac and looks at the new map (WKWebView) before the next release.
 - Never tested: a compiled build moving the pin on a real phone, a Mac with no Xcode, Intel Macs, a Windows installer (none yet).
 - `fly` Step 0, hold half: does a running hold keep the spoof through the airplane toggle? Then a full `fly nyc` run.
@@ -100,6 +101,15 @@ oldest to `docs/progress-archive.md` as one-liners.
 - ROADMAP.md rewritten around the owner's four paths: 1 finish Windows, 2 keep adding to the UI, 3 start getting users, 4 improve the motion engine. Old M0-M4 milestones collapsed into a "Done so far" list; the emoji goal is marked done (drive path), stale iOS 26.6 / Windows-only vision gone.
 
 ---
+
+## 2026-11-22 — Flight-detection: pass-2 Android RE checked, one sign disputed, not resolved
+
+- Owner ran a local model over `~/Desktop/life360-re` (decompiled APK, `com.life360.android.safetymapd-26.44.0`) for a follow-up static pass on the flight-detection algorithm. Read the same source myself (`g5g.java`) before writing anything down.
+- **Confirmed matches my own read:** the takeoff state machine (accuracy ≤400m arms a candidate within 1000m of a runway; fires at accuracy ≤100m, speed ≥100mph, within 100m of the runway, acceleration >0.5 m/s² from a 3-6s-prior buffered sample, 20-min debounce; altitude fallback to FLYING at elevation+5000m is an OR, not required). No `AIRPLANE_MODE` or `isFromMockProvider`/`isMock` reference anywhere in `g5g.java` — this specific feature doesn't appear to gate on either, on Android.
+- **Disputed:** pass-2 said the landing altitude check is `altitude <= elevation+1000` (an upper bound, satisfiable at altitude 0). My own read of the same branch shows `altitude > elevation+1000` — the opposite sign. This is the one thing that decides whether the literal "landed" push is worth another on-device attempt or stays a confirmed no. Could be a jadx decompiler artifact (the surrounding control flow is heavily obfuscated/flattened) or pass-2 misreading it — not resolved either way.
+- Also found: `is_mocked_flying_user_activity_enabled` behind a `p72.f129539a` flag — an internal Life360 debug toggle for mocked flying activity, unrelated to our spoof, not previously documented.
+- Full analysis + plan: `docs/research/life360-flight-detection-pass2-android-re.md`. `life360-flight-detection.md` status flipped to `under re-evaluation` — did **not** touch its NO conclusion or AGENTS.md's "not reproducible" line, since nothing here is device-verified and the core caveat stands: this is all Android, our target is iPhone, there's no decompiled iOS build in `life360-re/`.
+- Next: a smali-level check of `apktool/.../g5g.smali` around the landing-altitude comparison (not jadx) to settle the sign, and check whether a second, later altitude gate exists before the real `/v1/ingest` POST (possibly in `k5g.java`) — before any route code gets written. If it confirms the high-altitude reading, this closes back to NO and the useful parts (confirmed takeoff state machine, the reset condition) fold into the geofence/realism work instead.
 
 ## 2026-11-20 — Side panel built: the arrival plan, the globe in the app
 
