@@ -33,6 +33,14 @@ oldest to `docs/progress-archive.md` as one-liners.
 
 ---
 
+## 2026-11-22 — Flight test shortened (owner wants to fly MIA -> MCO on their own phone)
+
+- Owner dropped the "arrived at a Place" drive test: the goal is only the airport "landed" push. They want to run the flight on their own phone and circle now, not the spare.
+- `flight_test.py`: the MIA terminal hold (was 20 min) and the post-landing hold (was 12 min) are now `--wait` / `--land-wait` in minutes, both default 5. The offline gap is still ENTER-gated; it prints when it went offline and a "land around HH:MM" hint (35 min, about a real MIA -> MCO airtime). Total run is about 45 min now, not 1.5 h.
+- Tested: 148 tests pass, dry-run `--quick` flight clean before the change. Not run on the phone yet.
+
+---
+
 ## 2026-11-22 — Movement engine: lights, stop signs, a speed per road
 
 - Task (owner): make driving realistic before the flight test; it never teleported but flew through every light at one speed. Did all four: per-road speeds, lights + stop signs, real turns, smoother ramps. Phone not touched.
