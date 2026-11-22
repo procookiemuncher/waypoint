@@ -38,6 +38,7 @@ oldest to `docs/progress-archive.md` as one-liners.
 - Owner dropped the "arrived at a Place" drive test: the goal is only the airport "landed" push. They want to run the flight on their own phone and circle now, not the spare.
 - `flight_test.py`: the MIA terminal hold (was 20 min) and the post-landing hold (was 12 min) are now `--wait` / `--land-wait` in minutes, both default 5. The offline gap is still ENTER-gated; it prints when it went offline and a "land around HH:MM" hint (35 min, about a real MIA -> MCO airtime). Total run is about 45 min now, not 1.5 h.
 - Tested: 148 tests pass, dry-run `--quick` flight clean before the change. Not run on the phone yet.
+- **On the phone (first real flight run, 14:35):** the MIA hold landed (Find My moved) but Life360 on the circle kept showing home, "3 min ago", until the owner opened Life360 in the foreground on the spoofed phone. Then it updated straight away. So a CoreDevice jump doesn't wake a backgrounded Life360; keep Life360 open on screen for any hold or drive that has to be seen, above all the ~30 s takeoff burst. First run ended when the Terminal window got closed by accident; rerun from 14:41.
 
 ---
 
