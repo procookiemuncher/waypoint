@@ -175,12 +175,14 @@ as a highway through every traffic light. Now:
   all-way stop 30%, a slow look 45%; roundabout entries give way. Ramps, trunks, motorways never.
 - **Turns at intersections**: the heading change over ±20 m at each node; the tight side (right
   when driving on the right) ~10 mph at 90°, the wide side ~13 mph, a U-turn ~7 mph. Bends are
-  measured over ±10 m so map-digitizing kinks don't brake the car; a line that folds back on
-  itself is a U-turn crawl.
+  measured over ±10 m so map-digitizing kinks don't brake the car; a line that turns back more
+  than 120° within those ±10 m is a U-turn and crawls at 2.5 m/s (map U-turns are tighter than a
+  car can turn).
 - **The plan** (`renderer.plan_piece`): a speed cap every 5 m, the drive split at every full stop
-  so each piece starts and ends at rest, a backward pass braking before every cap (1.5-1.9 m/s²)
+  so each piece starts and ends at rest, a backward pass braking before every cap (1.4-1.75 m/s²)
   and more gently into stops (1.1-1.5), a forward pass whose pull-away falls off with speed
-  (~1.75 m/s² from rest, about half at 55 mph). Timed exactly at constant acceleration per cell,
+  (1.5-1.75 m/s² from rest, about half at 55 mph). Both stay a couple of tenths under the
+  validator's 2.0 review line because GPS jitter adds that much. Timed exactly at constant acceleration per cell,
   so the car arrives at rest on the stop line. Waits are held with still-phone jitter and flagged
   `LocationFix.hold`. A `Driver` is sampled per render, so no two drives look the same; Spoof's
   GPX is seed 0, Drive picks a new seed each time.
@@ -188,11 +190,15 @@ as a highway through every traffic light. Now:
   "drive", cuts 3 s chunks near rest so the ramp reaches the phone, folds the last 1-2 s before a
   stop into the chunk before it, doesn't average across a stop, and keeps its ±5% wander under
   75 mph (a route written faster, like miami-drift, keeps its own speed).
-- **Result** (2026-11-22, all 39 routes, offline): 0 validator errors; warnings 27 → 1 (the one
-  left is miami-drift's deliberate 80 mph); peak accel 2.69 → 1.91 m/s²; rendering every route 2 s
-  (was 23 s). 158 waits across the 34 road-aware drives. Drive times move both ways, median +3%:
-  the waits add time, faster main roads give some back (JFK → Manhattan, 26 lights, +45%; Milan →
-  Lake Como −9%). Not yet seen on Life360: whether its sparse sampling shows the stops.
+- **Result** (2026-11-22, all 39 routes, offline): at seed 0 (what Spoof plays) 0 validator errors,
+  warnings 27 → 1 (miami-drift's deliberate 80 mph), peak accel 2.69 → 1.98 m/s², rendering every
+  route 2 s (was 23 s), 158 waits across the 34 road-aware drives. Over 31 seeds × 39 routes (Drive
+  rolls a new seed each run): 0 errors, 1.4% of renders have one or two fixes at 2.00-2.09 m/s²
+  (review line 2.0, hard fail 2.85). Drive times move both ways, median +3.5%: the waits add time,
+  faster main roads give some back (JFK → Manhattan, 26 lights, +46%; Milan → Lake Como −9%). The
+  route list's time is seed 0, so a real Drive can differ by a few minutes on light-heavy routes.
+  Not yet seen on Life360: what iOS reports during a mid-drive `set` hold, whether Life360 keeps
+  the car + mph through a 40-75 s red light, and whether its sparse sampling shows the stops.
 
 ## The flight gap (Miami → CDG) — test-gated
 

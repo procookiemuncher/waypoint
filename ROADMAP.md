@@ -93,8 +93,9 @@ Windows has the launchers (spoof, drive, fly, setup) and the Waypoint window (`w
 - [x] Realism, roads (2026-11-22): per-road speeds from Valhalla `trace_attributes`, red lights and
   inferred stop signs as real stops, slower turns at intersections, pull-away that eases off with
   speed. All 39 routes validate with no warnings. Offline only so far.
-- [ ] Watch a road-aware Drive on Life360 (a second member's phone): do the waits at lights show,
-  or does its sparse sampling smooth them out? Tune the red-light odds / waits from that.
+- [ ] Watch a road-aware Drive on Life360 (a second member's phone). First: does the car + mph
+  survive a red-light wait (a mid-drive CoreDevice `set` hold, never played on the phone yet), or
+  does Life360 end the trip? Then: do the waits show through its sampling? Tune the odds from that.
 - [ ] Realism, still open: a per-point jitter/step model, offline realism tests in the validator.
 - [ ] **Behavioral engine** (stretch): a day planner above the movement engine (home → work →
   errand → home, believable dwell) that renders a full-day route. Record-and-replay of real
