@@ -1,7 +1,7 @@
 ---
 title: Valhalla road-snapping & per-edge speed — API research (Increment 2)
 status: research                # research | device-verified | superseded
-last_verified: 2026-07-08
+last_verified: 2026-11-22
 device_verified: n/a            # build-time / offline; no device involved
 open_gates: []
 depends_on: [behavioral-engine-prior-art]
@@ -17,6 +17,19 @@ recheck_if: [Valhalla API change, FOSSGIS endpoint/policy change]
 > docs/MOVEMENT_ENGINE.md). Build-time only: hit the **FOSSGIS public Valhalla** once per route
 > edit, cache the result, keep the straight-line renderer as the offline fallback. Self-hosting is
 > the escape hatch. Confidence marked; every significant claim carries a source; URLs at end.
+
+> **Update 2026-11-22 — §2 is built (`snapper.road_edges`, `roads.py`).** Checked against the live
+> FOSSGIS server: `edge_walk` on `/route`'s own shape fails ("edge_walk algorithm failed to find
+> exact route match", error 443); `walk_or_snap` works (MCO 14 km: 169 edges in 1.1 s; the 105 km
+> NCE → Saint-Tropez drive: 520 edges in 1.4 s, no size limit hit). The returned shape has a couple
+> more points than the input and the first/last edges are partial (`source_percent_along`), so the
+> edges are laid on our polyline by their matched `length`, not by shape index. Useful attributes
+> beyond §2's list: `edge.traffic_signal` / `node.traffic_signal` (OSM signals),
+> `node.stop_impact` (0-7), `node.intersecting_edge.road_class` + `driveability`, `edge.use`
+> (ramp, turn_channel, parking_aisle...), `edge.roundabout`, `edge.internal_intersection`. There is
+> **no stop-sign attribute**; the public Overpass server answered 502 "at capacity" and says it's for
+> human-operated tools, so stop signs are inferred from the road hierarchy (docs/MOVEMENT_ENGINE.md,
+> "Road-aware driving"). `edge.names` is missing on some edges: read every field with `.get()`.
 
 ## Bottom line
 

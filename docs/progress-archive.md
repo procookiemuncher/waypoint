@@ -15,13 +15,20 @@ Old PROGRESS.md entries, boiled down to one line each. The full text is in git h
 - Fresh installs pull deps newer than pmd3 expects and break the tunnel. Keep requirements.txt pinned exactly.
 - Python 3.14 doesn't work (lzfse etc.). Use 3.12/3.13.
 - Windows console is cp1252: no ⚠ ✗ — → in print/log lines.
-- Sparse 2-waypoint legs collapsed to 0 speed in the planner. Fixed by densifying to ~15 m (`_densify`).
+- Sparse 2-waypoint legs collapsed to 0 speed in the planner. Fixed by densifying (today the renderer plans on a 5 m grid instead).
 - At 80 mph a 1 s step cuts sharp snapped turns and trips the accel gate. Corner-aware slowing fixed it.
 - Short, slow routes with a long dead stop don't register as movement on Life360. It samples displacement over time.
 - Stadia's keyless localhost access is strictly rate limited and returns the error as a tile image.
+- Valhalla `trace_attributes` with `edge_walk` fails on `/route`'s own shape (error 443). Use `walk_or_snap` and lay the edges on the line by matched length, not shape index.
+- A bend's radius from three points reads a line that folds back on itself as straight (infinite radius). Real routes do U-turns; check the direction, not just the area.
 
 ## 2026-11
 
+- 11-20 Side panel: 5 mockups (arrival plan, local clock, ledger, atlas, rail + sheet) in `docs/design/side-panel-mockups/`. Found `/api/routes` `seconds` under-reported walks (later fixed with rendered legs).
+- 11-20 Globe effects on trial in the prototype: real star sky (`build_stars.py`, Yale BSC), night side from the real sun, depth, rim, UFOs. None picked yet.
+- 11-20 World view: globe style A picked (solid silhouette, a colour per country on hover), `build_countries.py` (Natural Earth 1:110m), prototype in `docs/design/world-view-prototype/`.
+- 11-19 Auto-update + `release.command` (Ed25519-signed manifest, Vercel Blob, swap on quit). Shipped 0.1.0-beta.2 = build 2.
+- 11-19 Waypoint runs without Xcode: pmd3 11.59, `CoreDevice` set/route/clear in device.py, lock state from lockdown. Life360 showed mph + car on the phone.
 - 11-18 Research + probe for dropping Xcode: devicectl's speed sim is phone-side (`dtlocationd`, RSD `com.apple.coredevice.locationservice`), pmd3 11.59 looked like it fixed the ApBoardID mount crash. `probe_coredevice_location.py` + `probe-no-xcode.command`, nothing on the phone yet.
 - 11-04 Release app crashed every 4 s (pmd3 child segfault via inquirer3/editor under Nuitka), fixed by stubbing `editor`. Dock app became the keyless dev build with a DEV BUILD badge.
 - 11-02 Stadia API key for map tiles via `/tiles/` redirect (`tiles.py`). Key in root `.env`, not in release builds.

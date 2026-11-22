@@ -98,6 +98,10 @@ Why this shape:
 - `stop` segments hold position for `dwell_s` (with a slight decel into the stop, see below).
 - Speeds are *intent*; the renderer realizes them by spacing points at `speed_mps` per
   second, since iOS reads speed from position deltas.
+- A snapped drive (`"snap": true`) drives each road at its own speed once road data is in (see
+  "Road-aware driving" below); its `speed_mps` is then only the fallback for when there's none.
+  `"steady": true` opts a drive out: it holds `speed_mps` with no road speeds, lights or stops
+  (`emoji-test` and `miami-drift` test one thing each on purpose).
 
 ### Renderer (Core layer)
 
@@ -142,6 +146,53 @@ stream we produce:
   on departure) so there's no instantaneous speed cliff that could read as anomalous.
 - **No impossible speeds:** the validator rejects any inter-point speed above a plausible
   ceiling per mode (walk / drive) before anything reaches the device.
+
+### Road-aware driving (2026-11-22)
+
+A snapped drive used to hold one cruise speed the whole way and slow only for bends, so it read
+as a highway through every traffic light. Now:
+
+- **Road data.** After `/route`, `snapper.road_edges` asks Valhalla `/trace_attributes` what the
+  line runs over: road class, Valhalla's speed, the tagged speed limit, traffic lights, the roads
+  meeting at each node, `stop_impact`. `shape_match: "walk_or_snap"`, because `edge_walk` fails on
+  `/route`'s own shape (error 443). The edges come back as matched lengths and are laid on our
+  polyline by distance (`roads.map_edges`, refused if the totals differ by >5%). Cached in
+  `snap-cache/<key>.roads.json` next to the line, so the release build bundles it. A network
+  failure falls back to one cruise speed and isn't asked again for 5 min; "can't match" is cached.
+  The app's route list reads the cache only; `warm_legs` fetches. Requests are paced 1/s.
+- **A speed per road** (`roads.edge_mps`): the tagged limit, or Valhalla's estimate clamped into a
+  band for the class; ramps ≤60 km/h, roundabouts 28, service roads 25-40, parking aisles 10; times the driver's pace
+  (±4% city, +3% on fast roads); never over 32.5 m/s (~73 mph). A slow drift of a few percent
+  wanders around it so nobody holds exactly the limit.
+- **Traffic lights** come from OSM through Valhalla. Signals within 50 m are one intersection (a
+  dual carriageway has one per carriageway), one red/green roll each: 35% red on the bigger road
+  (wait up to 45 s), 55% coming off the smaller one (up to 75 s), 25% for a midblock crosswalk
+  signal. A red with <6 s left is a slow roll instead of a stop.
+- **Stop signs are inferred**: Valhalla's API has no stop-sign field and the public Overpass
+  server refuses automated use (502 at capacity, and its banner says so). At an unsignalled
+  intersection, coming off a smaller road onto or across a bigger one is a stop sign (70%, 1-3 s)
+  or a rolling stop; pulling out of a lot always stops; two residential roads meeting is an
+  all-way stop 30%, a slow look 45%; roundabout entries give way. Ramps, trunks, motorways never.
+- **Turns at intersections**: the heading change over ±20 m at each node; the tight side (right
+  when driving on the right) ~10 mph at 90°, the wide side ~13 mph, a U-turn ~7 mph. Bends are
+  measured over ±10 m so map-digitizing kinks don't brake the car; a line that folds back on
+  itself is a U-turn crawl.
+- **The plan** (`renderer.plan_piece`): a speed cap every 5 m, the drive split at every full stop
+  so each piece starts and ends at rest, a backward pass braking before every cap (1.5-1.9 m/s²)
+  and more gently into stops (1.1-1.5), a forward pass whose pull-away falls off with speed
+  (~1.75 m/s² from rest, about half at 55 mph). Timed exactly at constant acceleration per cell,
+  so the car arrives at rest on the stop line. Waits are held with still-phone jitter and flagged
+  `LocationFix.hold`. A `Driver` is sampled per render, so no two drives look the same; Spoof's
+  GPX is seed 0, Drive picks a new seed each time.
+- **Drive** (`drive.plan_chunks`) turns a wait into a parked `set` call whose leg is still
+  "drive", cuts 3 s chunks near rest so the ramp reaches the phone, folds the last 1-2 s before a
+  stop into the chunk before it, doesn't average across a stop, and keeps its ±5% wander under
+  75 mph (a route written faster, like miami-drift, keeps its own speed).
+- **Result** (2026-11-22, all 39 routes, offline): 0 validator errors; warnings 27 → 1 (the one
+  left is miami-drift's deliberate 80 mph); peak accel 2.69 → 1.91 m/s²; rendering every route 2 s
+  (was 23 s). 158 waits across the 34 road-aware drives. Drive times move both ways, median +3%:
+  the waits add time, faster main roads give some back (JFK → Manhattan, 26 lights, +45%; Milan →
+  Lake Como −9%). Not yet seen on Life360: whether its sparse sampling shows the stops.
 
 ## The flight gap (Miami → CDG) — test-gated
 

@@ -17,7 +17,8 @@ drive into it believably (no impossible-speed teleport, GPS drift present) and d
 Full analysis: docs/research/life360-notification-triggers.md.
 
 **What works (on-device):** a static spoof shows on Life360, not just Find My. The movement
-engine is built. The drive path shows **real mph + the car icon** on Life360. No VPN needed:
+engine is built (road-aware since 2026-11-22: lights, stops, a speed per road; not yet watched on
+Life360). The drive path shows **real mph + the car icon** on Life360. No VPN needed:
 Life360 trusts the GPS over the connection's IP city.
 
 ## How it works
@@ -201,6 +202,14 @@ with Developer Mode on.
   fails validation**. Generated routes carry `"generated": true`. **Don't hand-edit them**: edit
   the catalog and rerun. Every spot is also a pin preset (`spoof sexy-fish-miami`).
   `"access": "boat"` spots (Maldives, Bora Bora) are pin-only.
+- **Road-aware driving:** a snapped drive asks Valhalla `trace_attributes` what each stretch is
+  and drives it like a person: the road's speed limit, red lights (rolled per drive), inferred
+  stop signs, slower turns, gentle stops (`movement/roads.py`, design in docs/MOVEMENT_ENGINE.md
+  "Road-aware driving"). The road data is cached in `build/snap-cache/*.roads.json` beside the
+  line (bundled in releases); offline, a drive falls back to its one `speed_mps`. Stop signs are
+  guessed from the road hierarchy (no stop-sign data in Valhalla; Overpass refuses automated use).
+  `"steady": true` on a segment keeps a flat speed (emoji-test, miami-drift). A wait at a light is
+  flagged `LocationFix.hold`; Drive plays it as a parked call that's still a drive leg.
 - **Route times:** `/api/routes` sends `legs` and `seconds` from the renderer at seed 0 (exactly
   what Spoof plays). Rendering all routes takes ~12 s, so `server.warm_route_legs` does it on a
   thread after launch, cached in `<build>/legs-cache/`. Until then a route carries an estimate and

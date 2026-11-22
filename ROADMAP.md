@@ -16,9 +16,10 @@ How it works and why: AGENTS.md. Current state: PROGRESS.md.
   (pmd3 11.59 since 2026-11-19).
 - **On Life360:** a static spoof shows up; no VPN needed. The drive path (CoreDevice location
   service) shows real mph + the car icon, including changing speeds.
-- **Movement engine:** JSON routes → Valhalla road snapping → per-segment speed profiles, corner
-  slowdowns, GPS jitter → validated GPX (docs/MOVEMENT_ENGINE.md). Destinations catalog: 35 spots
-  in 28 cities, generated airport → hotel → spot routes.
+- **Movement engine:** JSON routes → Valhalla road snapping + road data → a speed per road,
+  traffic lights, inferred stop signs, intersection turns, corner slowdowns, GPS jitter →
+  validated GPX / Drive chunks (docs/MOVEMENT_ENGINE.md). Destinations catalog: 35 spots in 28
+  cities, generated airport → hotel → spot routes.
 - **Flight choreographer:** `fly <trip>` (drive out, airplane-mode gap, drive into a Place, dwell),
   airplane mode toggled over pmd3. Built, not yet run end to end on the phone.
 - **Life360 Observer:** reads the circle's server-side view (`core/tools/observe.py`).
@@ -89,8 +90,12 @@ Windows has the launchers (spoof, drive, fly, setup) and the Waypoint window (`w
   fail without altitude, but cheap to check).
 - [ ] Drive parity: Drive lands within a minute or two of Spoof's timing; make the CoreDevice
   path follow the renderer's corner slowdowns and dwell exactly.
-- [ ] Realism: per-edge speeds from Valhalla `trace_attributes`, jerk-limited ramps, a per-point
-  jitter/step model, offline realism tests in the validator.
+- [x] Realism, roads (2026-11-22): per-road speeds from Valhalla `trace_attributes`, red lights and
+  inferred stop signs as real stops, slower turns at intersections, pull-away that eases off with
+  speed. All 39 routes validate with no warnings. Offline only so far.
+- [ ] Watch a road-aware Drive on Life360 (a second member's phone): do the waits at lights show,
+  or does its sparse sampling smooth them out? Tune the red-light odds / waits from that.
+- [ ] Realism, still open: a per-point jitter/step model, offline realism tests in the validator.
 - [ ] **Behavioral engine** (stretch): a day planner above the movement engine (home → work →
   errand → home, believable dwell) that renders a full-day route. Record-and-replay of real
   traces as a baseline. Prior art: docs/research/behavioral-engine-prior-art.md.
