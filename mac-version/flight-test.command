@@ -17,5 +17,6 @@ if [ ! -x "$PY" ]; then
   read -r -p "Press ENTER to close..."
   exit 1
 fi
-"$PY" "$ROOT/core/tools/flight_test.py" "$@"
+# keep the Mac awake for the whole run: idle sleep freezes the flight mid-air (pmset log, 11-22)
+caffeinate -di "$PY" "$ROOT/core/tools/flight_test.py" "$@"
 read -r -p "Press ENTER to close..."
