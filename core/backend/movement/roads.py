@@ -25,6 +25,7 @@ Pure logic over model.py + geo.py: no network, no pymobiledevice3.
 """
 from __future__ import annotations
 
+import bisect
 import math
 from dataclasses import dataclass
 
@@ -39,12 +40,12 @@ FAST = 5
 # km/h band per class when OSM has no limit; Valhalla's own estimate is clamped into it
 CLASS_KMH = {"motorway": (90, 115), "trunk": (70, 100), "primary": (45, 70), "secondary": (40, 60),
              "tertiary": (35, 55), "unclassified": (30, 50), "residential": (25, 40),
-             "service_other": (10, 25)}
+             "service_other": (18, 30)}
 # slow kinds of road, whatever their class says (km/h ceiling)
 USE_KMH = {"ramp": 60, "turn_channel": 30, "driveway": 12, "parking_aisle": 10, "alley": 15,
            "drive_through": 8, "culdesac": 25, "emergency_access": 20}
 ROUNDABOUT_KMH = 28
-MAX_MPS = 33.0        # ~74 mph: the validator's drive review cap, and under Life360's 80 mph speeding flag
+MAX_MPS = 32.5        # ~73 mph: under the validator's drive review cap (jitter adds a little) and Life360's 80 mph speeding flag
 MIN_MPS = 3.0
 
 LIGHT_MERGE_M = 50.0  # lights closer than this are one intersection
@@ -58,6 +59,7 @@ LIGHT_MAIN = (0.35, 45.0)       # we're on the bigger road
 LIGHT_SIDE = (0.55, 75.0)       # we're coming off the smaller one
 LIGHT_MIDBLOCK = (0.25, 25.0)   # nothing crosses: a crosswalk or driveway signal
 ROLL_UNDER_S = 6.0              # a red with less than this left gets a slow roll, not a stop
+DRIFT = (0.95, 1.03)            # how far a driver's speed wanders around the road's
 
 
 @dataclass
@@ -69,6 +71,21 @@ class Driver:
     brake: float = 1.7         # m/s^2 slowing for bends, turns and slower roads
     stop_brake: float = 1.3    # m/s^2 coming to rest (lights, stops, the end of the drive)
     corner_lat: float = 3.5    # m/s^2 sideways through a bend: v = sqrt(corner_lat * radius)
+
+    def drift(self, rng, total: float):
+        """Speed factor along the drive: nobody holds exactly the limit, so it wanders a few percent
+        either side, a new target every 300-700 m, straight lines between them."""
+        knots, s = [(0.0, rng.uniform(*DRIFT))], 0.0
+        while s < total:
+            s += rng.uniform(300.0, 700.0)
+            knots.append((s, rng.uniform(*DRIFT)))
+        starts = [k[0] for k in knots]
+
+        def at(x):
+            i = max(1, min(len(knots) - 1, bisect.bisect_right(starts, x)))
+            (s0, f0), (s1, f1) = knots[i - 1], knots[i]
+            return f0 + (f1 - f0) * min(1.0, max(0.0, (x - s0) / (s1 - s0)))
+        return at
 
     @classmethod
     def sample(cls, rng) -> "Driver":

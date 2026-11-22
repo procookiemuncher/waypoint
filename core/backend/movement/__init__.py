@@ -5,12 +5,12 @@ Turns human-authored route.json into a validated, believable point stream (and G
 the LocationBackend interface. See docs/MOVEMENT_ENGINE.md.
 """
 from .model import Route, Segment, LocationFix, load_route, parse_route
-from .renderer import RouteRenderer, plan_speeds
+from .renderer import RouteRenderer, plan_piece
 from .validator import validate, validate_or_raise, ValidationResult
 from .snapper import snap_route, snap_waypoints, SnapError
 
 __all__ = [
     "Route", "Segment", "LocationFix", "load_route", "parse_route",
-    "RouteRenderer", "plan_speeds", "validate", "validate_or_raise", "ValidationResult",
+    "RouteRenderer", "plan_piece", "validate", "validate_or_raise", "ValidationResult",
     "snap_route", "snap_waypoints", "SnapError",
 ]

@@ -68,14 +68,18 @@ def local_xy(origin, p):
 
 
 def menger_radius(a, b, c) -> float:
-    """Radius of the circle through a, b, c in meters; inf when they're (nearly) in a line."""
+    """Radius of the circle through a, b, c in meters; inf when they're (nearly) in a straight line.
+    A line that folds back on itself (a hairpin, c on top of a) is in a line too, but it's the
+    tightest turn there is, so that's half the shorter arm, not inf."""
     ax, ay = local_xy(b, a)
     cx, cy = local_xy(b, c)
     dab, dcb = math.hypot(ax, ay), math.hypot(cx, cy)
+    if dab < 1e-6 or dcb < 1e-6:
+        return math.inf
     dac = math.hypot(ax - cx, ay - cy)
     area2 = abs(ax * cy - ay * cx)          # twice the triangle area (b at the origin)
-    if area2 < 1e-6 or dab < 1e-6 or dcb < 1e-6:
-        return math.inf
+    if area2 < 1e-6 * dab * dcb:
+        return min(dab, dcb) / 2.0 if ax * cx + ay * cy > 0 else math.inf
     return (dab * dcb * dac) / (2.0 * area2)
 
 

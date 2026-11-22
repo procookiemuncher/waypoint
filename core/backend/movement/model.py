@@ -66,6 +66,7 @@ class LocationFix:
     lon: float
     t: float                 # seconds from route start (strictly increasing)
     mode: str | None = None  # mode that produced this fix (used by the validator/reporting)
+    hold: bool = False       # waiting mid-drive (red light, stop sign): parked, but still driving
 
 
 @dataclass

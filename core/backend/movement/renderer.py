@@ -1,191 +1,116 @@
 """RouteRenderer — turns a Route into a trajectory of LocationFix, and into GPX.
 
-The only place that knows about speed profiles, jerk-limited ramps, and spatial jitter. Knows
-nothing about pymobiledevice3. Straight-line interpolation between waypoints is the no-network
-fallback; a Valhalla road-snapping step (build time) will later densify each segment's
-waypoints into a road-following polyline *before* it reaches the renderer, so this code is
-unchanged by that.
+The only place that knows about speed profiles and spatial jitter. Knows nothing about
+pymobiledevice3. How a move segment becomes fixes:
 
-Realism choices are grounded in docs/research/ (see model.py for the tuned constants):
-- jerk-limited accel (an instantaneous velocity step is the #1 synthetic tell),
-- a zero-speed dwell at every mode change (park, then walk),
-- walk speed sampled ~N(1.34, 0.30),
-- GPS jitter as a bounded, perpendicular-biased random walk that can't manufacture speed.
-See docs/MOVEMENT_ENGINE.md.
+1. **A speed cap every few meters.** The road's own speed when the drive has road data (roads.py,
+   from Valhalla: speed limits, ramps, roundabouts) or the segment's one cruise speed otherwise; the
+   bend, from the circle through the points 10 m either side (so map-digitizing kinks don't brake
+   the car); and the controls: turns at intersections, slow rolls.
+2. **Every full stop splits the drive.** A red light, a stop sign and the segment's end each become
+   a piece boundary, so every piece starts and ends at rest.
+3. **A plan the car can actually drive.** Per piece, a backward pass brakes *before* every cap and
+   stop (firmly for bends and slower roads, gently into a stop), and a forward pass pulls away no
+   harder than the driver's acceleration, which falls off with speed like a real car's.
+4. **Timed exactly.** Constant acceleration between grid points, sampled once a second, so the car
+   arrives at rest right on the stop line instead of still rolling into the next segment.
+5. **Waits hold on the spot.** A red light or a stop sign is held with still-phone jitter and the
+   fixes are flagged `hold`, so Drive turns them into a parked call instead of a crawl.
+
+A Driver (roads.py) is sampled per render, so pace, acceleration and braking differ drive to
+drive. Walks use the same pipeline with walking accelerations and no road data. Jitter is a
+bounded, perpendicular-biased random walk that can't manufacture speed. See docs/MOVEMENT_ENGINE.md.
 """
 from __future__ import annotations
 
+import bisect
 import math
 import random
 from datetime import datetime, timedelta, timezone
 
+from . import geo, roads
 from .model import (
-    Route, LocationFix, WALK, STOP,
-    DEFAULT_SPEED_MPS, DEFAULT_ACCEL_MPS2, DEFAULT_JERK_MPS3, DEFAULT_JITTER_M,
+    Route, LocationFix, DRIVE, WALK, STOP,
+    DEFAULT_SPEED_MPS, DEFAULT_ACCEL_MPS2, DEFAULT_JITTER_M,
     WALK_SPEED_MEAN_MPS, WALK_SPEED_STD_MPS, WALK_SPEED_CLAMP,
-    CORNER_LAT_ACCEL_MPS2, CORNER_MIN_SPEED_MPS,
+    CORNER_MIN_SPEED_MPS,
 )
 
-_DT = 1.0                  # emit one fix per second
-_STOP_SAMPLE_S = 5.0       # during a dwell, drop a (jittered) fix this often
-_MIN_CRAWL_MPS = 0.4       # floor so a decelerating segment can't numerically stall
-_JITTER_STEP_MAX_M = 0.5   # max jitter offset change per second, per axis (bounds fake speed)
+_DT = 1.0                  # emit one fix per second while moving
+_STOP_SAMPLE_S = 5.0       # during a dwell or a wait, drop a (jittered) fix this often
+_GRID_M = 5.0              # speed plan resolution along the path
+_CURVE_HALF_M = 10.0       # a bend's radius is measured over this much either side of the point
+_CAP_HALF_M = 4.0          # a point cap (turn, slow roll) holds over this much either side
+_UTURN_DEG = 120.0         # the line turning back this sharply is a U-turn...
+_UTURN_MPS = 3.0           # ...taken at a crawl (a 5 m grid would see it as a gentle bend)
+_JITTER_STEP_MAX_M = 0.5   # max jitter offset change per fix, per axis (bounds fake speed)
 _JITTER_ALONG_FRAC = 0.35  # along-track jitter is smaller than cross-track (realistic + safe)
-_PLAN_STEP_M = 15.0        # densify long gaps to this spacing so the speed plan can ramp
 _GPX_EPOCH = datetime(2020, 1, 1, tzinfo=timezone.utc)
-_M_PER_DEG = 111_111.0     # meters per degree latitude (good enough at city scale)
-_EARTH_R = 6_371_000.0
+
+# kept for callers that used the renderer's own helpers
+_haversine = geo.haversine
 
 
-def _haversine(a, b):
-    lat1, lon1 = math.radians(a[0]), math.radians(a[1])
-    lat2, lon2 = math.radians(b[0]), math.radians(b[1])
-    dlat, dlon = lat2 - lat1, lon2 - lon1
-    h = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-    return 2 * _EARTH_R * math.asin(math.sqrt(h))
-
-
-def _bearing(a, b):
-    """Compass bearing a->b in radians (clockwise from north)."""
-    lat1, lat2 = math.radians(a[0]), math.radians(b[0])
-    dlon = math.radians(b[1] - a[1])
-    x = math.sin(dlon) * math.cos(lat2)
-    y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
-    return math.atan2(x, y)
-
-
-def _cumulative(polyline):
-    cum = [0.0]
-    for i in range(1, len(polyline)):
-        cum.append(cum[-1] + _haversine(polyline[i - 1], polyline[i]))
-    return cum
-
-
-def _bracket(cum, d):
-    """Index i such that cum[i-1] <= d <= cum[i] (the polyline segment containing d)."""
-    i = 1
-    while i < len(cum) - 1 and cum[i] < d:
-        i += 1
-    return i
-
-
-def _interp(polyline, cum, d):
-    if d <= 0:
-        return polyline[0]
-    if d >= cum[-1]:
-        return polyline[-1]
-    i = _bracket(cum, d)
-    d0, d1 = cum[i - 1], cum[i]
-    (lat0, lon0), (lat1, lon1) = polyline[i - 1], polyline[i]
-    f = (d - d0) / (d1 - d0) if d1 > d0 else 0.0
-    return (lat0 + f * (lat1 - lat0), lon0 + f * (lon1 - lon0))
-
-
-def _heading_at(polyline, cum, d):
-    i = _bracket(cum, min(max(d, 0.0), cum[-1]))
-    return _bearing(polyline[i - 1], polyline[i])
-
-
-def _local_xy(origin, p):
-    """Meters (east, north) of point p relative to origin — equirectangular, fine at city scale."""
-    de = (p[1] - origin[1]) * _M_PER_DEG * math.cos(math.radians(origin[0]))
-    dn = (p[0] - origin[0]) * _M_PER_DEG
-    return de, dn
-
-
-def _corner_speed(a, b, c, cruise):
-    """Safe speed through vertex b given neighbors a and c: sqrt(a_lat * R), where R is the
-    Menger radius of the circle through a, b, c. Collinear -> R=inf -> full cruise."""
-    ax, ay = _local_xy(b, a)
-    cx, cy = _local_xy(b, c)
-    dab = math.hypot(ax, ay)
-    dcb = math.hypot(cx, cy)
-    dac = math.hypot(ax - cx, ay - cy)
-    area2 = abs(ax * cy - ay * cx)          # twice the triangle area (b at the origin)
-    if area2 < 1e-6 or dab < 1e-6 or dcb < 1e-6:
-        return cruise
-    radius = (dab * dcb * dac) / (2.0 * area2)   # (|ab||bc||ca|) / (4*area); 4*area == 2*area2
-    v = math.sqrt(CORNER_LAT_ACCEL_MPS2 * radius)
-    return max(CORNER_MIN_SPEED_MPS, min(cruise, v))
-
-
-_BRAKE_MARGIN = 0.5   # fraction of DEFAULT_ACCEL the plan brakes at into the final stop (see plan_speeds)
-
-
-def plan_speeds(polyline, cruise, v_entry, v_exit):
-    """Per-vertex target speed that slows for corners and is feasible under longitudinal accel.
-    (1) corner speed limit per interior vertex, (2) backward pass to brake *before* corners,
-    (3) forward pass to cap acceleration out of them and hold cruise. See
-    docs/superpowers/specs/2026-07-08-corner-aware-speed-realism-design.md."""
-    n = len(polyline)
-    if n == 0:
-        return []
-    if n == 1:
-        return [min(cruise, max(v_entry, v_exit))]
-
-    gap = [0.0] * n
-    for i in range(1, n):
-        gap[i] = _haversine(polyline[i - 1], polyline[i])   # distance from vertex i-1 to i
-
-    v = [cruise] * n
-    for i in range(1, n - 1):
-        v[i] = _corner_speed(polyline[i - 1], polyline[i], polyline[i + 1], cruise)
-    v[0] = min(v[0], v_entry)
-    v[-1] = min(v[-1], v_exit)
-
-    a_lon = DEFAULT_ACCEL_MPS2["drive"]
-    for i in range(n - 2, -1, -1):                          # backward: decel into what's ahead
-        v[i] = min(v[i], math.sqrt(v[i + 1] ** 2 + 2 * a_lon * gap[i + 1]))
-    # the final stop gets a softer ramp: the jerk-limited tracker takes a couple of seconds to
-    # reach full decel, so a full-a_lon plan arrives at the end still rolling (a velocity step
-    # into the next segment). Corners keep full a_lon, a car does brake harder for those.
-    a_brake, to_end = a_lon * _BRAKE_MARGIN, 0.0
-    for i in range(n - 2, -1, -1):
-        to_end += gap[i + 1]
-        v[i] = min(v[i], math.sqrt(v[-1] ** 2 + 2 * a_brake * to_end))
-    for i in range(1, n):                                   # forward: accel out, cap at cruise
-        v[i] = min(v[i], math.sqrt(v[i - 1] ** 2 + 2 * a_lon * gap[i]))
+def plan_piece(ss, caps, v_in, v_out, accel_at, brake, stop_brake):
+    """Speed at each grid position `ss` (meters, increasing) of a piece that starts at v_in and ends
+    at v_out, no faster than `caps`. Backward passes brake before what's ahead (`brake` m/s^2 for
+    caps, the softer `stop_brake` into the piece's end), then a forward pass caps the pull-away at
+    accel_at(v) m/s^2. Every step it returns is drivable at those rates."""
+    n = len(ss)
+    v = list(caps)
+    v[-1] = min(v[-1], v_out)
+    end = ss[-1]
+    for k in range(n - 2, -1, -1):
+        ds = ss[k + 1] - ss[k]
+        v[k] = min(v[k], math.sqrt(v[k + 1] ** 2 + 2 * brake * ds),
+                   math.sqrt(v_out ** 2 + 2 * stop_brake * (end - ss[k])))
+    v[0] = min(v[0], v_in)
+    for k in range(1, n):
+        ds = ss[k] - ss[k - 1]
+        v[k] = min(v[k], math.sqrt(v[k - 1] ** 2 + 2 * accel_at(v[k - 1]) * ds))
     return v
 
 
-def _densify(poly, max_step=_PLAN_STEP_M):
-    """Subdivide long gaps so the speed plan has resolution to ramp up and down — a 2-waypoint
-    rest-to-rest leg otherwise can't represent accelerate->cruise->decelerate and collapses to a
-    crawl. Geometry-preserving: inserted points lie on the existing straight segments, so the
-    path is unchanged; only the sampling density increases."""
-    if len(poly) < 2:
-        return list(poly)
-    out = [poly[0]]
-    for i in range(1, len(poly)):
-        a, b = poly[i - 1], poly[i]
-        d = _haversine(a, b)
-        n = max(1, int(math.ceil(d / max_step)))
-        for k in range(1, n + 1):
-            f = k / n
-            out.append((a[0] + f * (b[0] - a[0]), a[1] + f * (b[1] - a[1])))
+def _timing(ss, v):
+    """Seconds from the piece's start to each grid position, at constant acceleration per cell."""
+    t = [0.0]
+    for k in range(1, len(ss)):
+        ds, both = ss[k] - ss[k - 1], v[k - 1] + v[k]
+        t.append(t[-1] + (2 * ds / both if both > 1e-9 else 0.0))
+    return t
+
+
+def _position(ss, v, t, at):
+    """Where the car is `at` seconds into the piece."""
+    k = max(0, min(len(t) - 2, bisect.bisect_right(t, at) - 1))
+    ds = ss[k + 1] - ss[k]
+    tau = at - t[k]
+    a = (v[k + 1] ** 2 - v[k] ** 2) / (2 * ds) if ds > 0 else 0.0
+    return min(ss[k + 1], ss[k] + v[k] * tau + 0.5 * a * tau * tau)
+
+
+def _uturns(poly, cum):
+    """Arc positions where the line doubles back on itself (a U-turn on the road)."""
+    out = []
+    for k in range(1, len(poly) - 1):
+        if cum[k] - cum[k - 1] < 1e-6 or cum[k + 1] - cum[k] < 1e-6:
+            continue
+        kink = math.degrees(geo.bearing(poly[k], poly[k + 1]) - geo.bearing(poly[k - 1], poly[k]))
+        if abs((kink + 180.0) % 360.0 - 180.0) >= 60.0 and abs(geo.turn_deg(poly, cum, cum[k], 10.0)) >= _UTURN_DEG:
+            if not out or cum[k] - out[-1] > 10.0:
+                out.append(cum[k])
     return out
 
 
-def _plan_at(cum, vplan, d):
-    """Planned speed at arc distance d along the polyline (linear between vertices)."""
-    if d <= 0:
-        return vplan[0]
-    if d >= cum[-1]:
-        return vplan[-1]
-    i = _bracket(cum, d)
-    d0, d1 = cum[i - 1], cum[i]
-    f = (d - d0) / (d1 - d0) if d1 > d0 else 0.0
-    return vplan[i - 1] + f * (vplan[i] - vplan[i - 1])
-
-
 class RouteRenderer:
-    """Render a Route to LocationFixes. Jitter + walk-speed sampling are seeded so rebuilding a
-    preset yields the same GPX (diff-friendly cached artifacts)."""
+    """Render a Route to LocationFixes. Seeded (jitter, walk speed, driver, red lights), so rebuilding
+    a preset yields the same GPX (diff-friendly cached artifacts)."""
 
     def __init__(self, seed: int = 0):
         self._rng = random.Random(seed)
         self._off_e = 0.0    # jitter offset (meters, east/north), evolves as a bounded walk
         self._off_n = 0.0
+        self.driver = roads.Driver.sample(self._rng)
 
     def render(self, route: Route) -> list[LocationFix]:
         fixes: list[LocationFix] = []
@@ -203,11 +128,9 @@ class RouteRenderer:
                 pos, carry_v = at, 0.0
             else:
                 v_cruise = self._cruise_for(seg)
-                v_entry = carry_v                                   # 0 unless continuing same mode
                 next_same = i < len(segs) - 1 and segs[i + 1].mode == seg.mode
-                v_exit = v_cruise if next_same else 0.0             # decel to 0 into stops/mode-changes
-                new_fixes, last_t, pos = self._emit_move(
-                    seg, t_cursor, v_entry, v_exit, v_cruise)
+                v_exit = v_cruise if next_same else 0.0             # come to rest into stops/mode-changes
+                new_fixes, last_t, pos = self._emit_move(seg, t_cursor, carry_v, v_exit, v_cruise)
                 carry_v = v_exit
             fixes.extend(new_fixes)
             t_cursor = last_t + _DT     # keep timestamps strictly increasing across segments
@@ -228,8 +151,8 @@ class RouteRenderer:
 
     def _jit(self, lat, lon, jitter_m, heading=None):
         """Nudge the point by a bounded random-walk offset so the track wanders like real GPS.
-        The offset is correlated across points and its per-second change is capped, so jitter
-        can never fabricate an implausible speed. When a heading is known, noise is biased
+        The offset is correlated across points and its per-fix change is capped, so jitter can
+        never fabricate an implausible speed. When a heading is known, noise is biased
         perpendicular to travel (lateral wander, like real GPS hugging a road) with reduced
         along-track noise. State carries across segments — no discontinuity at boundaries."""
         if jitter_m <= 0:
@@ -248,8 +171,8 @@ class RouteRenderer:
             dn = cross * perp_n + along * tdir_n
         self._off_e = self._walk_axis(self._off_e, de, jitter_m)
         self._off_n = self._walk_axis(self._off_n, dn, jitter_m)
-        dlat = self._off_n / _M_PER_DEG
-        dlon = self._off_e / (_M_PER_DEG * math.cos(math.radians(lat)))
+        dlat = self._off_n / geo.M_PER_DEG
+        dlon = self._off_e / (geo.M_PER_DEG * math.cos(math.radians(lat)))
         return lat + dlat, lon + dlon
 
     @staticmethod
@@ -263,20 +186,23 @@ class RouteRenderer:
 
     def _emit_stop(self, at, seg, start_t):
         jitter = seg.jitter_m or DEFAULT_JITTER_M[STOP]
+        return self._hold(at, seg.dwell_s, start_t, jitter, STOP, False)
+
+    def _hold(self, at, secs, start_t, jitter, mode, hold):
+        """Still on one spot from start_t for `secs`: a fix now, every _STOP_SAMPLE_S, and at the end."""
         fixes = []
-        t = start_t
-        end = start_t + seg.dwell_s
+        t, end = start_t, start_t + secs
         while t < end:
             lat, lon = self._jit(at[0], at[1], jitter)
-            fixes.append(LocationFix(lat, lon, t, STOP))
+            fixes.append(LocationFix(lat, lon, t, mode, hold))
             t += _STOP_SAMPLE_S
         lat, lon = self._jit(at[0], at[1], jitter)
-        fixes.append(LocationFix(lat, lon, end, STOP))
+        fixes.append(LocationFix(lat, lon, end, mode, hold))
         return fixes, end
 
     def _emit_move(self, seg, start_t, v_entry, v_exit, v_cruise):
-        poly = _densify(seg.waypoints)
-        cum = _cumulative(poly)
+        poly = list(seg.waypoints)
+        cum = geo.cumulative(poly)
         total = cum[-1]
         jitter = seg.jitter_m or DEFAULT_JITTER_M.get(seg.mode, 5.0)
 
@@ -285,50 +211,76 @@ class RouteRenderer:
             lat, lon = self._jit(poly[0][0], poly[0][1], jitter)
             return [LocationFix(lat, lon, start_t, seg.mode)], start_t, poly[-1]
 
-        max_a = DEFAULT_ACCEL_MPS2.get(seg.mode, DEFAULT_ACCEL_MPS2["drive"])
-        jerk = DEFAULT_JERK_MPS3.get(seg.mode, DEFAULT_JERK_MPS3["drive"])
-        vplan = plan_speeds(poly, v_cruise, v_entry, v_exit)
+        drive = seg.mode == DRIVE
+        drift = None
+        if drive and seg.roads and not seg.steady:
+            spans, controls = roads.plan(seg.roads, poly, cum, self.driver, self._rng)
+            drift = self.driver.drift(self._rng, total)
+        else:
+            spans, controls = [(0.0, total, v_cruise)], []
+        if drive:
+            d = self.driver
+            accel_at, brake, stop_brake, lateral = d.accel_at, d.brake, d.stop_brake, d.corner_lat
+        else:
+            walk_a = DEFAULT_ACCEL_MPS2.get(seg.mode, DEFAULT_ACCEL_MPS2[WALK])
+            accel_at, brake, stop_brake, lateral = (lambda v: walk_a), walk_a, walk_a, None
 
-        fixes = []
-        t = start_t
-        d = 0.0
-        v = v_entry
-        a = 0.0
-        guard = 0
-        max_steps = int(total / _MIN_CRAWL_MPS) + 200   # safety net; should never trip
+        # full stops split the drive; at least a meter between them and from the ends
+        stops, last = [], 0.0
+        for c in controls:
+            if c.dwell_s > 0 and c.s - last >= 1.0 and total - c.s >= 1.0:
+                stops.append(c)
+                last = c.s
+        points = sorted([(c.s, c.v_cap) for c in controls if c.dwell_s <= 0 and c.v_cap]
+                        + ([(s, _UTURN_MPS) for s in _uturns(poly, cum)] if drive else []))
+        span_starts = [s0 for s0, _, _ in spans]
+        point_s = [s for s, _ in points]
 
-        while True:
-            pos = _interp(poly, cum, d)
-            hdg = _heading_at(poly, cum, d)
-            jlat, jlon = self._jit(pos[0], pos[1], jitter, hdg)
-            fixes.append(LocationFix(jlat, jlon, t, seg.mode))
-            if d >= total:
-                break
+        def cap_at(s):
+            v = spans[max(0, bisect.bisect_right(span_starts, s) - 1)][2]
+            if drift:
+                v = min(roads.MAX_MPS, v * drift(s))
+            if lateral:
+                r = geo.menger_radius(geo.interp(poly, cum, s - _CURVE_HALF_M), geo.interp(poly, cum, s),
+                                      geo.interp(poly, cum, s + _CURVE_HALF_M))
+                v = min(v, max(CORNER_MIN_SPEED_MPS, math.sqrt(lateral * r)))
+            lo = bisect.bisect_left(point_s, s - _CAP_HALF_M)
+            hi = bisect.bisect_right(point_s, s + _CAP_HALF_M)
+            for k in range(lo, hi):
+                v = min(v, points[k][1])
+            return v
 
-            remaining = total - d
-            # follow the pre-planned speed at this arc position: the backward pass already
-            # lowered it on the approach to every corner, so tracking it brakes *before* turns.
-            v_target = _plan_at(cum, vplan, d)
-            if v < v_target - 1e-6:
-                a_des = max_a
-            elif v > v_target + 1e-6:
-                a_des = -max_a
-            else:
-                a_des = 0.0
-            # jerk-limit the change in acceleration (S-curve, no instantaneous velocity step)
-            a = max(a - jerk * _DT, min(a + jerk * _DT, a_des))
-            v = max(0.0, min(v_cruise, v + a * _DT))
-            if remaining > 0 and v < _MIN_CRAWL_MPS:
-                v = _MIN_CRAWL_MPS
-            d = min(total, d + v * _DT)
-            t += _DT
-            guard += 1
-            if guard > max_steps:
-                pos = _interp(poly, cum, total)
-                jlat, jlon = self._jit(pos[0], pos[1], jitter, hdg)
-                fixes.append(LocationFix(jlat, jlon, t, seg.mode))
-                break
-
+        start = geo.interp(poly, cum, 0.0)
+        lat, lon = self._jit(start[0], start[1], jitter, geo.heading_at(poly, cum, 0.0))
+        fixes = [LocationFix(lat, lon, start_t, seg.mode)]
+        t, v_in = start_t, v_entry
+        bounds = [0.0] + [c.s for c in stops] + [total]
+        for p in range(len(bounds) - 1):
+            a, b = bounds[p], bounds[p + 1]
+            last_piece = p == len(bounds) - 2
+            n = max(2, int(math.ceil((b - a) / _GRID_M)))
+            ss = sorted({a + (b - a) * j / n for j in range(n + 1)}
+                        | {s for s in point_s if a < s < b})
+            v = plan_piece(ss, [cap_at(s) for s in ss], v_in, v_exit if last_piece else 0.0,
+                           accel_at, brake, stop_brake)
+            times = _timing(ss, v)
+            k = 1
+            while k < times[-1]:
+                s = _position(ss, v, times, k)
+                pt = geo.interp(poly, cum, s)
+                lat, lon = self._jit(pt[0], pt[1], jitter, geo.heading_at(poly, cum, s))
+                fixes.append(LocationFix(lat, lon, t + k, seg.mode))
+                k += 1
+            t += max(1, math.ceil(times[-1]))
+            pt = geo.interp(poly, cum, b)
+            lat, lon = self._jit(pt[0], pt[1], jitter, geo.heading_at(poly, cum, b))
+            fixes.append(LocationFix(lat, lon, t, seg.mode))
+            if not last_piece:   # wait at the light / stop sign, then pull away from rest
+                wait = max(1, round(stops[p].dwell_s))
+                first = min(_STOP_SAMPLE_S, wait)   # the arrival fix above already stands at t
+                held, t = self._hold(pt, wait - first, t + first, DEFAULT_JITTER_M[STOP], seg.mode, True)
+                fixes.extend(held)
+                v_in = 0.0
         return fixes, t, poly[-1]
 
     # -- output ---------------------------------------------------------------
