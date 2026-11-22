@@ -3,7 +3,7 @@ title: Life360 Flight Detection / Landing Notifications — how it works, has an
 status: research                # research | device-verified | superseded
 last_verified: 2026-11-22
 device_verified: partial        # 2026-10-24: airplane toggle automated, sim holds offline, tunnel survives (cable); the push itself is still UNTESTED
-open_gates: [flight-push-manual-toggle, flight-altitude-hard-gate, isSimulatedBySoftware, landing-altitude-sign]
+open_gates: [flight-push-manual-toggle, flight-altitude-hard-gate, isSimulatedBySoftware]   # landing-altitude-sign CLOSED 2026-11-22 (smali: altitude <= elevation+1000)
 depends_on: [life360-notification-triggers, coremotion-injection-feasibility]
 source_tier: mixed              # PRIMARY (Life360 support/press/blog, Apple docs, 3 independent API reverse-engineerings) + third-party (spoof-scene blogs, forums)
 recheck_if: [Life360 app update changes flight-detection triggers or gating, iOS point release changes location-sim/altitude behavior, someone publishes a landing-notification spoof, the phone->server ingest schema is dumped]
@@ -80,6 +80,40 @@ recheck_if: [Life360 app update changes flight-detection triggers or gating, iOS
 > own flight-detection code (reading CoreLocation/CoreMotion instead of Android's `LocationManager`)
 > could differ, and the decisive `isSimulatedBySoftware` gate lives in a part of the stack this
 > Android analysis can't see at all.
+
+> **Update 2026-11-22 — the disputed landing-altitude sign, settled at the opcode level
+> (`smali_classes2/g5g.smali`, `k5g.java`).** Read the actual bytecode for the branch pass 2 and I
+> disagreed on. In `g5g.i()` the landing block loads `getAltitude()`, adds the runway elevation +
+> `0x3e8` (1000), compares, and **`if-gtz … :cond_6`** — i.e. *altitude greater than elevation+1000
+> jumps to the skip label*, the same label the `speed > 100 mph` guard jumps to. So the gate is
+> **`altitude ≤ elevation + 1000 m`**, an upper bound: a spoof reporting altitude 0 clears it for
+> free (MCO elevation ~29 m → 0 ≤ 1029 ✓). Pass 2's reading was right; my earlier re-read was
+> wrong. The separate `altitude > elevation + 5000 → FLYING` compare at the method's tail is an
+> **OR** fast-path to the flying state, not a landing requirement. The `const 100.0` and
+> `2.23694` constants are loaded once and unchanged, confirming the speed gate too.
+>
+> **No second altitude gate.** `k5g.java` is the uploader: it builds the
+> `com.life360.device.device-flight-landed.v1` event with only `takeoffAirportCode`, `takeoffTime`,
+> `landingAirportCode`, `landingTime` and POSTs it — **no altitude, speed or coordinate field**.
+> The only altitude the app sends anywhere is in the separate `landing-stats` *metric* (`g5g`), not
+> in the event that triggers the push. So altitude is gated once, on-device, by `≤ elevation+1000`,
+> and never transmitted for the landing decision.
+>
+> **The landing path doesn't require a *confirmed* takeoff.** It reads `m41091a()` =
+> `flightDetectionNearbyRunaway`, the record the **loose ≤1000 m arm** sets whenever you're within
+> 1000 m of any runway — not `flightDetectionTakeoffDetected` (the >100 mph on-runway fire). That
+> stored runway becomes the uploaded `takeoffAirportCode`. So on Android, being seen within 1000 m
+> of airport A's runway, then later within 1000 m of a *different* airport's runway (≥40 mi away,
+> ≤100 mph, altitude ≤ elev+1000, within 24 h) is sufficient for the landing POST. The full
+> takeoff theatre (the >100 mph roll) is what sets the plane icon / POTENTIAL_FLYER state and is
+> worth doing for realism, but isn't the gate.
+>
+> **Net for `landing-altitude-sign`: CLOSED, favorable.** On this Android build every flight-detection
+> gate is satisfiable on our stack at altitude 0. The standing caveats are unchanged: this is the
+> **Android** app (the iOS build is unseen, and `isSimulatedBySoftware` is still an open gate that
+> may live in iOS code we can't read), and none of it is tested on a real phone yet — §5 is still the
+> deciding experiment. What iOS reports for a *simulated* location's altitude and vertical accuracy
+> under the CoreDevice sim is also still unknown (the step-4 Shortcut in §5b checks it).
 
 > **Update 2026-10-24 (on-device, Mac):** the airplane-mode gates no longer need hands. A devicectl
 > `openURL` to `shortcuts://run-shortcut?name=vida-airplane-on|off` toggles airplane mode + Wi-Fi with no
