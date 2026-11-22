@@ -22,7 +22,7 @@ Runway geometry below is taken from Life360's bundled runways.csv (the exact row
 not OSM or memory, so proximity is measured the same way the app measures it.
 
 Sequence (run_flight_test, MIA -> MCO, ~310 km apart):
-  1. Hold at the MIA terminal (703 m from the runway -> arms the <=1000 m candidate), online, dwell.
+  1. Hold at the MIA terminal (703 m from the nearest runway -> arms the <=1000 m candidate), online, dwell.
   2. Taxi -> stepped takeoff roll along the real runway (45/55/65/75 m/s, each <=100 m from the
      centreline, each step +10 m/s over ~5 s so accel ~2 m/s2) -> online climb pulling east off the
      runway. Played with backend.drive.play_chunks so each leg is held for its own distance/speed.
@@ -44,6 +44,7 @@ Usage:
   python core/tools/flight_test.py --clear      # clear any active location sim and exit
 """
 import argparse
+import contextlib
 import math
 import os
 import signal
@@ -64,9 +65,11 @@ from backend.routes import BUILD_DIR, ROUTES_DIR, haversine  # noqa: E402
 MIA_RWY = ("MIA", 25.78610, -80.31484, 182.0, 3961.0, 1)     # 09/27, ~3963 m, heads ~due east
 MCO_RWY = ("MCO", 28.43561, -81.29588, -3056.0, 28.0, 28)    # nearest MCO runway to the landing hold
 
-# Holds. MIA terminal is 703 m from MIA_RWY (clears the <=1000 m candidate arm). MCO landing hold is
-# 405 m from MCO_RWY (clears the <=1000 m landing gate); MCO's main passenger terminal is ~1200 m
-# from any runway and would MISS the gate, so the "landing" fix sits airside, where it really fires.
+# Holds. The MIA terminal is 703 m from the nearest MIA runway (855 m from MIA_RWY, the 09/27
+# takeoff roll); either way it's within 1000 m, so Life360 arms the candidate on whichever runway is
+# nearest. MCO landing hold is 405 m from MCO_RWY (clears the <=1000 m landing gate); MCO's main
+# passenger terminal is ~1200 m from any runway and would MISS the gate, so the "landing" fix sits
+# airside, where it really fires.
 MIA_TERMINAL = (25.79524, -80.28015)
 MCO_LANDING = (28.43360, -81.30000)
 
@@ -163,6 +166,23 @@ def _log_line(line: str):
         print("  " + line.strip())
 
 
+@contextlib.contextmanager
+def _shield_signals():
+    """Ignore SIGINT/SIGTERM/SIGHUP for the duration, so a repeat interrupt can't abort teardown and
+    leave the phone offline on a fake fix. Only acts on the main thread (signal.signal's rule); a
+    closed stdin during teardown still degrades to ENTER because prompt_airplane uses _safe_input."""
+    sigs = [signal.SIGINT, signal.SIGTERM] + ([signal.SIGHUP] if hasattr(signal, "SIGHUP") else [])
+    on_main = threading.current_thread() is threading.main_thread()
+    prev = {s: signal.getsignal(s) for s in sigs} if on_main else {}
+    for s in prev:
+        signal.signal(s, signal.SIG_IGN)
+    try:
+        yield
+    finally:
+        for s, h in prev.items():
+            signal.signal(s, h)
+
+
 def prompt_airplane(on: bool, cd: CoreDevice) -> bool:
     """Flip airplane mode via the phone's Shortcut, owner confirms; manual fallback if the send
     failed or the owner says it didn't take. Always returns True (airplane mode is now in the
@@ -216,7 +236,7 @@ def run_flight_test(quick: bool = False, cd: CoreDevice | None = None):
     try:
         # Phase 1 — terminal hold, online.
         d_mia = runway_distance(MIA_RWY, *MIA_TERMINAL)
-        print(f"\n> [2/6] Holding at MIA terminal {MIA_TERMINAL} ({d_mia:.0f} m from runway, ONLINE)...")
+        print(f"\n> [2/6] Holding at MIA terminal {MIA_TERMINAL} ({d_mia:.0f} m from the 09/27 runway, ONLINE)...")
         cd.hold(*MIA_TERMINAL, _log_line)
         dwell = 5 if quick else 20 * 60
         print(f"  Dwelling {dwell}s so Life360 settles 'at MIA' and arms the runway candidate...")
@@ -228,10 +248,12 @@ def run_flight_test(quick: bool = False, cd: CoreDevice | None = None):
         if not play_chunks(chunks, cd, cancel, _log_line):
             print("  ! A leg was refused by the phone — check the output above.")
 
-        # Phase 3 — airplane ON (take off into the offline gap).
+        # Phase 3 — airplane ON (take off into the offline gap). Mark it on *before* the toggle: the
+        # shortcut send goes out first, so an interrupt during the confirm must still trigger the
+        # airplane-off cleanup rather than leave the phone offline on a fake fix.
         _safe_input("\n  >> Press ENTER to turn AIRPLANE MODE ON (take off into the gap)... << ")
-        prompt_airplane(True, cd)
         airplane_on = True
+        prompt_airplane(True, cd)
 
         # Phase 4 — offline: move the spoof to the MCO landing hold and sit there.
         dist_km = haversine(MIA_TERMINAL, MCO_LANDING) / 1000
@@ -257,12 +279,16 @@ def run_flight_test(quick: bool = False, cd: CoreDevice | None = None):
 
     finally:
         cancel.set()
-        if airplane_on:
-            print("\n> Cleanup: airplane mode was left ON — turning it back OFF...")
-            prompt_airplane(False, cd)
-        print("\n> Cleanup: clearing the simulated location...")
-        cd.clear(_log_line)
-        print("  [OK] Location sim cleared, phone back on real GPS.")
+        # Shield teardown from a repeat Ctrl+C: once we're turning airplane mode back off and
+        # clearing the sim, a second signal that killed this block would leave the phone offline on
+        # a fake fix — the one thing this tool promises never to do.
+        with _shield_signals():
+            if airplane_on:
+                print("\n> Cleanup: airplane mode was left ON — turning it back OFF...")
+                prompt_airplane(False, cd)
+            print("\n> Cleanup: clearing the simulated location...")
+            cd.clear(_log_line)
+            print("  [OK] Location sim cleared, phone back on real GPS.")
 
 
 def run_geofence_arrival(quick: bool = False, cd: CoreDevice | None = None):
@@ -296,8 +322,9 @@ def run_geofence_arrival(quick: bool = False, cd: CoreDevice | None = None):
         _safe_input("  Press ENTER to clear the location sim... ")
     finally:
         cancel.set()
-        cd.clear(_log_line)
-        print("  [OK] Location sim cleared.")
+        with _shield_signals():
+            cd.clear(_log_line)
+            print("  [OK] Location sim cleared.")
 
 
 def main():

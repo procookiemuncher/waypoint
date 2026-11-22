@@ -213,6 +213,29 @@ class TestRunFlightTest(unittest.TestCase):
         self.assertEqual(airplane_events[-1], ("airplane", False))
         self.assertEqual(events[-1], ("clear",))
 
+    def test_interrupt_during_the_ON_confirm_still_cleans_up(self):
+        # If Ctrl+C lands on the "is the airplane icon showing?" confirm (airplane already sent,
+        # the KeyboardInterrupt _safe_input doesn't swallow), cleanup must still toggle it OFF and
+        # clear — airplane_on is marked before the toggle for exactly this.
+        events = []
+        cd = FakeCoreDevice(events, sends_airplane=True)
+
+        def fake_input(prompt=""):
+            if "airplane icon" in prompt:   # the ON confirm
+                raise KeyboardInterrupt
+            return "y"
+
+        with mock.patch("flight_test._safe_input", fake_input), \
+                mock.patch("flight_test.DRY_RUN", True), \
+                mock.patch("flight_test.play_chunks", return_value=True), \
+                mock.patch("builtins.print"), mock.patch("time.sleep"):
+            with self.assertRaises(KeyboardInterrupt):
+                flight_test.run_flight_test(quick=True, cd=cd)
+        self.assertIn(("airplane", True), events)
+        airplane_events = [e for e in events if e[0] == "airplane"]
+        self.assertEqual(airplane_events[-1], ("airplane", False))
+        self.assertEqual(events[-1], ("clear",))
+
 
 class TestGeofenceArrival(unittest.TestCase):
     def test_playback_and_clear(self):
