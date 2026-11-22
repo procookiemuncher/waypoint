@@ -10,6 +10,7 @@ import os
 from backend.destinations import route_ends
 from backend.movement import load_route, RouteRenderer, validate, snap_route
 from backend.movement.model import STOP, WALK_SPEED_MEAN_MPS
+from backend.movement.roads import typical_mps
 from backend.secret import load_json
 
 CORE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -59,7 +60,8 @@ def haversine(a, b) -> float:
 # routes takes ~12 s, too long for the app's boot, so each one is rendered once in the background
 # (warm_legs) and kept on disk; until then the summary carries an estimate and "exact": false.
 LEGS_DIR = os.path.join(BUILD_DIR, "legs-cache")
-LEGS_VERSION = 1   # bump when the renderer changes how long things take
+LEGS_VERSION = 2   # bump when the renderer changes how long things take (2: road speeds, lights, stops)
+WAIT_ALLOWANCE = 1.08   # estimate only: lights and stop signs add about this much to a drive on road data
 
 
 def _legs_key(route) -> str:
@@ -88,16 +90,25 @@ def render_legs(route) -> list:
     return _rounded(legs)
 
 
+def _speed(seg) -> float:
+    """What a segment averages on the move: the roads' speeds when it has road data, else its own."""
+    if seg.roads and not seg.steady:
+        return typical_mps(seg.roads)
+    return seg.speed_mps or WALK_SPEED_MEAN_MPS
+
+
 def estimate_legs(route) -> list:
-    """Distance / speed per segment (walks at the mean walking pace) + the stops. Comes out a few
-    percent short of the render, more on winding roads (the renderer brakes for bends)."""
+    """Distance / speed per segment (walks at the mean walking pace, drives on road data at the
+    roads' speeds plus an allowance for lights) + the stops. Within a few percent of the render on
+    most routes, short on winding roads (the renderer brakes for bends)."""
     legs = []
     for seg in route.segments:
         if seg.mode == STOP:
             _merge(legs, STOP, seg.dwell_s, 0.0)
             continue
         m = sum(haversine(seg.waypoints[i], seg.waypoints[i + 1]) for i in range(len(seg.waypoints) - 1))
-        _merge(legs, seg.mode, m / (seg.speed_mps or WALK_SPEED_MEAN_MPS) + seg.dwell_s, m)
+        secs = m / _speed(seg) * (WAIT_ALLOWANCE if seg.roads and not seg.steady else 1.0)
+        _merge(legs, seg.mode, secs + seg.dwell_s, m)
     return _rounded(legs)
 
 
@@ -153,7 +164,7 @@ def summary(path: str, snap: bool = True) -> dict:
             if line and pts[0] == line[-1]:
                 pts = pts[1:]
             line.extend(pts)
-            speed = speed or seg.speed_mps
+            speed = speed or (_speed(seg) if seg.roads else seg.speed_mps)
     dist = sum(haversine(line[i], line[i + 1]) for i in range(len(line) - 1))
     legs = cached_legs(route)
     exact = legs is not None
