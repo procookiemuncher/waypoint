@@ -1,0 +1,21 @@
+{
+  "name": "mco-geofence-arrival",
+  "description": "Fallback geofence arrival trip for Orlando International (MCO): a believable approach drive from north of the airport along SR-436 (Semoran Blvd) straight into the MCO terminal drop-off, crossing the geofence boundary at realistic driving speed, followed by a dwell inside the airport Place. Plays via CoreDevice so Life360 reports real mph + the car icon, triggering 'arrived at Orlando International Airport'.",
+  "segments": [
+    {
+      "mode": "drive",
+      "speed_mps": 18.0,
+      "snap": true,
+      "waypoints": [
+        [28.48500, -81.30800],
+        [28.46000, -81.30800],
+        [28.44500, -81.30800],
+        [28.43120, -81.30810]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 300
+    }
+  ]
+}
