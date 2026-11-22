@@ -263,7 +263,7 @@ def snap_route(route: Route, base_url: str | None = None, roads: str = "fetch") 
                 edges = map_edges(road_edges(snapped, seg.mode, base_url, network=roads == "fetch"), snapped)
             except RoadsUnavailable as e:
                 if roads == "fetch":
-                    warnings.append(f"segment {i} (drive): no road data, one cruise speed — {e}")
+                    warnings.append(f"segment {i} (drive): no road data, one cruise speed - {e}")
         new_segments.append(dataclasses.replace(seg, waypoints=snapped, roads=edges))
     return Route(name=route.name, description=route.description, segments=new_segments,
                  label=route.label, city=route.city), warnings

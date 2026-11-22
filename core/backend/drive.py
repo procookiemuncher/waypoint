@@ -125,8 +125,10 @@ def plan_chunks(route_path: str, seed=None, log=print):
         dist = sum(haversine(pts[m], pts[m + 1]) for m in range(i, j))
         took = fixes[j].t - fixes[i].t
         prev = chunks[-1] if chunks else None
-        if prev and prev["kind"] == "move" and took < CHUNK_MIN_SLOW_S and prev["mode"] == fixes[j].mode:
-            # the last second or two before a stop: shorter than a phone call, so fold it into the chunk before
+        creeping = took > 0 and dist / took < MIN_MOVE_MPS
+        if prev and prev["kind"] == "move" and (took < CHUNK_MIN_SLOW_S or creeping) and prev["mode"] == fixes[j].mode:
+            # the last second or two before a stop (or a creep the 1 m/s floor would squash into one):
+            # shorter than a phone call, so fold it into the chunk before
             prev["waypoints"] += pts[i + 1:j + 1]
             prev["dist"] += dist
             prev["took"] += took
@@ -134,6 +136,18 @@ def plan_chunks(route_path: str, seed=None, log=print):
             chunks.append({"kind": "move", "waypoints": pts[i:j + 1], "dist": dist, "took": took,
                            "mode": fixes[(i + j + 1) // 2].mode})
         i = j
+    # a short move that couldn't fold backwards (right after a stop) folds into the move after it
+    k = 0
+    while k < len(chunks) - 1:
+        c, nxt = chunks[k], chunks[k + 1]
+        if (c["kind"] == "move" and c["took"] < CHUNK_MIN_SLOW_S and nxt["kind"] == "move"
+                and nxt["mode"] == c["mode"]):
+            nxt["waypoints"] = c["waypoints"][:-1] + nxt["waypoints"]
+            nxt["dist"] += c["dist"]
+            nxt["took"] += c["took"]
+            del chunks[k]
+            continue
+        k += 1
     for c in chunks:
         if c["kind"] == "move":
             c["speed"] = c["dist"] / c.pop("took")
@@ -148,7 +162,9 @@ def plan_chunks(route_path: str, seed=None, log=print):
             near = [raw[m] for m in (k - 1, k + 1) if 0 <= m < len(chunks)]
             speed = raw[k]
             if len(near) == 2 and None not in near:
-                speed = (3 * raw[k] + sum(near)) / 5
+                eased = (3 * raw[k] + sum(near)) / 5
+                if c["dist"] / eased >= 2.0:   # easing a slow turn chunk up mustn't make it a sliver
+                    speed = eased
             secs = c["dist"] / speed if speed > 0 else 0.0
             # the wander never takes a chunk over 75 mph; a route written faster (miami-drift) keeps its own
             speed = min(speed * wander(t + secs / 2), max(MAX_MOVE_MPS, speed))

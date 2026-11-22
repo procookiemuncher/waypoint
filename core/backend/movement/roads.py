@@ -67,8 +67,8 @@ class Driver:
     """One driver's habits, sampled once per render so no two drives look the same."""
     pace_city: float = 1.0     # times the speed limit on city roads
     pace_fast: float = 1.03    # ... and on fast ones (80 km/h and up)
-    accel: float = 1.75        # m/s^2 pulling away from rest, falling off with speed (accel_at)
-    brake: float = 1.7         # m/s^2 slowing for bends, turns and slower roads
+    accel: float = 1.65        # m/s^2 pulling away from rest, falling off with speed (accel_at)
+    brake: float = 1.6         # m/s^2 slowing for bends, turns and slower roads
     stop_brake: float = 1.3    # m/s^2 coming to rest (lights, stops, the end of the drive)
     corner_lat: float = 3.5    # m/s^2 sideways through a bend: v = sqrt(corner_lat * radius)
 
@@ -92,11 +92,12 @@ class Driver:
         def gauss(mu, sd, lo, hi):
             return max(lo, min(hi, rng.gauss(mu, sd)))
         return cls(pace_city=gauss(1.0, 0.04, 0.92, 1.08), pace_fast=gauss(1.03, 0.03, 0.96, 1.10),
-                   accel=rng.uniform(1.55, 1.85), brake=rng.uniform(1.5, 1.9),
+                   accel=rng.uniform(1.5, 1.75), brake=rng.uniform(1.4, 1.75),
                    stop_brake=rng.uniform(1.1, 1.5), corner_lat=rng.uniform(3.1, 3.8))
 
     def accel_at(self, v: float) -> float:
-        """Real cars pull hardest from rest: ~1.75 m/s^2 at 0, about half that at 55 mph."""
+        """Real cars pull hardest from rest: ~1.65 m/s^2 at 0, about half that at 55 mph. Kept a
+        couple of tenths under the validator's 2.0 review line, GPS jitter adds that much."""
         return self.accel * max(0.4, 1.0 - v / 50.0)
 
 

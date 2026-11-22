@@ -41,8 +41,8 @@ _STOP_SAMPLE_S = 5.0       # during a dwell or a wait, drop a (jittered) fix thi
 _GRID_M = 5.0              # speed plan resolution along the path
 _CURVE_HALF_M = 10.0       # a bend's radius is measured over this much either side of the point
 _CAP_HALF_M = 4.0          # a point cap (turn, slow roll) holds over this much either side
-_UTURN_DEG = 120.0         # the line turning back this sharply is a U-turn...
-_UTURN_MPS = 3.0           # ...taken at a crawl (a 5 m grid would see it as a gentle bend)
+_UTURN_COS = 0.5           # the line turning back more than 120 deg within _CURVE_HALF_M is a U-turn...
+_UTURN_MPS = 2.5           # ...taken at a crawl (map U-turns are tighter than a car can turn)
 _JITTER_STEP_MAX_M = 0.5   # max jitter offset change per fix, per axis (bounds fake speed)
 _JITTER_ALONG_FRAC = 0.35  # along-track jitter is smaller than cross-track (realistic + safe)
 _GPX_EPOCH = datetime(2020, 1, 1, tzinfo=timezone.utc)
@@ -87,19 +87,6 @@ def _position(ss, v, t, at):
     tau = at - t[k]
     a = (v[k + 1] ** 2 - v[k] ** 2) / (2 * ds) if ds > 0 else 0.0
     return min(ss[k + 1], ss[k] + v[k] * tau + 0.5 * a * tau * tau)
-
-
-def _uturns(poly, cum):
-    """Arc positions where the line doubles back on itself (a U-turn on the road)."""
-    out = []
-    for k in range(1, len(poly) - 1):
-        if cum[k] - cum[k - 1] < 1e-6 or cum[k + 1] - cum[k] < 1e-6:
-            continue
-        kink = math.degrees(geo.bearing(poly[k], poly[k + 1]) - geo.bearing(poly[k - 1], poly[k]))
-        if abs((kink + 180.0) % 360.0 - 180.0) >= 60.0 and abs(geo.turn_deg(poly, cum, cum[k], 10.0)) >= _UTURN_DEG:
-            if not out or cum[k] - out[-1] > 10.0:
-                out.append(cum[k])
-    return out
 
 
 class RouteRenderer:
@@ -231,8 +218,7 @@ class RouteRenderer:
             if c.dwell_s > 0 and c.s - last >= 1.0 and total - c.s >= 1.0:
                 stops.append(c)
                 last = c.s
-        points = sorted([(c.s, c.v_cap) for c in controls if c.dwell_s <= 0 and c.v_cap]
-                        + ([(s, _UTURN_MPS) for s in _uturns(poly, cum)] if drive else []))
+        points = sorted((c.s, c.v_cap) for c in controls if c.dwell_s <= 0 and c.v_cap)
         span_starts = [s0 for s0, _, _ in spans]
         point_s = [s for s, _ in points]
 
@@ -241,9 +227,15 @@ class RouteRenderer:
             if drift:
                 v = min(roads.MAX_MPS, v * drift(s))
             if lateral:
-                r = geo.menger_radius(geo.interp(poly, cum, s - _CURVE_HALF_M), geo.interp(poly, cum, s),
-                                      geo.interp(poly, cum, s + _CURVE_HALF_M))
-                v = min(v, max(CORNER_MIN_SPEED_MPS, math.sqrt(lateral * r)))
+                pa = geo.interp(poly, cum, s - _CURVE_HALF_M)
+                pb = geo.interp(poly, cum, s)
+                pc = geo.interp(poly, cum, s + _CURVE_HALF_M)
+                v = min(v, max(CORNER_MIN_SPEED_MPS, math.sqrt(lateral * geo.menger_radius(pa, pb, pc))))
+                ax, ay = geo.local_xy(pb, pa)
+                cx, cy = geo.local_xy(pb, pc)
+                norm = math.hypot(ax, ay) * math.hypot(cx, cy)
+                if norm > 0 and (ax * cx + ay * cy) / norm > _UTURN_COS:   # in and out point the same way
+                    v = min(v, _UTURN_MPS)
             lo = bisect.bisect_left(point_s, s - _CAP_HALF_M)
             hi = bisect.bisect_right(point_s, s + _CAP_HALF_M)
             for k in range(lo, hi):
