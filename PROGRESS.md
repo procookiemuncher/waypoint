@@ -31,6 +31,19 @@ oldest to `docs/progress-archive.md` as one-liners.
 
 ---
 
+## 2026-11-22 — Flight tools: offline review + cleanup-safety fixes
+
+- Task: review the flight-test work for bugs, offline (phone not connected). Re-verified every takeoff/landing coordinate in `flight_test.py` against the real decompiled `runways.csv` + a fresh port of `Runway.distanceFromMeters`, and re-traced the Android gate state machine in both jadx and smali (`g5g`/`k5g`, 26.44.0). **Geometry and the gate logic hold up** — the takeoff candidate arms at the MIA terminal (703 m from the nearest runway), the stepped roll fires takeoff with real acceleration, and the MCO reconnect hold reaches the landing-fire branch (altitude ≤ elev+1000, runways 310 km apart). No functional bug in the happy path.
+- **Fixed — the "never leave the phone offline" invariant had holes:**
+  - `flight_test.py`: `airplane_on` was set *after* the ON toggle, so a Ctrl+C during the "is the airplane icon showing?" confirm (a `KeyboardInterrupt`, which `_safe_input` doesn't swallow) skipped the airplane-off cleanup. Marked on before the toggle now (the shortcut send goes first anyway).
+  - `flight_test.py`: wrapped both teardown blocks in a `_shield_signals()` context manager (SIGINT/SIGTERM/SIGHUP → SIG_IGN, main-thread only) so a *second* interrupt can't abort cleanup mid-way and strand the phone offline / on a fake fix.
+  - `fly.py`: cancelling after take-off (the normal Ctrl+C path, which its own test exercises) never turned airplane mode back off — it left the phone stuck offline. Now tracks `airplane_on` and flips it back off in `finally`, same as flight_test.
+- Fixed a comment/print that said the MIA terminal is "703 m from MIA_RWY" — it's 855 m from MIA_RWY (the 09/27 roll); 703 m is to the *nearest* MIA runway, which is what actually arms the candidate.
+- Tests: +2 (`test_interrupt_during_the_ON_confirm_still_cleans_up`, `test_ctrl_c_after_takeoff_turns_airplane_back_off`). **110 pass**; all dry-run modes clean. Nothing touched the phone.
+- Next: unchanged — Step 4 still needs the spare iPhone + test circle.
+
+---
+
 ## 2026-11-22 — Flight push: flight-test tool + fallback built, landing-altitude sign settled (steps 1b/2/3)
 
 - Task: continue the flight-push job from `docs/handoff/flight-push.md` (a local model had drafted the tool). Settled the one disputed RE number, then reviewed and fixed the tool before calling steps 2 & 3 done.
