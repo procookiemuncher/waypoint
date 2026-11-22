@@ -13,7 +13,7 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Windows:** Waypoint window runs from the repo (`windows-version\waypoint.cmd`, 11-20) and works with the phone (pin, Drive, Stop, quit clears). Life360 shows mph + car from a Windows Drive run.
 - **Phone is on iOS 27.2.1** now (was 27.0.1); Developer Mode survived, pmd3 11.59 still mounts and drives.
 - **Airplane mode is pmd3 now (11-21)**, Mac + Windows: `CoreDevice.airplane(on)` runs the phone's Shortcuts, `fly` toggles it itself (owner confirms), `fly airplane on|off`. Nothing calls devicectl any more.
-- **Flight-test tool & fallback prep built (11-22)**: `core/tools/flight_test.py` + launchers (`mac-version/flight-test.command`, `windows-version/flight-test.cmd`). CoreDevice only. MIA→MCO: terminal dwell, stepped runway roll (45/55/65/75 m/s, each ≤100 m from the real runway, +10 m/s steps for accel >0.5), climb, airplane-mode gap, landing hold airside at MCO (405 m from a runway). Runway coords come from Life360's own `runways.csv`, not OSM. Fallback geofence arrival `mco-geofence-arrival.json`. Dry-run tested end to end; cleanup turns airplane mode back off then clears.
+- **Flight-test tool & fallback prep built (11-22)**: `core/tools/flight_test.py` + launchers (`mac-version/flight-test.command`, `windows-version/flight-test.cmd`). CoreDevice only. MIA→MCO: terminal dwell, stepped runway roll (45/55/65/75 m/s, each ≤100 m from the real runway, +10 m/s steps for accel >0.5), climb, then the flight itself flown offline (cruise, descent, final, braking roll, taxi-in; `--air`, default 40 min), landing hold airside at MCO (405 m from a runway). Runway coords come from Life360's own `runways.csv`, not OSM. Fallback geofence arrival `mco-geofence-arrival.json`. Dry-run tested end to end; cleanup turns airplane mode back off then clears.
 - **Movement engine is road-aware (11-22):** each road at its own speed (Valhalla `trace_attributes`: limits, ramps, roundabouts), red lights rolled per drive, inferred stop signs, slower turns, gentle stops, pull-away that eases off with speed. Road data cached beside the snap cache (bundled in releases), offline falls back to one speed. Offline-tested only; not watched on Life360 yet.
 - **Landing altitude gate resolved (11-22, smali):** the disputed sign in `g5g` is `altitude ≤ elevation+1000` — an upper bound a spoof at altitude 0 clears for free. `k5g` (the `flight-landed` upload) carries no altitude, so there's no second gate. No airplane-mode or mock-location check in `g5g`. (Still Android-only; iOS unseen.)
 
@@ -30,6 +30,16 @@ oldest to `docs/progress-archive.md` as one-liners.
 - CRT scanlines sit over the new panel. Keep or drop?
 - Old release zips pile up in Vercel Blob (~70 MB each).
 - `isSimulatedBySoftware` still untested (see AGENTS.md).
+
+---
+
+## 2026-11-22 — Flight test flies the whole way now (no more jump to MCO)
+
+- Owner's first real run: airplane mode was on ~20 s before the landing. The tool also jumped the spoof straight to the MCO hold the moment airplane mode went on, so Life360 would have seen a ~310 km flight that took a minute. From `g5g`: the stored takeoff time is refreshed to the latest MIA fix every >3 min at the airport, the landing time is the phone's clock at the landing fix, and the upload carries both times (no flight number). So a realistic air time matters.
+- `flight_test.py`: after the climb, a turn-out, cruise, descent, a 15 km straight-in final from the south onto the MCO runway, a braking roll and taxi-in to the airside hold play **offline**, fix by fix, starting straight from the climb (airplane ON is sent while the turn-out plays). `--air MIN` (default 40) sets it; the cruise speed is solved to fit, clamped 110-240 m/s (~25-48 min fits). Airplane OFF goes out on its own once it's taxied in. Every fix within 1000 m of an MCO runway is >100 mph until the 67 mph `brake2` leg, so landing fires on the roll-out; fast fixes near MCO don't overwrite the MIA record (g5g only refreshes it for the same airport).
+- Tests: 156 pass (+8: air time, cruise clamp, no jumps, landing only on the roll-out, nothing slow anywhere else, mid-flight Ctrl+C turns airplane off). `VIDA_DRY_RUN=1 ... --quick` clean.
+- **Mistake, 16:30:** I ran a `--quick` check with the wrong dry-run variable (`DRY=1`), so it hit the real phone: MIA hold, 1 s per leg, MCO hold, then clear, about 15 s total. The airplane-on Shortcut failed ("The application failed to launch", probably phone locked) so airplane mode was most likely never toggled. Cleared by hand straight after (`clear` returned True). The dry-run variable is `VIDA_DRY_RUN=1`.
+- Next: owner's run with Life360 in the foreground the whole time, `--wait 20 --air 40`.
 
 ---
 
