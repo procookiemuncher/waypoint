@@ -188,30 +188,43 @@ class TestRunFlightTest(unittest.TestCase):
         self.assertEqual(events[3], ("airplane", False))
         self.assertEqual(events[-1], ("clear",))
 
-    def test_interrupt_after_takeoff_turns_airplane_back_off(self):
-        # If Ctrl+C lands after airplane ON but before the normal OFF, cleanup must toggle it OFF
+    def test_interrupt_during_the_flight_turns_airplane_back_off(self):
+        # Ctrl+C mid-flight (airplane ON, the offline legs playing): cleanup must toggle it OFF
         # and then clear — never leave the phone offline on a fake location.
         events = []
         cd = FakeCoreDevice(events, sends_airplane=True)
-        calls = {"n": 0}
-
-        def fake_input(prompt=""):
-            calls["n"] += 1
-            if calls["n"] == 4:        # the "Press ENTER to LAND" prompt, just after airplane ON
-                raise KeyboardInterrupt
-            return "y"
-
-        with mock.patch("flight_test._safe_input", fake_input), \
+        with mock.patch("flight_test._safe_input", return_value="y"), \
+                mock.patch("flight_test._wait_air", side_effect=KeyboardInterrupt), \
                 mock.patch("flight_test.DRY_RUN", True), \
                 mock.patch("flight_test.play_chunks", return_value=True), \
                 mock.patch("builtins.print"), mock.patch("time.sleep"):
             with self.assertRaises(KeyboardInterrupt):
                 flight_test.run_flight_test(quick=True, cd=cd)
         self.assertIn(("airplane", True), events)
-        # the last airplane event is the cleanup OFF, and clear is the very last thing
         airplane_events = [e for e in events if e[0] == "airplane"]
         self.assertEqual(airplane_events[-1], ("airplane", False))
         self.assertEqual(events[-1], ("clear",))
+        # never reached the MCO hold
+        self.assertEqual([e for e in events if e[0] == "hold"], [events[0]])
+
+    def test_flight_plays_offline_legs_after_takeoff(self):
+        played = []
+        events = []
+        cd = FakeCoreDevice(events, sends_airplane=True)
+
+        def fake_play(chunks, *a, **k):
+            played.append([c["name"] for c in chunks])
+            return True
+
+        with mock.patch("flight_test._safe_input", return_value="y"), \
+                mock.patch("flight_test.DRY_RUN", True), \
+                mock.patch("flight_test.play_chunks", fake_play), \
+                mock.patch("builtins.print"), mock.patch("time.sleep"):
+            flight_test.run_flight_test(quick=True, cd=cd)
+        self.assertEqual(len(played), 2)
+        self.assertEqual(played[0][0], "taxi")
+        self.assertEqual(played[1][0], "turnout")
+        self.assertEqual(played[1][-1], "taxi_in")
 
     def test_interrupt_during_the_ON_confirm_still_cleans_up(self):
         # If Ctrl+C lands on the "is the airplane icon showing?" confirm (airplane already sent,
@@ -235,6 +248,61 @@ class TestRunFlightTest(unittest.TestCase):
         airplane_events = [e for e in events if e[0] == "airplane"]
         self.assertEqual(airplane_events[-1], ("airplane", False))
         self.assertEqual(events[-1], ("clear",))
+
+
+class TestAirChunks(unittest.TestCase):
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.mkdtemp()
+        flight_test.build_flight_chunks(build_dir=self.tmp)
+        self.chunks, self.cruise = flight_test.build_air_chunks(40, build_dir=self.tmp)
+
+    def fixes(self):
+        """Every waypoint with the speed it's flown at (the speed of the leg arriving there)."""
+        for c in self.chunks:
+            for p in c["waypoints"]:
+                yield c["name"], p, c["speed"]
+
+    def test_air_time_matches_the_request(self):
+        mins = sum(c["real_secs"] for c in self.chunks) / 60
+        self.assertAlmostEqual(mins, 40, delta=0.5)
+
+    def test_cruise_speed_believable(self):
+        self.assertGreaterEqual(self.cruise, 110)
+        self.assertLessEqual(self.cruise, 240)
+        _, fast = flight_test.build_air_chunks(10, build_dir=self.tmp)
+        self.assertEqual(fast, flight_test.CRUISE_MAX)   # clamped, not 500 m/s
+
+    def test_flight_starts_where_the_climb_ends_and_ends_at_the_hold(self):
+        climb_end = flight_test.runway_point(flight_test.MIA_RWY, flight_test.TAKEOFF_LEGS[-1][2])
+        self.assertEqual(self.chunks[0]["waypoints"][0], climb_end)
+        self.assertEqual(self.chunks[-1]["waypoints"][-1], flight_test.MCO_LANDING)
+
+    def test_no_leg_jumps(self):
+        for c in self.chunks:
+            for a, b in zip(c["waypoints"], c["waypoints"][1:]):
+                self.assertLess(flight_test.haversine(a, b), 10000, c["name"])
+        for x, y in zip(self.chunks, self.chunks[1:]):
+            self.assertLess(flight_test.haversine(x["waypoints"][-1], y["waypoints"][0]), 1, y["name"])
+
+    def test_landing_only_fires_on_the_roll_out(self):
+        # A fix <=100 mph within 1000 m of an MCO runway is the landing. None before the brakes,
+        # and at least one on the roll-out itself (not just the parked hold).
+        slow_near = [n for n, (lat, lon), v in self.fixes()
+                     if v <= MPH_100 and nearest("MCO", lat, lon) <= 1000]
+        self.assertTrue(slow_near)
+        self.assertEqual(slow_near[0], "brake2")
+
+    def test_no_slow_fix_anywhere_else(self):
+        # Away from MCO everything is >100 mph, so it can't land anywhere on the way.
+        for n, (lat, lon), v in self.fixes():
+            if nearest("MCO", lat, lon) > 1000:
+                self.assertGreater(v, MPH_100, n)
+
+    def test_quick_shrinks_only_the_wait(self):
+        quick, _ = flight_test.build_air_chunks(40, quick=True, build_dir=self.tmp)
+        self.assertTrue(all(c["secs"] == flight_test.QUICK_SECS for c in quick))
+        self.assertEqual([c["dist"] for c in quick], [c["dist"] for c in self.chunks])
 
 
 class TestGeofenceArrival(unittest.TestCase):
