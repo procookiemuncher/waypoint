@@ -69,6 +69,27 @@ class LocationFix:
 
 
 @dataclass
+class RoadEdge:
+    """One stretch of road the drive uses (a Valhalla graph edge), placed on the segment's own
+    polyline by arc distance. Filled in at snap time from Valhalla's trace_attributes, never
+    authored. roads.py turns a list of these into speeds, traffic lights, stops and turns."""
+    s0: float                       # meters along the segment polyline where this edge starts
+    s1: float                       # ... and ends (the intersection, if there is one)
+    kmh: float | None = None        # Valhalla's estimate for the road
+    limit_kmh: float | None = None  # tagged speed limit, None when OSM doesn't say
+    road_class: str = ""            # motorway / trunk / primary / ... / residential / service_other
+    use: str = "road"               # road / ramp / turn_channel / driveway / parking_aisle / ...
+    h0: float | None = None         # heading where the edge starts, degrees from north
+    h1: float | None = None         # heading where it ends
+    signal: bool = False            # traffic light on this edge in our direction, or at its end node
+    stop_impact: int = 0            # Valhalla's 0-7 "how much this intersection slows you"
+    cross: list[str] = field(default_factory=list)   # classes of the drivable roads meeting at the end
+    roundabout: bool = False
+    internal: bool = False          # a connector inside a big intersection
+    drive_on_right: bool = True
+
+
+@dataclass
 class Segment:
     mode: str
     waypoints: list[Coord] = field(default_factory=list)  # walk/drive path
@@ -77,6 +98,8 @@ class Segment:
     snap: bool = False                                    # snap waypoints to real roads (build time)
     at: Coord | None = None                              # stop location (default: prev pos)
     dwell_s: float = 0.0                                 # stop hold time
+    steady: bool = False                                  # hold speed_mps: no road speeds, lights or stops
+    roads: list[RoadEdge] | None = None                   # filled by snap_route, None = no road data
 
 
 @dataclass
@@ -131,6 +154,7 @@ def parse_route(data: dict) -> Route:
                 speed_mps=float(speed) if speed is not None else None,
                 jitter_m=jitter,
                 snap=bool(s.get("snap", False)),
+                steady=bool(s.get("steady", False)),
             ))
 
     return Route(name=name, description=data.get("description", ""), segments=segments,

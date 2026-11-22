@@ -25,7 +25,7 @@ def build_route_file(route_path: str, mph=None, log=print, interval: float = 1.0
     """One steady-speed route request for the whole route, written to build/<name>.route.json."""
     from backend.device import write_route_input
     from backend.movement import load_route, snap_route
-    route, warnings = snap_route(load_route(route_path))
+    route, warnings = snap_route(load_route(route_path), roads="off")   # one steady speed, no roads needed
     for w in warnings:
         log(f"  ! {w}")
     moving = [s for s in route.segments if s.waypoints]

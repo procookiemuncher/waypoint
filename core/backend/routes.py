@@ -143,7 +143,9 @@ def summary(path: str, snap: bool = True) -> dict:
     it was generated from the catalog and, if so, where it starts and ends."""
     route = load_route(path)
     if snap:
-        route, _ = snap_route(route)   # cached on disk after the first time; falls back offline
+        # the line is cached on disk after the first time; road data only from the cache here (the
+        # route list must stay quick), warm_legs fetches it in the background
+        route, _ = snap_route(route, roads="cache")
     line, speed = [], None
     for seg in route.segments:
         if seg.waypoints:
