@@ -49,15 +49,19 @@ def build_route_file(route_path: str, mph=None, log=print, interval: float = 1.0
 
 
 # ---- varying speed ---------------------------------------------------------------------------
-# The movement engine renders the route (ramps, slowing for corners, stops), that gets cut into
-# chunks of roughly steady speed, and a slow wander goes on top so a straight expressway doesn't
-# sit on one number. Stops become a coordinate hold.
+# The movement engine renders the route (each road at its own speed, red lights, stop signs,
+# turns, bends), that gets cut into chunks of roughly steady speed, and a slow wander goes on top
+# so a straight expressway doesn't sit on one number. Stops become a coordinate hold: the dwell at
+# the end, and every wait at a light or a stop sign on the way (those stay "drive" legs).
 CHUNK_MAX_S = 30          # Life360 samples rarely, so long chunks and few handoffs
 CHUNK_MIN_S = 5
+CHUNK_MIN_SLOW_S = 3      # near rest (pulling away, rolling up to a light) cut finer, so the ramp survives
+SLOW_MPS = 5.0
 CHUNK_SPREAD_MPS = 2.5    # cut a chunk early once the rendered speed moved this much (ramps, corners)
-WANDER = (0.88, 1.12)     # cruise drifts within ±12% of the route's speed...
+WANDER = (0.95, 1.05)     # cruise drifts within ±5% of the rendered speed (which already varies by road)...
 WANDER_EVERY_S = (30, 60)  # ...picking a new target this often
 MIN_MOVE_MPS = 1.0
+MAX_MOVE_MPS = 33.5       # ~75 mph, whatever the wander does: Life360 flags 80+ as speeding
 
 
 def _wander(rng, total_s):
@@ -76,8 +80,9 @@ def _wander(rng, total_s):
 
 
 def plan_chunks(route_path: str, seed=None, log=print):
-    """[{kind: move, waypoints, speed, secs} | {kind: stop, at, secs}] for play_chunks().
-    A new seed each time unless one is given, so no two drives come out the same."""
+    """[{kind: move, waypoints, speed, secs, mode} | {kind: stop, at, secs, mode}] for play_chunks().
+    A stop's mode is "stop" for the route's own dwell and "drive" for a wait on the way (a red
+    light). A new seed each time unless one is given, so no two drives come out the same."""
     from backend.movement import RouteRenderer, load_route, snap_route
     from backend.movement.model import STOP
     route, warnings = snap_route(load_route(route_path))
@@ -95,35 +100,64 @@ def plan_chunks(route_path: str, seed=None, log=print):
         dt = fixes[b].t - fixes[a].t
         return sum(haversine(pts[m], pts[m + 1]) for m in range(a, b)) / dt if dt else 0.0
 
+    def still(f):
+        return f.mode == STOP or f.hold
+
     wander = _wander(rng, fixes[-1].t)
     chunks, i = [], 0
     while i < n - 1:
         j = i + 1
-        if fixes[j].mode == STOP:
-            while j + 1 < n and fixes[j + 1].mode == STOP:
+        if still(fixes[j]):
+            held = fixes[j].hold
+            while j + 1 < n and still(fixes[j + 1]) and fixes[j + 1].hold == held:
                 j += 1
-            chunks.append({"kind": "stop", "at": pts[i], "secs": fixes[j].t - fixes[i].t})
+            chunks.append({"kind": "stop", "at": pts[i], "secs": fixes[j].t - fixes[i].t,
+                           "mode": fixes[j].mode if held else STOP})
             i = j
             continue
-        while (j + 1 < n and fixes[j + 1].mode != STOP and fixes[j].t - fixes[i].t < CHUNK_MAX_S
-               and (fixes[j].t - fixes[i].t < CHUNK_MIN_S or abs(v(j) - v(i)) < CHUNK_SPREAD_MPS)):
+        v_i = v(i)
+        while j + 1 < n and not still(fixes[j + 1]) and fixes[j].t - fixes[i].t < CHUNK_MAX_S:
+            took = fixes[j].t - fixes[i].t
+            least = CHUNK_MIN_SLOW_S if min(v_i, v(j)) < SLOW_MPS else CHUNK_MIN_S
+            if took >= least and abs(v(j) - v_i) >= CHUNK_SPREAD_MPS:
+                break
             j += 1
         dist = sum(haversine(pts[m], pts[m + 1]) for m in range(i, j))
-        speed = dist / (fixes[j].t - fixes[i].t) * wander((fixes[i].t + fixes[j].t) / 2)
-        speed = max(MIN_MOVE_MPS, speed)
-        if dist / speed >= 1:   # skip slivers, not worth a phone call
-            chunks.append({"kind": "move", "waypoints": pts[i:j + 1], "speed": speed, "dist": dist,
+        took = fixes[j].t - fixes[i].t
+        prev = chunks[-1] if chunks else None
+        if prev and prev["kind"] == "move" and took < CHUNK_MIN_SLOW_S and prev["mode"] == fixes[j].mode:
+            # the last second or two before a stop: shorter than a phone call, so fold it into the chunk before
+            prev["waypoints"] += pts[i + 1:j + 1]
+            prev["dist"] += dist
+            prev["took"] += took
+        else:
+            chunks.append({"kind": "move", "waypoints": pts[i:j + 1], "dist": dist, "took": took,
                            "mode": fixes[(i + j + 1) // 2].mode})
         i = j
-    # the renderer brakes for every bend, which in short chunks reads as 18-31-18 mph; average
-    # each chunk with its neighbours (not across a stop) so it reads as easing off instead
+    for c in chunks:
+        if c["kind"] == "move":
+            c["speed"] = c["dist"] / c.pop("took")
+    # the odd bend still reads as 18-31-18 mph in short chunks; ease each chunk a little toward its
+    # neighbours so it reads as easing off. Not next to a stop, a wait or the start: that's a pull-away
+    # or the roll up to a light, and it has to stay a ramp. The wander goes on last.
     raw = [c.get("speed") for c in chunks]
+    t = 0.0
+    out = []
     for k, c in enumerate(chunks):
         if c["kind"] == "move":
-            near = [raw[m] for m in (k - 1, k + 1) if 0 <= m < len(chunks) and raw[m] is not None]
-            c["speed"] = max(MIN_MOVE_MPS, (2 * raw[k] + sum(near)) / (2 + len(near)))
+            near = [raw[m] for m in (k - 1, k + 1) if 0 <= m < len(chunks)]
+            speed = raw[k]
+            if len(near) == 2 and None not in near:
+                speed = (3 * raw[k] + sum(near)) / 5
+            secs = c["dist"] / speed if speed > 0 else 0.0
+            speed *= wander(t + secs / 2)
+            c["speed"] = max(MIN_MOVE_MPS, min(MAX_MOVE_MPS, speed))
             c["secs"] = c.pop("dist") / c["speed"]
-    return route.name, chunks
+            if c["secs"] < 1:   # skip slivers, not worth a phone call
+                continue
+        t += c["secs"]
+        out.append(c)
+    return route.name, out
 
 
 def write_chunks(name: str, chunks, log=print, interval: float = 1.0):
@@ -140,7 +174,8 @@ def write_chunks(name: str, chunks, log=print, interval: float = 1.0):
     moving = [c for c in chunks if c["kind"] == "move"]
     mph = [c["speed"] / MPH for c in moving] or [0]
     mins = sum(c["secs"] for c in chunks) / 60
-    log(f"  wrote {out}: {len(moving)} moving chunks, {len(chunks) - len(moving)} stops, "
+    waits = sum(1 for c in chunks if c["kind"] == "stop" and c.get("mode") not in (None, "stop"))
+    log(f"  wrote {out}: {len(moving)} moving chunks, {waits} waits, {len(chunks) - len(moving) - waits} stops, "
         f"{min(mph):.0f}-{max(mph):.0f} mph, ~{mins:.1f} min")
 
 
@@ -166,7 +201,8 @@ def play_chunks(chunks, cd: CoreDevice, cancel, log=print) -> bool:
             for line in (p.stdout + p.stderr).splitlines():
                 log(line)
             return False
-        what = f"{c['speed'] / MPH:.0f} mph" if c["kind"] == "move" else "stopped"
+        what = (f"{c['speed'] / MPH:.0f} mph" if c["kind"] == "move"
+                else "waiting" if c.get("mode") not in (None, "stop") else "stopped")
         # late/call: each call is a pmd3 start + tunnel (~1s), short chunks spend a lot of it handing off
         log(f"  [{k + 1}/{len(chunks)}] {what} for {c['secs']:.0f}s  (late {late:.1f}s, call {took:.1f}s)")
         at += c["secs"]
@@ -202,12 +238,13 @@ def merge_legs(spans) -> list:
 
 def chunk_legs(chunks) -> list:
     """When each walk / drive / stop starts and ends, on the same clock as chunk_timeline, for the
-    app's live card ("Parked at the door"). A stop on a generated route is the 10 min at the door."""
+    app's live card ("Parked at the door"). A stop on a generated route is the 10 min at the door; a
+    wait at a red light is part of the drive."""
     t, spans = 0.0, []
     for c in chunks:
         secs = c["secs"] if c["kind"] == "stop" else sum(
             haversine(a, b) for a, b in zip(c["waypoints"], c["waypoints"][1:])) / c["speed"]
-        spans.append((t, t + secs, "stop" if c["kind"] == "stop" else c.get("mode") or "drive"))
+        spans.append((t, t + secs, c.get("mode") or ("stop" if c["kind"] == "stop" else "drive")))
         t += secs
     return merge_legs(spans)
 
