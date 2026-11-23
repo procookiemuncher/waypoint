@@ -1,0 +1,21 @@
+{
+  "name": "palm-jumeirah-drive",
+  "label": "Sheikh Zayed Rd → Atlantis The Palm",
+  "city": "Dubai",
+  "description": "Demo drive: Sheikh Zayed Road southbound at highway speed, the Palm interchange, up the trunk and round the crescent to Atlantis The Palm. 11.8 km, about 14 min, then 5 min parked. Starts on the highway itself (a start by Mall of the Emirates snapped to the wrong carriageway and looped).",
+  "segments": [
+    {
+      "mode": "drive",
+      "snap": true,
+      "waypoints": [
+        [25.11897, 55.19543],
+        [25.1305, 55.1175]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 300,
+      "at": [25.131181, 55.117059]
+    }
+  ]
+}
