@@ -20,6 +20,11 @@ class DevBadge(unittest.TestCase):
     def test_on_from_the_repo(self):
         self.assertIs(status()["dev_build"], True)
 
+    def test_hidden_by_env_on_the_dev_app(self):
+        os.environ["VIDA_HIDE_DEV_BADGE"] = "1"
+        self.addCleanup(os.environ.pop, "VIDA_HIDE_DEV_BADGE", None)
+        self.assertIs(status()["dev_build"], False)
+
     def test_off_in_the_release_app(self):
         sys.modules["waypoint_build"] = types.ModuleType("waypoint_build")
         self.addCleanup(sys.modules.pop, "waypoint_build")

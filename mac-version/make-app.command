@@ -6,11 +6,14 @@
 # This is the dev build: no access key, and it says DEV BUILD in the titlebar. Only the release
 # build (release/build.command) asks for a key.
 # LICENSE_URL=https://waypoint-key-dashboard.vercel.app ./mac-version/make-app.command to try the key gate here.
+# HIDE_DEV_BADGE=1 ./mac-version/make-app.command builds it without the badge (for screen recordings).
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PY="$ROOT/.venv/bin/python"
 APP="${1:-$HOME/Applications}/Waypoint.app"
 LICENSE_URL="${LICENSE_URL-}"
+HIDE_DEV_BADGE="${HIDE_DEV_BADGE:-0}"
+case "$HIDE_DEV_BADGE" in 0|1) ;; *) echo "HIDE_DEV_BADGE must be 0 or 1"; exit 1 ;; esac
 
 if [ ! -x "$PY" ]; then
   echo "No .venv yet — run ./mac-version/setup.command first."
@@ -52,7 +55,7 @@ PLIST
 # A tiny compiled launcher that execs the venv python (same process → one Dock icon, not a
 # second "Python" one). Repo path is baked in; LaunchServices gives apps a bare PATH.
 REPO_C="${ROOT//\\/\\\\}"; REPO_C="${REPO_C//\"/\\\"}"
-/usr/bin/clang -O2 -mmacosx-version-min=13.0 -DREPO="\"$REPO_C\"" -DLICENSE_URL="\"$LICENSE_URL\"" \
+/usr/bin/clang -O2 -mmacosx-version-min=13.0 -DREPO="\"$REPO_C\"" -DLICENSE_URL="\"$LICENSE_URL\"" -DHIDE_DEV_BADGE="$HIDE_DEV_BADGE" \
   -o "$APP/Contents/MacOS/Waypoint" "$ROOT/mac-version/app/launcher.c"
 /usr/bin/codesign --force --sign - "$APP" >/dev/null 2>&1 || true
 
@@ -62,5 +65,6 @@ touch "$APP"
 
 echo
 [ -n "$LICENSE_URL" ] && echo "Asks for an access key from $LICENSE_URL" || echo "No access key needed (LICENSE_URL is empty)"
+[ "$HIDE_DEV_BADGE" = 1 ] && echo "DEV BUILD badge hidden"
 echo "Done. Open it from Launchpad / ~/Applications, then right-click its Dock icon →"
 echo "Options → Keep in Dock. Logs go to ~/Library/Logs/Waypoint.log."

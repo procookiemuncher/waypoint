@@ -13,6 +13,9 @@
 #ifndef LICENSE_URL
 #define LICENSE_URL ""
 #endif
+#ifndef HIDE_DEV_BADGE
+#define HIDE_DEV_BADGE 0
+#endif
 
 int main(void) {
     char py[4096], app[4096], logpath[4096];
@@ -33,6 +36,7 @@ int main(void) {
         if (fd >= 0) { dup2(fd, 1); dup2(fd, 2); close(fd); }
     }
     if (LICENSE_URL[0]) setenv("VIDA_LICENSE_URL", LICENSE_URL, 0);   /* an env var set by hand still wins */
+    if (HIDE_DEV_BADGE) setenv("VIDA_HIDE_DEV_BADGE", "1", 0);
     if (chdir(REPO) != 0) perror("chdir");
     execl(py, py, app, (char *)NULL);
     perror("exec python");
