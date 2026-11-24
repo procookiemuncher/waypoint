@@ -1,5 +1,7 @@
 {
   "eiffel": {"name": "Eiffel Tower", "region": "Paris", "lat": 48.8584, "lon": 2.2945, "zoom": 16, "accent": "#ef3f4f"},
   "dubai": {"name": "Burj Khalifa", "region": "Dubai", "lat": 25.1972, "lon": 55.2744, "zoom": 15, "accent": "#e8c25a"},
-  "miami": {"name": "Downtown Miami", "region": "Miami", "lat": 25.7617, "lon": -80.1918, "zoom": 13, "accent": "#ff5ecd"}
+  "miami": {"name": "Downtown Miami", "region": "Miami", "lat": 25.7617, "lon": -80.1918, "zoom": 13, "accent": "#ff5ecd"},
+  "miami-beach": {"name": "Miami Beach", "region": "Miami", "lat": 25.780613, "lon": -80.129893, "zoom": 12, "accent": "#f471aa"},
+  "palm-jumeirah": {"name": "Palm Jumeirah", "region": "Dubai", "lat": 25.102238, "lon": 55.154499, "zoom": 13, "accent": "#e1b75c"}
 }
