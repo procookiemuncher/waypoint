@@ -15,6 +15,7 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Airplane mode is pmd3 now (11-21)**, Mac + Windows: `CoreDevice.airplane(on)` runs the phone's Shortcuts, `fly` toggles it itself (owner confirms), `fly airplane on|off`. Nothing calls devicectl any more.
 - **Flight-test tool & fallback prep built (11-22)**: `core/tools/flight_test.py` + launchers (`mac-version/flight-test.command`, `windows-version/flight-test.cmd`). CoreDevice only. MIA→MCO: terminal dwell, stepped runway roll (45/55/65/75 m/s, each ≤100 m from the real runway, +10 m/s steps for accel >0.5), climb, then the flight itself flown offline (cruise, descent, final, braking roll, taxi-in; `--air`, default 40 min), landing hold airside at MCO (405 m from a runway). Runway coords come from Life360's own `runways.csv`, not OSM. Fallback geofence arrival `mco-geofence-arrival.json`. Dry-run tested end to end; cleanup turns airplane mode back off then clears.
 - **Movement engine is road-aware (11-22):** each road at its own speed (Valhalla `trace_attributes`: limits, ramps, roundabouts), red lights rolled per drive, inferred stop signs, slower turns, gentle stops, pull-away that eases off with speed. Road data cached beside the snap cache (bundled in releases), offline falls back to one speed. Offline-tested only; not watched on Life360 yet.
+- **LinkedIn demo prep (11-23):** pins `miami-beach` (Lummus Park) and `palm-jumeirah` (top of the trunk), and a short seeded drive `palm-trunk-to-atlantis` (2.1 km, ~4 min) that starts exactly on the Palm pin. A route JSON can carry `"seed"` so every Drive of it plays the same. Dry-run tested; the Dock app picks it up on its next launch.
 - **Landing altitude gate resolved (11-22, smali):** the disputed sign in `g5g` is `altitude ≤ elevation+1000` — an upper bound a spoof at altitude 0 clears for free. `k5g` (the `flight-landed` upload) carries no altitude, so there's no second gate. No airplane-mode or mock-location check in `g5g`. (Still Android-only; iOS unseen.)
 
 **Open:**
@@ -30,6 +31,19 @@ oldest to `docs/progress-archive.md` as one-liners.
 - CRT scanlines sit over the new panel. Keep or drop?
 - Old release zips pile up in Vercel Blob (~70 MB each).
 - `isSimulatedBySoftware` still untested (see AGENTS.md).
+
+---
+
+## 2026-11-23 — Demo pins, a short seeded Palm drive, route seeds
+
+- Owner's LinkedIn demo: phone at Miami Beach, ⌘K "Palm" Enter Enter jumps it to the Palm, then a Drive from that same spot, recorded three times (Find My, Life360, Snap Map) side by side, so the drives must match.
+- `places.json`: `miami-beach` = Lummus Park, 25.780613, -80.129893 (OSM way 76677464), zoom 12 shows Miami Beach and Miami across the bay. `palm-jumeirah` = 25.125269, 55.123965, zoom 13 frames the whole palm. It is the snapped first point of the drive below. `region` decides the colour in the page (`cityColor`), the `accent` field is only kept for the record.
+- `routes/palm-trunk-to-atlantis.json`: started at the base of the trunk (6.2 km, ~9 min); the owner wanted it shorter and from inside the Palm, so it now starts mid-span on the last stretch of the trunk's outbound carriageway (OSM way 498598212, oneway, no junction near), through the tunnel and round the crescent to the Atlantis driveway (way 94827855), 30 s stop. 2,148 m, Drive 3:29 + 0:31 = 4:00. The snapped line sits exactly on the old `palm-jumeirah-drive` line that already played on the phone (0.0 m off), no turns over 100°. No traffic lights on the Palm, so no red-light waits for any seed.
+- **Route seeds:** `plan_chunks` takes the route JSON's `"seed"` when no seed is passed (`route_seed()`); `drive --seed` and the flight test's 42 still win, routes without one stay random. Every random draw on the Drive path (driver, lights, stop signs, turns, drift, jitter, wander) already came off that one `rng`. Swept 60 seeds, all validate clean; picked 16 (fewest phone calls, 14).
+- **Proof:** planned the seeded route in two processes (different PYTHONHASHSEED) → identical calls, start times and route-file payloads, and identical to the 13 files the dry-run app wrote. Two unseeded plans of `palm-jumeirah-drive` differ. `tests/test_route_seed.py` (+6, 163 pass). Only call latency (~0.8 s per call on the Mac) varies between takes.
+- Dry run: ⌘K "Miami Beach" → only the new pin; "Palm" → pin first, the new drive second, the old route fourth; `play palm` ↵ ↵ ↵ plays it via Drive (Drive is preselected). Leave ~¼ s between Enters (`CONFIRM_GUARD_MS`). First coordinate sent is 0.3 m from the pin.
+- Found: the Dock app wasn't running when this session started; its log ends 18:57 with "coredevice clear failed: Device is not connected" (quit while unplugged), so the phone's state then was unknown. Didn't touch the phone or the real app.
+- Next: owner relaunches the Dock app (code + the page's place list both need it), plugs in, records.
 
 ---
 
@@ -158,34 +172,3 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Not tested:** the key gate, other DPI scales, `fly` on Windows.
 - Commits now go out as juanmendoza (AGENTS.md, Git).
 - Next: the Stadia map key for release builds (owner wants it in a fresh session). Windows packaging only once Windows testers are wanted.
-
----
-
-## 2026-11-20 — Docs cleanup: progress log trimmed
-
-- PROGRESS.md was 171 KB / 99 entries (~43k tokens read at the start of every session). Now it's a "Current state" block + entries from 11-18 on. Everything older is one-liners + a lessons list in `docs/progress-archive.md`, full text in git history.
-- CLAUDE.md and AGENTS.md ground rules updated to match. Dropped AGENTS.md's stale "Windows only, v2 will move" intro and the "Download ZIP" note.
-- AGENTS.md rewritten: fixed stale claims (tunneld/admin/wintun, iOS 26.6, "no JS", "movement engine is the missing piece"), the speed history collapsed into a DVT vs CoreDevice table, Running it split into sections, git part trimmed. 28 KB to 18 KB. `docs/handoff/` deleted (finished jobs).
-- ROADMAP.md rewritten around the owner's four paths: 1 finish Windows, 2 keep adding to the UI, 3 start getting users, 4 improve the motion engine. Old M0-M4 milestones collapsed into a "Done so far" list; the emoji goal is marked done (drive path), stale iOS 26.6 / Windows-only vision gone.
-
----
-
-## 2026-11-22 — Flight-detection: pass-2 Android RE checked, one sign disputed, not resolved
-
-- Owner ran a local model over `~/Desktop/life360-re` (decompiled APK, `com.life360.android.safetymapd-26.44.0`) for a follow-up static pass on the flight-detection algorithm. Read the same source myself (`g5g.java`) before writing anything down.
-- **Confirmed matches my own read:** the takeoff state machine (accuracy ≤400m arms a candidate within 1000m of a runway; fires at accuracy ≤100m, speed ≥100mph, within 100m of the runway, acceleration >0.5 m/s² from a 3-6s-prior buffered sample, 20-min debounce; altitude fallback to FLYING at elevation+5000m is an OR, not required). No `AIRPLANE_MODE` or `isFromMockProvider`/`isMock` reference anywhere in `g5g.java` — this specific feature doesn't appear to gate on either, on Android.
-- **Disputed:** pass-2 said the landing altitude check is `altitude <= elevation+1000` (an upper bound, satisfiable at altitude 0). My own read of the same branch shows `altitude > elevation+1000` — the opposite sign. This is the one thing that decides whether the literal "landed" push is worth another on-device attempt or stays a confirmed no. Could be a jadx decompiler artifact (the surrounding control flow is heavily obfuscated/flattened) or pass-2 misreading it — not resolved either way.
-- Also found: `is_mocked_flying_user_activity_enabled` behind a `p72.f129539a` flag — an internal Life360 debug toggle for mocked flying activity, unrelated to our spoof, not previously documented.
-- Full analysis + plan: `docs/research/life360-flight-detection-pass2-android-re.md`. `life360-flight-detection.md` status flipped to `under re-evaluation` — did **not** touch its NO conclusion or AGENTS.md's "not reproducible" line, since nothing here is device-verified and the core caveat stands: this is all Android, our target is iPhone, there's no decompiled iOS build in `life360-re/`.
-- Next: a smali-level check of `apktool/.../g5g.smali` around the landing-altitude comparison (not jadx) to settle the sign, and check whether a second, later altitude gate exists before the real `/v1/ingest` POST (possibly in `k5g.java`) — before any route code gets written. If it confirms the high-altitude reading, this closes back to NO and the useful parts (confirmed takeoff state machine, the reset condition) fold into the geofence/realism work instead.
-
-## 2026-11-20 — Side panel built: the arrival plan, the globe in the app
-
-- Owner picked **design 1, Arrival plan**, and said to put it in the app. Built on a worktree (`panel-work`).
-- **Catalog:** one colour per country (`"countries"` in destinations.json, the prototype's HUE table with vibe names), per-city colours and the flags removed. `/api/cities` adds the airport name, base hotel, colour and vibe; spots carry `note`/`access`; places.json presets say `saved`.
-- **Route times fixed:** `/api/routes` `seconds` + new `legs` come from the seed 0 render (what Spoof plays), so walks count (Dorchester → Sexy Fish: 10 min before, 19 now). ~12 s to render all 40, so it's a thread after launch (`warm_route_legs`, both the Mac app and server.py) with a disk cache in `<build>/legs-cache/`, estimates + `exact: false` until then (estimates run 3-30% short, the renderer brakes for bends). Generated routes send `from`/`to`. Spoof and Drive send `legs` for the playing run on its timeline's clock. Tests: `core/tests/test_route_legs.py`, 80/80 pass.
-- **The page:** `globe.js` + `countries.json` in `core/web/static/` (globe.js added to MINIFY_JS). World list grouped by continent turns the globe on hover; a click zooms the globe in and fades it out over the street map, framed on the country underneath; back fades it in. While something plays the globe lights that country. A country is its cities' arrivals (airport → hotel → spot, branches when a hotel has 2+ ways out), test routes and saved places under "Also in". The dock (picked card + live card) replaced the hero and now-playing cards: "Leave now, at the door 9:14 pm" and open/closed then, walk/drive/parked columns, Drive/Spoof, mph, Play; live card from the server's timeline and legs. Pins: map click or ⌘K go (opens the address's country), with an ✕ to drop them. Console in Inter, help/ls in columns. ⌘K opens countries (a city name finds its country), colour dots instead of flags. City cards, map thumbnails, emoji flags gone.
-- Skill `lint.mjs --app core/web`: **19 FAIL / 120 WARN before, 10 FAIL / 89 WARN after.** What's left is outside the panel: the window's ring/frame, map sweep, status bar gauge, CRT overlay, connect + key screens (gradients, glass, mono HUD chips).
-- **Tested, dry run only, Chromium 1440×900:** world/France/Japan/route/playing/place/pin screenshots read; scripted checks pass for a globe click opening France, back, ⌘K open + play from the world list, typed mph surviving status polls, world list showing the live country, Follow from the world list, Esc stops, `go place vendome paris` (opens France, named pin), `ls`, `reset`, no false "lost the local server". Release staging (`stage_assets.py` to a temp dir) minifies app/globe/palette and they pass `node --check`.
-- **Not tested:** the Mac window itself (WKWebView; Playwright's WebKit build didn't match), a real phone, a release build, Windows. The CRT scanlines still sit over the new panel; say if they should go.
-- Next: owner opens the Dock app and tries it. Then maybe the globe effects (stars/night) once picked, and a structured season field so Club 55 can say it's out of season.
