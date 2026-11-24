@@ -1,0 +1,21 @@
+{
+  "name": "palm-trunk-to-atlantis",
+  "label": "Palm Jumeirah → Atlantis The Palm",
+  "city": "Dubai",
+  "description": "Demo drive from the Palm Jumeirah pin: up the trunk on Palm Jumeirah Road, through the tunnel to the crescent and round to Atlantis The Palm, then a short stop. Starts on the outbound bridge onto the trunk (OSM way 481285845, oneway) so it snaps to the right carriageway.",
+  "seed": 16,
+  "segments": [
+    {
+      "mode": "drive",
+      "snap": true,
+      "waypoints": [
+        [25.1022382, 55.1544985],
+        [25.1305, 55.1175]
+      ]
+    },
+    {
+      "mode": "stop",
+      "dwell_s": 60
+    }
+  ]
+}
