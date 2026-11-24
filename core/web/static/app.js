@@ -215,7 +215,9 @@ function syncLive(active){
     setAccent(live.accent);
     marker = makeMarker([active.lat, active.lon]);
     setCoord(active.lat, active.lon);
-    map.flyTo([active.lat, active.lon], Math.max(map.getZoom(), pl?.zoom || 15), { duration:1.2 });
+    // a saved place (places.json) goes to the zoom it was framed at, even after a drive left the map zoomed in;
+    // anything else only zooms in, never out
+    map.flyTo([active.lat, active.lon], pl?.saved && pl.zoom ? pl.zoom : Math.max(map.getZoom(), pl?.zoom || 15), { duration:1.2 });
     setMode('HOLDING');
   } else {
     const rt = ROUTES.find(r=>r.id===active.route);
