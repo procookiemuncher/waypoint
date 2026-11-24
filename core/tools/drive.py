@@ -43,7 +43,7 @@ def main():
     ap.add_argument("--mph", type=float, help="override the speed (default: the route's)")
     ap.add_argument("--vary", action="store_true",
                     help="realistic changing speed (corners, stops, drifting cruise) instead of one steady speed")
-    ap.add_argument("--seed", type=int, help="with --vary: repeat the same drive")
+    ap.add_argument("--seed", type=int, help="with --vary: repeat the same drive (default: the route's own \"seed\", else random)")
     ap.add_argument("--write-only", action="store_true", help="just write the route file(s)")
     ap.add_argument("--clear", action="store_true", help="stop the location sim")
     args = ap.parse_args()

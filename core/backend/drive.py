@@ -17,6 +17,7 @@ import time
 
 from backend.device import TEXT, CoreDevice
 from backend.routes import BUILD_DIR, RouteError, haversine, thin
+from backend.secret import load_json
 
 MPH = 0.44704   # m/s per mph
 
@@ -79,15 +80,29 @@ def _wander(rng, total_s):
     return at
 
 
+def route_seed(route_path: str):
+    """The route JSON's own "seed", or None. A route with one plays the same every Drive: same
+    driver, lights, stops, jitter and wander (demo takes recorded side by side)."""
+    seed = load_json(route_path).get("seed")
+    if seed is not None and (isinstance(seed, bool) or not isinstance(seed, int)):
+        raise RouteError(f"{os.path.basename(route_path)}: seed should be a whole number, got {seed!r}")
+    return seed
+
+
 def plan_chunks(route_path: str, seed=None, log=print):
     """[{kind: move, waypoints, speed, secs, mode} | {kind: stop, at, secs, mode}] for play_chunks().
     A stop's mode is "stop" for the route's own dwell and "drive" for a wait on the way (a red
-    light). A new seed each time unless one is given, so no two drives come out the same."""
+    light). A new seed each time unless one is given or the route has its own "seed", so no two
+    drives come out the same. Every random draw (renderer and wander) comes off this one seed."""
     from backend.movement import RouteRenderer, load_route, snap_route
     from backend.movement.model import STOP
+    if seed is None:
+        seed = route_seed(route_path)
     route, warnings = snap_route(load_route(route_path))
     for w in warnings:
         log(f"  ! {w}")
+    if seed is not None:
+        log(f"  fixed seed {seed}: plays the same every time")
     rng = random.Random(seed)
     fixes = RouteRenderer(rng.randrange(1 << 30)).render(route)
     if len(fixes) < 2:
