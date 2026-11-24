@@ -24,6 +24,9 @@ Old PROGRESS.md entries, boiled down to one line each. The full text is in git h
 
 ## 2026-11
 
+- 11-22 Pass-2 Android RE of Life360 flight detection (`g5g`): takeoff state machine confirmed, no airplane-mode or mock check; the landing-altitude sign was disputed (later settled by smali, see PROGRESS).
+- 11-20 Side panel built (design 1, Arrival plan): colour per country, rendered route legs + `warm_route_legs`, globe in the app, dock with picked + live cards. Dry-run tested in Chromium only.
+- 11-20 Docs cleanup: PROGRESS.md cut from 99 entries to current state + recent; old history to this archive; AGENTS.md and ROADMAP.md rewritten.
 - 11-20 Side panel: 5 mockups (arrival plan, local clock, ledger, atlas, rail + sheet) in `docs/design/side-panel-mockups/`. Found `/api/routes` `seconds` under-reported walks (later fixed with rendered legs).
 - 11-20 Globe effects on trial in the prototype: real star sky (`build_stars.py`, Yale BSC), night side from the real sun, depth, rim, UFOs. None picked yet.
 - 11-20 World view: globe style A picked (solid silhouette, a colour per country on hover), `build_countries.py` (Natural Earth 1:110m), prototype in `docs/design/world-view-prototype/`.
