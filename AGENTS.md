@@ -214,6 +214,15 @@ with Developer Mode on.
   what Spoof plays). Rendering all routes takes ~12 s, so `server.warm_route_legs` does it on a
   thread after launch, cached in `<build>/legs-cache/`. Until then a route carries an estimate and
   `"exact": false`. A playing route's `active.legs` drives the live card.
+- **Fixed seed:** a route JSON may carry `"seed": <int>`. Drive then plays it identically every
+  time (driver, lights, stops, turns, jitter, wander and timing all come off that one seed in
+  `plan_chunks`); an explicit seed (`drive --seed`, the flight test's 42) still wins, routes
+  without one stay random. Only call latency varies between runs. Same plan also needs the same
+  road data, so keep `build/snap-cache/` (the route's `.roads.json`). `palm-trunk-to-atlantis` is
+  seeded for the demo takes.
+- **The page reads places and routes once, at boot.** The server re-reads places.json and
+  routes/*.json on every request, but the window only asks at load (routes again only while their
+  times aren't exact), so a new pin or route shows up in an open window after a relaunch.
 
 ### Access keys and the two builds
 
