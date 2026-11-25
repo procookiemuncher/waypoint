@@ -34,6 +34,14 @@ oldest to `docs/progress-archive.md` as one-liners.
 
 ---
 
+## 2026-11-25 — README redesign planned, handoff written
+
+- Owner wants a showcase README for a portfolio / LinkedIn audience. Decided: root README only, the trailer's look (Leap motif, lavender, Inter + JetBrains Mono), a short inline WebP loop instead of the mp4, art rendered from the trailer pipeline.
+- Handoff for the build session: `docs/handoff/readme-redesign.md` (GitHub renderer limits, tokens, section plan, guardrails, done criteria). Nothing built yet.
+- Open for the owner: repo is private, so a LinkedIn link needs it public or a separate showcase repo; the GitHub description doesn't fit the showcase framing.
+
+---
+
 ## 2026-11-23 — Demo pins, a short seeded Palm drive, route seeds
 
 - Owner's LinkedIn demo: phone at Miami Beach, ⌘K "Palm" Enter Enter jumps it to the Palm, then a Drive from that same spot, recorded three times (Find My, Life360, Snap Map) side by side, so the drives must match.
