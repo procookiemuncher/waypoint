@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>README cards</title>
+<style>
+  /* the repo's own fonts, as the trailer loads them */
+  @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: block;
+    src: url('/core/web/static/fonts/inter-latin.woff2') format('woff2'); }
+  @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 100 800; font-display: block;
+    src: url('/core/web/static/fonts/jetbrains-mono-latin.woff2') format('woff2'); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: transparent; }
+  .card { position: absolute; left: 0; top: 0; overflow: hidden; border-radius: 14px; background: #0a0b0f; color: #f4f4f5;
+    font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; display: none; }
+  .abs { position: absolute; left: 0; top: 0; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .t1 { position: absolute; font: 600 22px/1.1 Inter; letter-spacing: -0.02em; color: #f4f4f5; white-space: nowrap; }
+  .t2 { position: absolute; font: 400 13.5px/1.45 Inter; color: #d4d4d8; }
+  .panel { position: absolute; overflow: hidden; border-radius: 10px; background: #121319; }
+</style>
+</head>
+<body>
+<div id="cards"></div>
+<svg id="fx" width="0" height="0" style="position:absolute;left:0;top:0" aria-hidden="true"></svg>
+<script src="/cini%20videos/v2/trailer/data/icon.js"></script>
+<script src="/docs/readme/data/library.js"></script>
+<script src="/docs/readme/data/profile.js"></script>
+<script src="/cini%20videos/v2/trailer/data/maps.js"></script>
+<script src="/cini%20videos/v2/trailer/data/world.js"></script>
+<script src="/cini%20videos/v2/trailer/js/timeline.js"></script>
+<script src="/cini%20videos/v2/trailer/js/core.js"></script>
+<script src="/cini%20videos/v2/trailer/js/maps.js"></script>
+<script src="/cini%20videos/v2/trailer/js/ui.js"></script>
+<script src="cards.js"></script>
+</body>
+</html>
