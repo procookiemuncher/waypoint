@@ -1,0 +1,10 @@
+{
+  "name": "waypoint-readme-art",
+  "private": true,
+  "type": "module",
+  "description": "Build tools for the root README's art. Playwright and ffmpeg come from the trailer's node_modules; fontkit turns SVG text into paths.",
+  "dependencies": {
+    "fontkit": "2.0.4",
+    "wawoff2": "2.0.1"
+  }
+}
