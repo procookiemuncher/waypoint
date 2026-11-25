@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>README loop: Press play, then the drive</title>
+</head>
+<body>
+<script>
+// The README's loop: the trailer's S6 and S7 ("Press play." -> the drive on the tilted night map
+// -> ARRIVED · Faena Hotel). t = 0 is beat 40.95, once S6's whip-in has settled and just before
+// the command starts to type; S7 is held past its end so ARRIVED stays up, and S8 never comes.
+// build.sh renders it and crossfades the last frames into the first, so the loop has no seam.
+window.SCENE = {
+  start: 40.95 * 60 / 124,
+  tweak({ shot }) {
+    shot('drive').post = 2;
+    const fly = shot('fly'); fly.b0 = fly.b1 = 1e9;
+  },
+};
+</script>
+<script src="trailer-page.js"></script>
+</body>
+</html>
