@@ -5,6 +5,9 @@
 //   node render.mjs --frames 0-2699 --dir DIR      -> DIR/00000.png ... (the master)
 //   node render.mjs --frames 0-2699 --step 4 --scale 0.5 --dir DIR   (quick half-res animatic)
 //
+// Other pages (the README art in docs/readme/src) can pass --page, a viewport with --size WxH
+// (default 1920x1080) and --alpha, which keeps the page's transparent background in the PNG.
+//
 // The page is served from the repo root on 127.0.0.1 so it can load the repo's fonts; every
 // other request is refused, nothing reaches the network during a render.
 import { chromium } from 'playwright';
@@ -15,10 +18,12 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '../../..');
-const W = 1920, H = 1080, FPS = 60;
+const FPS = 60;
 
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf('--' + name); return i >= 0 ? args[i + 1] : dflt; };
+const [W, H] = opt('size', '1920x1080').split('x').map(Number);
+const alpha = args.includes('--alpha');
 const PAGE = '/' + path.relative(REPO, path.join(HERE, opt('page', 'index.html'))).split(path.sep).map(encodeURIComponent).join('/');
 const scale = Number(opt('scale', '1'));
 
@@ -67,7 +72,7 @@ const t0 = Date.now();
 for (let i = 0; i < frames.length; i++) {
   const f = frames[i];
   await page.evaluate(t => new Promise(r => { window.seek(t); requestAnimationFrame(() => requestAnimationFrame(r)); }), f / FPS);
-  await page.screenshot({ path: outFor(f), clip: { x: 0, y: 0, width: W, height: H }, type: 'png' });
+  await page.screenshot({ path: outFor(f), clip: { x: 0, y: 0, width: W, height: H }, type: 'png', omitBackground: alpha });
   if (frames.length > 8 && i % 60 === 0) console.log(`frame ${f} (${i + 1}/${frames.length}) ${((Date.now() - t0) / 1000).toFixed(0)}s`);
 }
 console.log(`rendered ${frames.length} frame(s) in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
