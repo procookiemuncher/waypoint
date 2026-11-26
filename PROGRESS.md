@@ -4,7 +4,7 @@ Newest entry on top. After a work session, add a short entry: what changed, what
 what broke, what's next. Keep about the last 10 entries here. When it grows past that, move the
 oldest to `docs/progress-archive.md` as one-liners.
 
-## Current state (2026-11-22)
+## Current state (2026-11-25)
 
 - **App:** Waypoint Mac app. Dock app = keyless dev build, `release.command` = key-gated production build with auto-update. Live release: 0.1.0-beta.2 (build 2, still on Stadia's rate-limited map), two testers.
 - **No Xcode needed:** pmd3 11.59 CoreDevice path does set / route-with-speed / clear. Same on Windows (mph + car confirmed 11-20).
@@ -16,9 +16,11 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Flight-test tool & fallback prep built (11-22)**: `core/tools/flight_test.py` + launchers (`mac-version/flight-test.command`, `windows-version/flight-test.cmd`). CoreDevice only. MIA→MCO: terminal dwell, stepped runway roll (45/55/65/75 m/s, each ≤100 m from the real runway, +10 m/s steps for accel >0.5), climb, then the flight itself flown offline (cruise, descent, final, braking roll, taxi-in; `--air`, default 40 min), landing hold airside at MCO (405 m from a runway). Runway coords come from Life360's own `runways.csv`, not OSM. Fallback geofence arrival `mco-geofence-arrival.json`. Dry-run tested end to end; cleanup turns airplane mode back off then clears.
 - **Movement engine is road-aware (11-22):** each road at its own speed (Valhalla `trace_attributes`: limits, ramps, roundabouts), red lights rolled per drive, inferred stop signs, slower turns, gentle stops, pull-away that eases off with speed. Road data cached beside the snap cache (bundled in releases), offline falls back to one speed. Offline-tested only; not watched on Life360 yet.
 - **LinkedIn demo prep (11-23):** pins `miami-beach` (Lummus Park) and `palm-jumeirah` (top of the trunk), and a short seeded drive `palm-trunk-to-atlantis` (2.1 km, ~4 min) that starts exactly on the Palm pin. A route JSON can carry `"seed"` so every Drive of it plays the same. Dry-run tested; the Dock app picks it up on its next launch.
+- **Showcase README (11-25):** root README.md rebuilt for a portfolio audience: animated hero, the trailer's drive as a WebP loop, steps, features, three diagrams, catalog numbers. Art in `docs/readme/`, `docs/readme/build.sh` rebuilds all of it. Not yet looked at on github.com by the owner.
 - **Landing altitude gate resolved (11-22, smali):** the disputed sign in `g5g` is `altitude ≤ elevation+1000` — an upper bound a spoof at altitude 0 clears for free. `k5g` (the `flight-landed` upload) carries no altitude, so there's no second gate. No airplane-mode or mock-location check in `g5g`. (Still Android-only; iOS unseen.)
 
 **Open:**
+- Owner looks at the README on github.com, dark and light theme, desktop and phone. Repo is private: a LinkedIn link needs it public or a separate showcase repo (recommended); the GitHub description still doesn't fit.
 - **Active job: Life360's "landed" flight push** (owner's goal, 11-21). Handoff: `docs/handoff/flight-push.md`. Steps 1, 1b, 2, 3 complete; the landing-altitude sign is now settled (favorable).
   - Step 4 (when owner is back): set up spare iPhone (iOS 17+), positive control, run flight test on the spare with a test circle. Not the owner's phone in front of their real circle.
 - Watch a road-aware Drive on Life360 (second member's phone): first, does the car + mph survive a red-light wait (a mid-drive CoreDevice `set` hold)? Then, do the waits show through its sampling? Tune the red-light odds from that.
@@ -31,6 +33,18 @@ oldest to `docs/progress-archive.md` as one-liners.
 - CRT scanlines sit over the new panel. Keep or drop?
 - Old release zips pile up in Vercel Blob (~70 MB each).
 - `isSimulatedBySoftware` still untested (see AGENTS.md).
+
+---
+
+## 2026-11-25 — Showcase README built
+
+- Root README.md is the portfolio page now, top to bottom as the handoff planned: hero, a one-line what-it-is, platform pills, the loop, three steps, four feature cards, how it works (three diagrams + engineering bullets), in numbers, quickstart (Mac | Windows), limits, the old agent links + folder table in a collapsed `<details>`, credits. The agent links all resolve; the folder table's Windows line was stale (it said real speed was untested there) and is corrected.
+- Everything is rebuilt by `docs/readme/build.sh` (`svg` / `cards` / `loop` to do one part). Sources in `docs/readme/src/`: hand-drawn SVGs in Node (`svgkit.mjs` sets text in the repo's Inter / JetBrains Mono as outlines, fontkit + wawoff2, glyphs defined once and reused), HTML scenes rendered through the trailer's `render.mjs`, which gained `--size WxH` and `--alpha` (trailer frames byte-identical before and after). `trailer-page.js` boots the trailer's own page with a fresh `data/library.js` (`prep/library.py` takes an output path now), so the loop shows today's per-country colours, not the copy the trailer was filmed with.
+- Real data only: the loop is S6→S7 of the trailer (Faena drive, 7.9 s, the last 0.4 s dissolving into the first frame, per-frame grain off for size). "Real roads" plots `faena-miami-to-liv-miami` at seed 0 straight out of the renderer (`src/profile.py` listens in on `roads.plan` and the timing pieces, rebuilds the timeline and asserts it against the emitted fixes): red lights of 6, 25 and 18 s, labelled with the engine's own reason strings. "Fast to use" is the real palette, captured from a `VIDA_DRY_RUN=1` server in headless Chromium. Numbers recounted from the catalog at build: 35 spots, 28 cities, 21 countries, 6 continents.
+- Found while checking: the app panel's header says "22 countries · 29 cities" because it counts the "Elsewhere" bucket (test routes); the catalog is 21 / 28. The palette crop leaves that header out. Only 12 of 35 spots have opening hours (restaurants, clubs, beach clubs), so the copy says that instead of "every spot".
+- Checked: GitHub's renderer (`gh api markdown`, with `-F text=@README.md`; the handoff's `-f` sends the literal string) keeps `<picture>`/`<source type|media>`, `width`, `align`, `<details>`. raw.githubusercontent.com serves the SVG as `image/svg+xml` with `default-src 'none'; style-src 'unsafe-inline'`, so an embedded font would have been blocked and the outlines were needed; `look.mjs --csp` replays that header and the hero animates under it. Preview of the API HTML with github-markdown-css, dark and light, 838 px and phone width: feature cards pair up on desktop and stack on a phone. Sizes: loop.webp 3.4 MB, loop.gif 2.9 MB, stills ≤ 190 KB, 6.9 MB in all.
+- Not checked: the real github.com page (private repo, no logged-in browser here), WebKit/Safari (Playwright's WebKit download kept stalling).
+- Next: owner looks on github.com in both themes; decide public repo vs a separate showcase repo before linking it on LinkedIn; reword the GitHub description.
 
 ---
 
@@ -150,35 +164,3 @@ oldest to `docs/progress-archive.md` as one-liners.
   - The Observer can't see pushes and has no token on this PC.
   - An Xcode simulator can't run Life360, so there's no "other phone" without hardware. The owner has a spare iPhone (Lightning; needs iOS 17+) to set up as a test traveler.
   - The owner OK'd static analysis of Life360's Android app. Plan + rules: `docs/handoff/flight-push.md`.
-
----
-
-## 2026-11-21 — Map off Stadia, onto OpenFreeMap
-
-- Task was getting the Stadia key into release builds. Checked first: Stadia's Free plan is non-commercial (Starter $20/mo for a paid app), desktop apps use an API key with no domain setup, and their limits page bans proxying tiles (so the Vercel proxy idea was out on terms too). Owner asked for a free alternative instead. Only OpenFreeMap is free + commercial + keyless + uncapped. CARTO gives 1M free commercial tiles but its key "must not be shared", MapTiler/Protomaps free tiers are non-commercial. OpenFreeMap is vector only, so the app draws the map itself.
-- Side-by-side test page (throwaway, scratch dir): stock OpenFreeMap dark was much darker and flatter than Stadia; a quick recolour got close. Owner picked it.
-- Built: MapLibre GL 5.24.1 + `leaflet-maplibre-gl` 0.1.4 vendored in `core/web/static/maplibre/` (copied untouched into the release, like Leaflet). `core/tools/build_map_style.py` → `core/web/static/map-style.json` (their dark style + the test page's colours; it also drops 3 images their sprite doesn't have; stops if a recoloured layer disappears upstream). `app.js` swaps the one `L.tileLayer` for `L.maplibreGL`; `maxZoom:20` moved onto the map. `tilesReady` now waits for a real tile, because MapLibre's `load` fired with OpenFreeMap blocked and the card said "Tiles loaded".
-- No dashboard change, no Vercel env var, no Stadia account needed.
-- **Tested (dry run):** Chrome headless (software GL): map ready ~2.7-3.9 s after page load (Stadia raster was ~0.6 s), boot step still `[ OK ]` since it runs ~11 s in; blocked OpenFreeMap → `[ OFFLINE ]` + card "Loading…" (same as Stadia blocked); France / Paris z15 / Miami route preview, route lines sit on the same roads as on Stadia; resize; real mouse on the street map (hover POS, drag pans, wheel zooms, click drops the pin + "Set location here"); license-gated server against a local `/api/check` stub (map files 200 while the API is 402, map full size after unlock). **Windows WebView2 window** (RTX 2060, D3D11): map draws, Paris → Saint-Tropez flyTo worst frame 7 ms, no console errors, closes cleanly. Release staging (`stage_assets.py` to a temp dir): minified app.js passes `node --check`, maplibre + style copied as is.
-- Tests: `test_map_style.py` (7), locked-state test in `test_license.py` also asks for the map files. 87 run, 10 skipped (updater, Mac only).
-- **Not tested:** the Mac window (WKWebView, WebGL should be fine), a compiled release build, the look next to Stadia on a real Retina screen.
-- Found: `stage_assets.py` opens files without `encoding=`, so on Windows it dies on cp1252 (fine on the Mac; `PYTHONUTF8=1` works). Matters only when Windows gets a release build.
-- Not in yet vs Stadia: road-number shields (A4201, I-95), slightly smaller labels. Both are style edits in the tool if wanted.
-- Owner OK'd it, so the old Stadia redirect is gone (`/tiles/` route, `tiles.py`, `test_tiles.py`): 81 run, 10 skipped. `VIDA_STADIA_KEY` in the Mac's `.env` does nothing now.
-- Next: owner looks at it in the Dock app (`git pull`, no rebuild, it runs the repo), then a release when they say.
-
----
-
-## 2026-11-20 — Windows: the Waypoint window
-
-- Owner's goal today: a working Windows version, run from the repo folder (no installer). Checked this PC first: Apple Devices app installed, usbmuxd up, `.venv` on 3.12 + pmd3 11.59, test suite 80 run / 10 skipped (updater, Mac only), `server.py` serves the page in dry run with both engines.
-- New `windows-version/app.py`: same flow as the Mac app (uvicorn thread, frameless pywebview window on Edge WebView2, `use_placer(drive)`, closing hides, clears the phone, then exits). Titlebar drag = `ReleaseCapture` + `WM_NCLBUTTONDOWN`/`HTCAPTION` on the form's thread, so it's native and the window follows the cursor exactly. No splash (it's AppKit), no updater. Under pythonw stdout goes to `%LOCALAPPDATA%\Waypoint\Waypoint.log`; pmd3 run from pythonw still returns its output.
-- `waypoint.cmd` (pythonw, no console) and `drive.cmd`. pywebview + pythonnet + clr-loader pinned for win32 in requirements.txt.
-- Dry-run hold stand-in now waits on stdin, so Windows' Stop (ENTER) ends it at once; it used to sit 5 s then get killed. Mac's SIGINT still ends it.
-- Page shows Ctrl+K / Ctrl+V off a Mac (was the cmd symbol).
-- **Tested, dry run, on this PC:** window opens with globe + panel, Ctrl+K opens the palette in WebView2, titlebar drag moved the window exactly with the mouse, page x and WM_CLOSE both exit in 2-3 s, pin + route + Stop through the API (Stop ~60 ms).
-- **Then with the phone (iOS 27.2.1, USB):** connect probe ready in ~7 s (DDI already mounted). `server.py`: Eiffel DVT hold, Stop sent ENTER, pmd3 exited, clear ok in ~3 s. Drive `emoji-test`: 16 of 48 speed chunks over 2.5 min, all accepted, none late, ~1.5 s a call (Mac ~0.8 s), Stop cleared the CoreDevice sim. The window: Live, map on the Eiffel pin (through Drive's placer), page x with the pin on exited in 4.7 s after the clear (no warning). `drive.py --clear` exit 0.
-- Owner confirmed afterwards: **Life360 showed mph + the car** during the Windows drive.
-- **Not tested:** the key gate, other DPI scales, `fly` on Windows.
-- Commits now go out as juanmendoza (AGENTS.md, Git).
-- Next: the Stadia map key for release builds (owner wants it in a fresh session). Windows packaging only once Windows testers are wanted.

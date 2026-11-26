@@ -78,7 +78,7 @@ mac-version/       Mac launchers (spoof, drive, fly, setup), the Waypoint window
 windows-version/   Windows launchers (spoof, drive, fly, setup, waypoint), the Waypoint window (app.py)
 core/              shared engine: spoof.py, routes/, backend/ (server, session, device, drive,
                    movement/, life360/), tools/, tests/, web/, build/ (generated, ignored)
-docs/              design docs + research
+docs/              design docs + research; docs/readme/ is the root README's art (build.sh rebuilds it)
 cini videos/       promo films drawn in HTML, rendered with Playwright (v1 sting, v2 trailer)
 .venv  .env  requirements.txt   stay at the repo root
 ```

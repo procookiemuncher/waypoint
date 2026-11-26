@@ -24,6 +24,8 @@ Old PROGRESS.md entries, boiled down to one line each. The full text is in git h
 
 ## 2026-11
 
+- 11-21 Map moved off Stadia onto OpenFreeMap vector tiles (MapLibre GL 5.24.1 + leaflet-maplibre-gl, vendored; `build_map_style.py` writes the style). Only free host that allows a paid app with no key or cap. Checked in Chrome and Windows WebView2; the old `/tiles/` redirect is gone.
+- 11-20 Windows Waypoint window (`windows-version/app.py`, pywebview on WebView2, titlebar drag via WM_NCLBUTTONDOWN). Worked with the phone: pin, Drive with speed (Life360 showed mph + car), Stop, quit clears.
 - 11-22 Pass-2 Android RE of Life360 flight detection (`g5g`): takeoff state machine confirmed, no airplane-mode or mock check; the landing-altitude sign was disputed (later settled by smali, see PROGRESS).
 - 11-20 Side panel built (design 1, Arrival plan): colour per country, rendered route legs + `warm_route_legs`, globe in the app, dock with picked + live cards. Dry-run tested in Chromium only.
 - 11-20 Docs cleanup: PROGRESS.md cut from 99 entries to current state + recent; old history to this archive; AGENTS.md and ROADMAP.md rewritten.

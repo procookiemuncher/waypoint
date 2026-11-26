@@ -2,6 +2,9 @@
 
 Paste into a fresh session: **"Read docs/handoff/readme-redesign.md and do what it says."**
 
+> **Built 2026-11-25** (see PROGRESS.md). What's left is in PROGRESS.md's entry: the owner's look on
+> github.com in both themes, and the two open decisions at the bottom of this file.
+
 ## Read first
 
 CLAUDE.md says: **AGENTS.md**, then **PROGRESS.md**. Then, for this job:
