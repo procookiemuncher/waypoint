@@ -3,6 +3,8 @@
 //
 //   node src/look.mjs hero.svg --width 900 --times 0,800,1600,4000 --out /tmp/look
 //   node src/look.mjs some.html --width 1280 --height 900 --out /tmp/look      (a page, as is)
+//   --csp serves images with the header raw.githubusercontent.com sends (checked 2026-11-25):
+//   inline <style> runs, nothing else loads (no fonts, no external files).
 //
 // Writes <out>/<name>-<engine>-<bg>-<ms>.png. Nothing outside 127.0.0.1 is fetched.
 import http from 'node:http';
@@ -21,6 +23,7 @@ const engines = opt('engines', 'chromium,webkit').split(',');
 const bgs = opt('bg', 'dark,light').split(',');
 const scale = Number(opt('scale', '2'));
 const out = path.resolve(opt('out', '.'));
+const CSP = args.includes('--csp') ? "default-src 'none'; style-src 'unsafe-inline'; sandbox" : null;
 fs.mkdirSync(out, { recursive: true });
 
 const TYPES = { '.html': 'text/html', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2' };
@@ -36,7 +39,7 @@ const server = http.createServer((req, res) => {
   }
   const p = path.normalize(path.join(ROOTDIR, decodeURIComponent(u.pathname)));
   if (!p.startsWith(ROOTDIR)) { res.writeHead(403).end(); return; }
-  fs.readFile(p, (err, data) => err ? res.writeHead(404).end() : res.writeHead(200, { 'content-type': TYPES[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store' }).end(data));
+  fs.readFile(p, (err, data) => err ? res.writeHead(404).end() : res.writeHead(200, { 'content-type': TYPES[path.extname(p)] || 'application/octet-stream', 'cache-control': 'no-store', ...(CSP && !p.endsWith('.html') ? { 'content-security-policy': CSP } : {}) }).end(data));
 });
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const origin = `http://127.0.0.1:${server.address().port}`;
