@@ -41,11 +41,12 @@ directly, so every app on the phone sees the simulated position. Waypoint reache
 RemoteXPC tunnel with [pymobiledevice3](https://github.com/doronz88/pymobiledevice3), in three layers.
 
 <p align="center">
-  <img src="docs/readme/layers.svg" width="900" alt="Three layers: the UI talks HTTP to the Core on 127.0.0.1, the Core asks the Adapter to set, route or clear, and only the Adapter (device.py) talks to pymobiledevice3, which reaches the iPhone over USB through the RemoteXPC tunnel.">
+  <img src="docs/readme/layers.svg" width="900" alt="Three layers: the UI talks HTTP to the Core on 127.0.0.1, the Core asks the Adapter to set, route or clear, and in the app only the Adapter (device.py) talks to pymobiledevice3, which reaches the iPhone over USB through the RemoteXPC tunnel.">
 </p>
 
-Apple changes that transport from time to time (it broke between iOS 16 and 17). Every transport
-detail lives in one module, `core/backend/device.py`, so the next break is a one-file fix.
+Apple changes that transport from time to time (it broke between iOS 16 and 17). Everything the
+app sends to the phone goes through one module, `core/backend/device.py`, so when it breaks again
+the app's fix is one file.
 
 <p align="center">
   <img src="docs/readme/services.svg" width="900" alt="Two location services. DVT simulate-location takes only latitude and longitude, so iOS reports speed -1 and apps show a dot at 0 mph. The CoreDevice location service takes waypoints and a speed, so iOS reports 15.6 m/s and apps show a drive at 35 mph.">
@@ -108,7 +109,7 @@ windows-version\setup.cmd
 :: the Waypoint window
 windows-version\waypoint.cmd
 :: or try it with no phone at all
-set VIDA_DRY_RUN=1 & windows-version\waypoint.cmd
+set "VIDA_DRY_RUN=1" & windows-version\waypoint.cmd
 ```
 
 Full guide: [windows-version/README.md](windows-version/README.md)
@@ -126,8 +127,8 @@ minutes once.
   on its real GPS.
 - **Unlocked and awake.** A phone that locks can drop the session.
 - **Developer Mode,** which an iOS update turns off again.
-- **Position, not motion.** Features built on the accelerometer, like driving reports or crash
-  detection, can't be faked on a phone that is sitting still.
+- **Position, not motion.** The phone's motion sensors aren't touched, so features built on them,
+  like driving reports or crash detection, won't see a drive.
 - **Your own phone.** Each person runs it on their own iPhone, from their own computer.
 - **Windows runs from the repo:** no installer or auto-update yet.
 
