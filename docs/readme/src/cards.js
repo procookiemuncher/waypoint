@@ -196,7 +196,7 @@ feature('Whole trips.', '<span class="mono" style="font-size:12.5px;color:#f4f4f
 });
 
 // 4 · fast to use: the real palette, captured from the app in a dry run
-feature('Fast to use.', '⌘K for every place and route, a globe to browse, and local hours and time zones for each spot.', (vis, w, h_) => {
+feature('Fast to use.', '⌘K for every place and route, a globe to browse, local opening hours and time zones.', (vis, w, h_) => {
   const k = 0.62, box = { x: 430, y: 117 };   // the palette's place in the 1440x900 window
   const img = h('img', { src: '/docs/readme/data/app-palette.png', style: { position: 'absolute', width: px(1440 * k), height: px(900 * k), left: px(-(box.x - 26) * k), top: px(-box.y * k) } });
   vis.appendChild(img);
