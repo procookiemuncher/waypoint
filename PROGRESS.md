@@ -20,6 +20,7 @@ oldest to `docs/progress-archive.md` as one-liners.
 - **Landing altitude gate resolved (11-22, smali):** the disputed sign in `g5g` is `altitude ≤ elevation+1000` — an upper bound a spoof at altitude 0 clears for free. `k5g` (the `flight-landed` upload) carries no altitude, so there's no second gate. No airplane-mode or mock-location check in `g5g`. (Still Android-only; iOS unseen.)
 
 **Open:**
+- `windows-version/README.md` + `waypoint.cmd` comment: `set VIDA_DRY_RUN=1 & …` likely isn't a dry run in cmd (value `"1 "`); use `set "VIDA_DRY_RUN=1" & …`.
 - Owner looks at the README on github.com, dark and light theme, desktop and phone. Repo is private: a LinkedIn link needs it public or a separate showcase repo (recommended); the GitHub description still doesn't fit.
 - **Active job: Life360's "landed" flight push** (owner's goal, 11-21). Handoff: `docs/handoff/flight-push.md`. Steps 1, 1b, 2, 3 complete; the landing-altitude sign is now settled (favorable).
   - Step 4 (when owner is back): set up spare iPhone (iOS 17+), positive control, run flight test on the spare with a test circle. Not the owner's phone in front of their real circle.
@@ -44,7 +45,10 @@ oldest to `docs/progress-archive.md` as one-liners.
 - Found while checking: the app panel's header says "22 countries · 29 cities" because it counts the "Elsewhere" bucket (test routes); the catalog is 21 / 28. The palette crop leaves that header out. Only 12 of 35 spots have opening hours (restaurants, clubs, beach clubs), so the copy says that instead of "every spot".
 - Checked: GitHub's renderer (`gh api markdown`, with `-F text=@README.md`; the handoff's `-f` sends the literal string) keeps `<picture>`/`<source type|media>`, `width`, `align`, `<details>`. raw.githubusercontent.com serves the SVG as `image/svg+xml` with `default-src 'none'; style-src 'unsafe-inline'`, so an embedded font would have been blocked and the outlines were needed; `look.mjs --csp` replays that header and the hero animates under it. Preview of the API HTML with github-markdown-css, dark and light, 838 px and phone width: feature cards pair up on desktop and stack on a phone. Sizes: loop.webp 3.4 MB, loop.gif 2.9 MB, stills ≤ 190 KB, 6.9 MB in all.
 - Not checked: the real github.com page (private repo, no logged-in browser here), WebKit/Safari (Playwright's WebKit download kept stalling).
-- Next: owner looks on github.com in both themes; decide public repo vs a separate showcase repo before linking it on LinkedIn; reword the GitHub description.
+- Also checked: github.com rewrites a relative `<source srcset>` to `/owner/repo/raw/<branch>/…` (seen on three public READMEs), so the loop's WebP resolves there. In the app only `device.py` talks to pymobiledevice3 (the terminal launchers run its CLI too), so the diagram and copy say "the only app module".
+- A full `build.sh` gives byte-identical SVGs and cards, but the loop's WebP/GIF come out slightly different each run (render noise, like the trailer's). Don't commit a re-encoded loop unless its source changed.
+- **Found, not fixed (outside the README scope):** `windows-version/README.md` and the comment in `waypoint.cmd` say `set VIDA_DRY_RUN=1 & windows-version\waypoint.cmd`. In cmd that stores `"1 "` with the trailing space, and `device.py` checks `== "1"`, so that line most likely runs against the real phone. The safe form is `set "VIDA_DRY_RUN=1" & …` (the root README uses it). Not run on Windows here.
+- Next: owner looks on github.com in both themes, and on the iPhone (covers Safari); fix the Windows dry-run line; decide public repo vs a separate showcase repo before linking it on LinkedIn; reword the GitHub description. Owner's call: the "Whole trips" card features `fly nyc`, which has never run end to end on the phone.
 
 ---
 
