@@ -22,7 +22,7 @@ function fit(str, width, o) { if (measure(str, o) > width) throw new Error(`"${s
   const rows = [
     ['UI', ['Map page: Leaflet + MapLibre, the globe, ⌘K palette', 'pywebview window on Mac and Windows, or a browser'], T.panel, T.ink],
     ['Core', ['Session: one job at a time, Stop clears every sim', 'spoof (DVT) · drive (CoreDevice) · movement engine'], T.panel, T.ink],
-    ['Adapter', ['device.py, the only module that imports pymobiledevice3', 'disk image · DVT set, play · CoreDevice set, route, clear'], T.tile, T.accent],
+    ['Adapter', ['device.py, the only app module that talks to pymobiledevice3', 'disk image · DVT set, play · CoreDevice set, route, clear'], T.tile, T.accent],
   ];
   let body = card(W, H);
   rows.forEach(([name, ls, fill, ink], i) => {
@@ -60,7 +60,7 @@ function fit(str, width, o) { if (measure(str, o) > width) throw new Error(`"${s
   body += text('tunnel', { ...LABEL, x: (SX + SW + PX) / 2, y: ay + 78, anchor: 'middle' });
   write('layers.svg', svgDoc(W, H, body, {
     title: 'Three layers: UI, Core, Adapter, then the iPhone',
-    desc: 'The UI talks HTTP to the Core on 127.0.0.1. The Core asks the Adapter to set, route or clear. Only the Adapter, device.py, talks to pymobiledevice3, which reaches the phone over USB through the RemoteXPC tunnel. On the phone the location simulation feeds CoreLocation, so every app sees it.',
+    desc: 'The UI talks HTTP to the Core on 127.0.0.1. The Core asks the Adapter to set, route or clear. In the app only the Adapter, device.py, talks to pymobiledevice3, which reaches the phone over USB through the RemoteXPC tunnel. On the phone the location simulation feeds CoreLocation, so every app sees it.',
   }));
 }
 
