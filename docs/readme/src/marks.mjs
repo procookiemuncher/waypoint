@@ -23,8 +23,8 @@ import { text, measure, svgDoc, write, T, n1 } from './svgkit.mjs';
   const ph = 52, padX = 24, dotGap = 16, gap = 14;
   const widths = items.map(t => measure(t, F) + padX * 2 + dotGap);
   const total = widths.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
-  const W = 1800, H = ph + 4;
-  let x = (W - total) / 2, body = '';
+  const W = Math.ceil(total) + 4, H = ph + 4;   // cropped to the pills, so a phone shows them big enough
+  let x = 2, body = '';
   items.forEach((t, i) => {
     const w = widths[i];
     body += `<rect x="${n1(x)}" y="2" width="${n1(w)}" height="${ph}" rx="${ph / 2}" fill="${T.raised}"/>`;
